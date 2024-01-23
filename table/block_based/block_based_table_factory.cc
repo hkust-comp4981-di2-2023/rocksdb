@@ -198,7 +198,7 @@ BlockBasedTableFactory::BlockBasedTableFactory(
     table_options_.partition_filters = false;
   }
   if (table_options_.index_type == BlockBasedTableOptions::kLearnedIndexWithPLR) {
-    // TODO: Add block based table factory related logic in the future
+    // TODO(fyp): Add block based table factory related logic in the future
   }
 }
 
@@ -290,7 +290,7 @@ Status BlockBasedTableFactory::SanitizeOptions(
         "unordered_write");
   }
   if (table_options_.index_type == BlockBasedTableOptions::kLearnedIndexWithPLR) {
-    // TODO: Add sanitization-related logic for PLR index type, if any, in the future
+    // TODO(fyp): Add sanitization-related logic for PLR index type, if any, in the future
   }
   return Status::OK();
 }

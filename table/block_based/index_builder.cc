@@ -58,7 +58,7 @@ IndexBuilder* IndexBuilder::CreateIndexBuilder(
           table_opt.index_shortening, /* include_first_key */ true);
     } break;
     case BlockBasedTableOptions::kLearnedIndexWithPLR: {
-      // TODO: Extend IndexBuilder for our lovely learned index
+      // TODO(fyp): Extend IndexBuilder for our lovely learned index
       assert(!"To be developed in our FYP !!!!!");
     } break;
     default: {
