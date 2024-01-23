@@ -197,6 +197,9 @@ BlockBasedTableFactory::BlockBasedTableFactory(
     // We do not support partitioned filters without partitioning indexes
     table_options_.partition_filters = false;
   }
+  if (table_options_.index_type == BlockBasedTableOptions::kLearnedIndexWithPLR) {
+    // TODO: Add block based table factory related logic in the future
+  }
 }
 
 Status BlockBasedTableFactory::NewTableReader(
@@ -285,6 +288,9 @@ Status BlockBasedTableFactory::SanitizeOptions(
     return Status::InvalidArgument(
         "max_successive_merges larger than 0 is currently inconsistent with "
         "unordered_write");
+  }
+  if (table_options_.index_type == BlockBasedTableOptions::kLearnedIndexWithPLR) {
+    // TODO: Add sanitization-related logic for PLR index type, if any, in the future
   }
   return Status::OK();
 }
