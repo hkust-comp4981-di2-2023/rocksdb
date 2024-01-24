@@ -130,7 +130,7 @@ struct BlockBasedTableOptions {
     // this index type is enabled, RocksDB cannot read index block with
     // kBinarySearch etc.
     // Note: Using this index type may ignore other options related to other
-    // index types.
+    // index types, inc. index_shortening.
     kLearnedIndexWithPLR = 0x04,
   };
 

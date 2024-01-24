@@ -198,7 +198,7 @@ BlockBasedTableFactory::BlockBasedTableFactory(
     table_options_.partition_filters = false;
   }
   if (table_options_.index_type == BlockBasedTableOptions::kLearnedIndexWithPLR) {
-    // TODO(fyp): Add block based table factory related logic in the future
+    // TODO(fyp): Add block based table factory related logic if any
   }
 }
 
@@ -289,8 +289,15 @@ Status BlockBasedTableFactory::SanitizeOptions(
         "max_successive_merges larger than 0 is currently inconsistent with "
         "unordered_write");
   }
-  if (table_options_.index_type == BlockBasedTableOptions::kLearnedIndexWithPLR) {
-    // TODO(fyp): Add sanitization-related logic for PLR index type, if any, in the future
+  if (table_options_.index_type == 
+          BlockBasedTableOptions::kLearnedIndexWithPLR) {
+    // TODO(fyp): Add sanitization-related logic for PLR index type, if any
+    if (table_options_.index_block_restart_interval != 1) {
+      return Status::InvalidArgument(
+        "index_block_restart_interval is not configurable for "
+        "index type kLearnedIndexWithPLR, it should follow the default "
+        "value 1 and will not instead be silently converted");
+    }
   }
   return Status::OK();
 }

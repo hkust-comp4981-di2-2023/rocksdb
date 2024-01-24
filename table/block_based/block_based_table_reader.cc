@@ -787,6 +787,33 @@ class HashIndexReader : public BlockBasedTable::IndexReaderCommon {
   std::unique_ptr<BlockPrefixIndex> prefix_index_;
 };
 
+// TODO(fyp)
+// May consider inherit from IndexReaderCommon, but input type Block seems
+// to require index block be list of key-value pairs
+class PLRIndexReader: public BlockBasedTable::IndexReader {
+  public:
+    static Status Create() {
+      assert(false);
+      std::string error_message =
+          "TODO(fyp): " + ToString(rep_->index_type);
+      return Status::InvalidArgument(error_message.c_str());
+    }
+    virtual ~IndexReader() = default;
+
+    InternalIteratorBase<IndexValue>* NewIterator(
+        const ReadOptions& read_options, bool disable_prefix_seek,
+        IndexBlockIter* iter, GetContext* get_context,
+        BlockCacheLookupContext* lookup_context) {
+      return nullptr;
+    }
+
+    size_t ApproximateMemoryUsage() const {
+      return -1;
+    }
+    
+    void CacheDependencies(bool /* pin */) {}
+}
+
 void BlockBasedTable::UpdateCacheHitMetrics(BlockType block_type,
                                             GetContext* get_context,
                                             size_t usage) const {
@@ -4087,6 +4114,10 @@ Status BlockBasedTable::CreateIndexReader(
                                        use_cache, prefetch, pin, lookup_context,
                                        index_reader);
       }
+    }
+    case BlockBasedTableOptions::kLearnedIndexWithPLR: {
+      // TODO(fyp)
+      return PLRIndexReader::Create();
     }
     default: {
       std::string error_message =
