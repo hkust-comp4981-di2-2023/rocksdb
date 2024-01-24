@@ -795,15 +795,16 @@ class PLRIndexReader: public BlockBasedTable::IndexReader {
     static Status Create() {
       assert(false);
       std::string error_message =
-          "TODO(fyp): " + ToString(rep_->index_type);
+          "TODO(fyp): PLRIndexReader";
       return Status::InvalidArgument(error_message.c_str());
     }
-    virtual ~IndexReader() = default;
+    // virtual ~IndexReader() = default;
 
     InternalIteratorBase<IndexValue>* NewIterator(
         const ReadOptions& read_options, bool disable_prefix_seek,
         IndexBlockIter* iter, GetContext* get_context,
         BlockCacheLookupContext* lookup_context) {
+      read_options; disable_prefix_seek; iter; get_context; lookup_context;
       return nullptr;
     }
 
@@ -812,7 +813,7 @@ class PLRIndexReader: public BlockBasedTable::IndexReader {
     }
     
     void CacheDependencies(bool /* pin */) {}
-}
+};
 
 void BlockBasedTable::UpdateCacheHitMetrics(BlockType block_type,
                                             GetContext* get_context,
