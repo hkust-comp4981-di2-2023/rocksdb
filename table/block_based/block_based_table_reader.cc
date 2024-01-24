@@ -801,10 +801,13 @@ class PLRIndexReader: public BlockBasedTable::IndexReader {
     // virtual ~IndexReader() = default;
 
     InternalIteratorBase<IndexValue>* NewIterator(
-        const ReadOptions& read_options, bool disable_prefix_seek,
-        IndexBlockIter* iter, GetContext* get_context,
-        BlockCacheLookupContext* lookup_context) {
-      read_options; disable_prefix_seek; iter; get_context; lookup_context;
+        const ReadOptions&, bool,
+        IndexBlockIter*, GetContext*,
+        BlockCacheLookupContext*) {
+    // InternalIteratorBase<IndexValue>* NewIterator(
+    //     const ReadOptions& read_options, bool disable_prefix_seek,
+    //     IndexBlockIter* iter, GetContext* get_context,
+    //     BlockCacheLookupContext* lookup_context) {
       return nullptr;
     }
 
