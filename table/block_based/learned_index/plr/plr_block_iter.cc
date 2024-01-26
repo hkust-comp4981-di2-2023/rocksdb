@@ -9,6 +9,12 @@
 #include "table/internal_iterator.h"
 #include "table/block_based/learned_index/plr/plr_block_iter.h"
 
+/*
+status_ = file_->Read(handle_.offset(), block_size_ + kBlockTrailerSize,
+                            &slice_, used_buf_, for_compaction_);
+!!! Remember to add 5 bytes for kBlockTrailerSize for each block !!!
+*/
+
 namespace ROCKSDB_NAMESPACE {
 
 bool PLRBlockIter::Valid() const {

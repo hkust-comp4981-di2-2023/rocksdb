@@ -938,7 +938,7 @@ class PLRIndexReader: public BlockBasedTable::CustomIndexReaderCommon {
 
     return Status::OK();
   }
-
+  // TODO(fyp): Need parameter to indicate number of data blocks
   InternalIteratorBase<IndexValue>* NewIterator(
       const ReadOptions& read_options, bool /* disable_prefix_seek */,
       IndexBlockIter* iter, GetContext* get_context,
@@ -961,16 +961,24 @@ class PLRIndexReader: public BlockBasedTable::CustomIndexReaderCommon {
     // to set `block_contents_pinned`.
     // TODO(fyp): replace here
     assert(false);
-    // auto it = index_block.GetValue()->NewIndexIterator(
-    //     internal_comparator(), internal_comparator()->user_comparator(), iter,
-    //     kNullStats, true, index_has_first_key(), index_key_includes_seq(),
-    //     index_value_is_full());
-
-    // assert(it != nullptr);
-    // index_block_contents.TransferTo(it);
-
-    // return it;
-    return nullptr;
+    // &index_block_contents contains encoded PLR segments, extract segment info and call PLR to predict data block id)
+    /*
+    -> Iter
+    Iter->Seek(Key)
+    
+      auto it = PLRBlockIter::Create? or wtever(index_block_contents) {
+          BlockHandle[] PLRHelper(index_block_contents) {
+            Status DecodePLRSegments(index_block_contents->GetValue().data, &segments, &gamma)
+            if (s.ok()) {
+              Status BuildModel(&Model, segments) #Will sanitize data
+            }
+            # the returned iterator contains model, that can take key and output data block block handles by Seek(), Next() etc
+          }
+        }
+      # Transfer ownership of block content
+      index_block_contents.TransferTo(it)
+      return it
+    */
   }
 
   size_t ApproximateMemoryUsage() const override {
