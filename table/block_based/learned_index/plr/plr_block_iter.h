@@ -14,7 +14,7 @@ namespace ROCKSDB_NAMESPACE {
 
 class PLRBlockIter : public InternalIteratorBase<IndexValue> {
     public:
-        bool Valid() const override {return true;}
+        bool Valid() const override;
         void SeekToFirst() override;
         void SeekToLast() override;
         void Seek(const Slice& target) override;
@@ -29,9 +29,7 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
         void SetPinnedItersMgr(PinnedIteratorsManager* pinned_iters_mgr) override;
         bool IsKeyPinned() const override;
         bool IsValuePinned() const override;
-        Status GetProperty(std::string /*prop_name*/, std::string* /*prop*/) {
-            return Status::NotSupported("PLRBlockIter::GetProperty");
-        }
-}
+        Status GetProperty(std::string /*prop_name*/, std::string* /*prop*/) override;
+};
 
 } // namespace ROCKSDB_NAMESPACE
