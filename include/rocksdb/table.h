@@ -119,6 +119,19 @@ struct BlockBasedTableOptions {
     // slice, and you need to call Valid()/status() afterwards.
     // TODO(kolmike): Fix it.
     kBinarySearchWithFirstKey = 0x03,
+
+    // Index block stores the parameters of a PLR learned model. The PLR model
+    // takes a key as input and outputs a data block number with an error bound.
+    // If this index type is enabled, an additional metablock is required
+    // storing an array of block_size indicating the valid size of each data
+    // block.
+    //
+    // Note: This index type may not ensure backward-compatibility, i.e. if
+    // this index type is enabled, RocksDB cannot read index block with
+    // kBinarySearch etc.
+    // Note: Using this index type may ignore other options related to other
+    // index types, inc. index_shortening.
+    kLearnedIndexWithPLR = 0x04,
   };
 
   IndexType index_type = kBinarySearch;

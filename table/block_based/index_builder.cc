@@ -57,6 +57,10 @@ IndexBuilder* IndexBuilder::CreateIndexBuilder(
           table_opt.format_version, use_value_delta_encoding,
           table_opt.index_shortening, /* include_first_key */ true);
     } break;
+    case BlockBasedTableOptions::kLearnedIndexWithPLR: {
+      // TODO(fyp): Extend IndexBuilder for our lovely learned index
+      assert(!"To be developed in our FYP !!!!!");
+    } break;
     default: {
       assert(!"Do not recognize the index type ");
     } break;
