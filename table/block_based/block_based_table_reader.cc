@@ -965,10 +965,10 @@ class PLRIndexReader: public BlockBasedTable::CustomIndexReaderCommon {
     /*
     -> Iter
     Iter->Seek(Key)
-    
+
       auto it = PLRBlockIter::Create? or wtever(index_block_contents) {
           BlockHandle[] PLRHelper(index_block_contents) {
-            Status DecodePLRSegments(index_block_contents->GetValue().data, &segments, &gamma)
+            Status DecodePLRSegments(index_block_contents->GetValue().data, &segments, &gamma_)
             if (s.ok()) {
               Status BuildModel(&Model, segments) #Will sanitize data
             }
