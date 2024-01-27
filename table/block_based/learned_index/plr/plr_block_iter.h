@@ -54,6 +54,6 @@ class PLRBlockHelper {
         // TODO(fyp)
         std::unique_ptr<void*> model_;
 
-}
+};
 
 } // namespace ROCKSDB_NAMESPACE
