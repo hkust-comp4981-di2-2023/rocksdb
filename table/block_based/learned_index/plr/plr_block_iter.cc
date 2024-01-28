@@ -21,12 +21,48 @@ bool PLRBlockIter::Valid() const {
     return current_ != invalid_block_number_;
 }
 
+// Change seek_mode_ to kLinearSeek. Update begin_block_ and end_block_ to full
+// data block number range. 
+// If max data block number >= 0, Update current_ to 0.
+// Othewise, there is no data block in this sstable, then current_ becomes 
+// invalid.
+// REQUIRES: helper_ is initialized.
 void PLRBlockIter::SeekToFirst() {
+    TEST_SYNC_POINT("PLRBlockIter::SeekToFirst:0");
+    assert(helper_ != nullptr);
 
+    status_ = Status::OK();
+    seek_mode_ = SeekMode::kLinearSeek;
+
+    begin_block_ = 0;
+    end_block_ = helper_->GetMaxDataBlockNumber();
+    if (end_block_ < 0) {
+        current_ = invalid_block_number_;
+        return;
+    }
+    current_ = 0;
 }
 
+// Change seek_mode_ to kLinearSeek. Update begin_block_ and end_block_ to full
+// data block number range. 
+// If max data block number >= 0, Update current_ to end_block_.
+// Othewise, there is no data block in this sstable, then current_ becomes 
+// invalid.
+// REQUIRES: helper_ is initialized.
 void PLRBlockIter::SeekToLast() {
+    TEST_SYNC_POINT("PLRBlockIter::SeekToLast:0");
+    assert(helper_ != nullptr);
 
+    status_ = Status::OK();
+    seek_mode_ = SeekMode::kLinearSeek;
+
+    begin_block_ = 0;
+    end_block_ = helper_->GetMaxDataBlockNumber();
+    if (end_block_ < 0) {
+        current_ = invalid_block_number_;
+        return;
+    }
+    current_ = end_block_;
 }
 
 // Take a key as input and uses helper_->PredictBlockRange() to update data
@@ -42,15 +78,14 @@ void PLRBlockIter::Seek(const Slice& target) {
     TEST_SYNC_POINT("PLRBlockIter::Seek:0");
     assert(helper_ != nullptr);
 
-    Status s = helper_->PredictBlockRange(target, &begin_block_, &end_block_);
-    if (!s.ok()) {
-        status_ = s;
+    status_ = helper_->PredictBlockRange(target, &begin_block_, &end_block_);
+    if (!status_.ok()) {
         seek_mode_ = SeekMode::kUnknown;
         return;
     }
 
     assert(end_block_ >= begin_block_);
-    current_ = (begin_block_ + end_block_) / 2;
+    current_ = getMidpointBlockNumber();
     seek_mode_ = SeekMode::kBinarySeek;
 }
 
@@ -67,18 +102,47 @@ void PLRBlockIter::Seek(const Slice& target) {
 // operations are triggered after a SeekToFirst() or SeekToLast() operation.
 // We will do a linear seek in this case, where we will only update current_.
 //
+// Note: If current_ is logically invalid after the current Next(), update
+// current_ to invalid_block_number_. i.e. Before the current Next(), current_
+// points to the last block number possible, depending on seek_mode_.
 // REQUIRES: Valid()
 // REQUIRES: seek_mode_ is either kBinarySeek or kLinearSeek.
 void PLRBlockIter::Next() {
-    ++it_;
     assert(Valid());
+    assert(seek_mode_ != SeekMode::kUnknown)
+
+    switch(seek_mode_) {
+        case SeekMode::kBinarySeek: {
+            if (isLastBinarySeek()) {
+                current_ = invalid_block_number_;
+                return;
+            }
+            current_ = getMidpointBlockNumber();
+        } break;
+        case SeekMode::kLinearSeek: {
+            if (isLastLinearSeek()) {
+                current_ = invalid_block_number_;
+                return;
+            }
+            ++current_;
+        } break;
+        default: {
+            status_ = Status::Aborted();
+            assert(!"Impossible to fall into this branch");
+        } break;
+    }
 }
 
 // At this moment, Prev() is only supported if seek_mode_ is kLinearSeek.
 // REQUIRES: Valid()
 // REQUIRES: seek_mode_ is kLinearSeek.
 void PLRBlockIter::Prev() {
+    assert(Valid());
+    assert(seek_mode_ == SeekMode::kLinearSeek)
 
+    // if current is 0 (i.e. pointing to begin_block_), it becomes
+    // invalid_block_number after --current_.
+    --current_;
 }
 
 // Return an internal key that can be parsed by ExtractUserKey().
@@ -99,7 +163,7 @@ IndexValue PLRBlockIter::value() const {
 }
 
 Status PLRBlockIter::status() const {
-
+    return status_;
 }
 
 bool PLRBlockIter::IsOutOfBound() {
@@ -126,19 +190,22 @@ bool PLRBlockIter::IsValuePinned() const {
 
 }
 
-Status PLRBlockIter::GetProperty(std::string /*prop_name*/, std::string* /*prop*/) {
+Status PLRBlockIter::GetProperty(std::string /*prop_name*/, 
+                                    std::string* /*prop*/) {
     return Status::NotSupported("PLRBlockIter::GetProperty");
 }
 
-Status PLRBlockHelper::DecodePLRBlock(const BlockContents& index_block_contents) {
+Status PLRBlockHelper::DecodePLRBlock(const BlockContents& 
+                                                index_block_contents) {
     // index_block_contents->GetValue().data
 }
 
-Status PLRBlockHelper::PredictBlockRange(const Slice& target, int* begin_block, int* end_block) {
+Status PLRBlockHelper::PredictBlockRange(const Slice& target, int* begin_block, 
+                                            int* end_block) const {
 
 }
 
-Status PLRBlockHelper::GetBlockHandle(BlockHandle* block_handle) {
+Status PLRBlockHelper::GetBlockHandle(BlockHandle* block_handle) const {
 
 }
 

@@ -47,12 +47,23 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
         };
         SeekMode seek_mode_;
 
-        const uint32_t invalid_block_number_ = -1;
+        static const uint32_t invalid_block_number_ = -1;
         uint32_t current_, begin_block_, end_block_;
         IndexValue value_;
         Status status_;
 
         PLRBlockHelper* helper_;
+
+        inline bool isLastBinarySeek() const {
+            return begin_block_ > end_block_;
+        }
+        inline bool isLastLinearSeek() const {
+            return current_ == end_block_;
+        }
+
+        inline uint32_t getMidpointBlockNumber() const {
+            return (begin_block_ + end_block_) / 2;
+        }
 };
 
 // Data members should be stack-allocated.
@@ -65,8 +76,10 @@ class PLRBlockHelper {
         // Decode two parts: PLR model parameters and Data block size array
         Status DecodePLRBlock(const BlockContents& index_block_contents);
         Status PredictBlockRange(const Slice& target, int* begin_block, 
-                                    int* end_block);
-        Status GetBlockHandle(BlockHandle* block_handle);
+                                    int* end_block) const;
+        Status GetBlockHandle(BlockHandle* block_handle) const;
+        // If there's no data block, return an integer < 0.
+        inline uint32_t GetMaxDataBlockNumber() const { return max_block_number_; }
 
     private:
         // TODO(fyp): Verify member types
