@@ -17,8 +17,9 @@ namespace ROCKSDB_NAMESPACE {
 
 // temporary design: https://drive.google.com/file/d/1Z2s31E8Pfxjy6GUOL2a9f5ea2-1hJOFV/view?usp=sharing
 class PLRBlockIter : public InternalIteratorBase<IndexValue> {
-
  public:
+	PLRBlockIter(BlockContents* block_contents);
+
 	bool Valid() const override;
 
 	void SeekToFirst() override;
@@ -120,10 +121,10 @@ class BlockHandleCalculatorStub {
  public:
 	Status CalculateHandle(uint32_t /* block_number */, 
 													BlockHandle* /* handle */) {
-			return Status.NotSupported();
+		return Status.NotSupported();
 	}
 	Status Decode(const std::string /* str */) {
-			return Status.NotSupported();
+		return Status.NotSupported();
 	}
 };
 
