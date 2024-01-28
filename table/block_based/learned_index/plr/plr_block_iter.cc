@@ -18,7 +18,7 @@ status_ = file_->Read(handle_.offset(), block_size_ + kBlockTrailerSize,
 namespace ROCKSDB_NAMESPACE {
 
 bool PLRBlockIter::Valid() const {
-    return current_ != invalid_block_number_;
+	return current_ != invalid_block_number_;
 }
 
 // Change seek_mode_ to kLinearSeek. Update begin_block_ and end_block_ to full
@@ -28,19 +28,19 @@ bool PLRBlockIter::Valid() const {
 // invalid.
 // REQUIRES: helper_ is initialized.
 void PLRBlockIter::SeekToFirst() {
-    TEST_SYNC_POINT("PLRBlockIter::SeekToFirst:0");
-    assert(helper_ != nullptr);
+	TEST_SYNC_POINT("PLRBlockIter::SeekToFirst:0");
+	assert(helper_ != nullptr);
 
-    status_ = Status::OK();
-    seek_mode_ = SeekMode::kLinearSeek;
+	status_ = Status::OK();
+	seek_mode_ = SeekMode::kLinearSeek;
 
-    begin_block_ = 0;
-    end_block_ = helper_->GetMaxDataBlockNumber();
-    if (end_block_ < 0) {
-        current_ = invalid_block_number_;
-        return;
-    }
-    current_ = 0;
+	begin_block_ = 0;
+	end_block_ = helper_->GetMaxDataBlockNumber();
+	if (end_block_ < 0) {
+		current_ = invalid_block_number_;
+		return;
+	}
+	current_ = 0;
 }
 
 // Change seek_mode_ to kLinearSeek. Update begin_block_ and end_block_ to full
@@ -50,19 +50,19 @@ void PLRBlockIter::SeekToFirst() {
 // invalid.
 // REQUIRES: helper_ is initialized.
 void PLRBlockIter::SeekToLast() {
-    TEST_SYNC_POINT("PLRBlockIter::SeekToLast:0");
-    assert(helper_ != nullptr);
+	TEST_SYNC_POINT("PLRBlockIter::SeekToLast:0");
+	assert(helper_ != nullptr);
 
-    status_ = Status::OK();
-    seek_mode_ = SeekMode::kLinearSeek;
+	status_ = Status::OK();
+	seek_mode_ = SeekMode::kLinearSeek;
 
-    begin_block_ = 0;
-    end_block_ = helper_->GetMaxDataBlockNumber();
-    if (end_block_ < 0) {
-        current_ = invalid_block_number_;
-        return;
-    }
-    current_ = end_block_;
+	begin_block_ = 0;
+	end_block_ = helper_->GetMaxDataBlockNumber();
+	if (end_block_ < 0) {
+		current_ = invalid_block_number_;
+		return;
+	}
+	current_ = end_block_;
 }
 
 // Take a key as input and uses helper_->PredictBlockRange() to update data
@@ -75,18 +75,18 @@ void PLRBlockIter::SeekToLast() {
 //
 // REQUIRES: helper_ (and thus helper_->model_) is initialized.
 void PLRBlockIter::Seek(const Slice& target) {
-    TEST_SYNC_POINT("PLRBlockIter::Seek:0");
-    assert(helper_ != nullptr);
+	TEST_SYNC_POINT("PLRBlockIter::Seek:0");
+	assert(helper_ != nullptr);
 
-    status_ = helper_->PredictBlockRange(target, &begin_block_, &end_block_);
-    if (!status_.ok()) {
-        seek_mode_ = SeekMode::kUnknown;
-        return;
-    }
+	status_ = helper_->PredictBlockRange(target, &begin_block_, &end_block_);
+	if (!status_.ok()) {
+		seek_mode_ = SeekMode::kUnknown;
+		return;
+	}
 
-    assert(end_block_ >= begin_block_);
-    current_ = getMidpointBlockNumber();
-    seek_mode_ = SeekMode::kBinarySeek;
+	assert(end_block_ >= begin_block_);
+	current_ = getMidpointBlockNumber();
+	seek_mode_ = SeekMode::kBinarySeek;
 }
 
 // Work differently based on seek_mode_.
@@ -108,41 +108,41 @@ void PLRBlockIter::Seek(const Slice& target) {
 // REQUIRES: Valid()
 // REQUIRES: seek_mode_ is either kBinarySeek or kLinearSeek.
 void PLRBlockIter::Next() {
-    assert(Valid());
-    assert(seek_mode_ != SeekMode::kUnknown)
+	assert(Valid());
+	assert(seek_mode_ != SeekMode::kUnknown)
 
-    switch(seek_mode_) {
-        case SeekMode::kBinarySeek: {
-            if (isLastBinarySeek()) {
-                current_ = invalid_block_number_;
-                return;
-            }
-            current_ = getMidpointBlockNumber();
-        } break;
-        case SeekMode::kLinearSeek: {
-            if (isLastLinearSeek()) {
-                current_ = invalid_block_number_;
-                return;
-            }
-            ++current_;
-        } break;
-        default: {
-            status_ = Status::Aborted();
-            assert(!"Impossible to fall into this branch");
-        } break;
-    }
+	switch(seek_mode_) {
+		case SeekMode::kBinarySeek: {
+			if (isLastBinarySeek()) {
+				current_ = invalid_block_number_;
+				return;
+			}
+			current_ = getMidpointBlockNumber();
+		} break;
+		case SeekMode::kLinearSeek: {
+			if (isLastLinearSeek()) {
+				current_ = invalid_block_number_;
+				return;
+			}
+			++current_;
+		} break;
+		default: {
+			status_ = Status::Aborted();
+			assert(!"Impossible to fall into this branch");
+		} break;
+	}
 }
 
 // At this moment, Prev() is only supported if seek_mode_ is kLinearSeek.
 // REQUIRES: Valid()
 // REQUIRES: seek_mode_ is kLinearSeek.
 void PLRBlockIter::Prev() {
-    assert(Valid());
-    assert(seek_mode_ == SeekMode::kLinearSeek)
+	assert(Valid());
+	assert(seek_mode_ == SeekMode::kLinearSeek)
 
-    // if current is 0 (i.e. pointing to begin_block_), it becomes
-    // invalid_block_number after --current_.
-    --current_;
+	// if current is 0 (i.e. pointing to begin_block_), it becomes
+	// invalid_block_number after --current_.
+	--current_;
 }
 
 // Return an internal key that can be parsed by ExtractUserKey().
@@ -163,45 +163,16 @@ IndexValue PLRBlockIter::value() const {
 }
 
 Status PLRBlockIter::status() const {
-    return status_;
-}
-
-bool PLRBlockIter::IsOutOfBound() {
-
-}
-
-bool PLRBlockIter::MayBeOutOfLowerBound() {
-
-}
-
-bool PLRBlockIter::MayBeOutOfUpperBound() {
-
-}
-
-void PLRBlockIter::SetPinnedItersMgr(PinnedIteratorsManager* pinned_iters_mgr) {
-
-}
-
-bool PLRBlockIter::IsKeyPinned() const {
-
-}
-
-bool PLRBlockIter::IsValuePinned() const {
-
-}
-
-Status PLRBlockIter::GetProperty(std::string /*prop_name*/, 
-                                    std::string* /*prop*/) {
-    return Status::NotSupported("PLRBlockIter::GetProperty");
+	return status_;
 }
 
 Status PLRBlockHelper::DecodePLRBlock(const BlockContents& 
-                                                index_block_contents) {
+																				index_block_contents) {
     // index_block_contents->GetValue().data
 }
 
 Status PLRBlockHelper::PredictBlockRange(const Slice& target, int* begin_block, 
-                                            int* end_block) const {
+																					int* end_block) const {
 
 }
 
