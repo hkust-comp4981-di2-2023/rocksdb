@@ -32,7 +32,7 @@ void PLRBlockIter::SeekToFirst() {
 	assert(helper_ != nullptr);
 
 	status_ = Status::OK();
-	seek_mode_ = SeekMode::kLinearSeek;
+	seek_mode_ = SeekMode::kUnknown;
 
 	begin_block_ = 0;
 	end_block_ = helper_->GetMaxDataBlockNumber();
@@ -41,6 +41,13 @@ void PLRBlockIter::SeekToFirst() {
 		return;
 	}
 	current_ = 0;
+
+	SetCurrentIndexValue();
+	if (!status_.ok()) {
+		current_ = invalid_block_number_;
+	}
+
+	seek_mode_ = SeekMode::kLinearSeek;
 }
 
 // Change seek_mode_ to kLinearSeek. Update begin_block_ and end_block_ to full
@@ -54,7 +61,7 @@ void PLRBlockIter::SeekToLast() {
 	assert(helper_ != nullptr);
 
 	status_ = Status::OK();
-	seek_mode_ = SeekMode::kLinearSeek;
+	seek_mode_ = SeekMode::kUnknown;
 
 	begin_block_ = 0;
 	end_block_ = helper_->GetMaxDataBlockNumber();
@@ -63,6 +70,14 @@ void PLRBlockIter::SeekToLast() {
 		return;
 	}
 	current_ = end_block_;
+
+	SetCurrentIndexValue();
+	if (!status_.ok()) {
+		current_ = invalid_block_number_;
+		return;
+	}
+
+	seek_mode_ = SeekMode::kLinearSeek;
 }
 
 // Take a key as input and uses helper_->PredictBlockRange() to update data
@@ -77,15 +92,28 @@ void PLRBlockIter::SeekToLast() {
 void PLRBlockIter::Seek(const Slice& target) {
 	TEST_SYNC_POINT("PLRBlockIter::Seek:0");
 	assert(helper_ != nullptr);
+	
+	seek_mode_ = SeekMode::kUnknown;
+	
+	Slice seek_key = target;
+	if (!key_includes_seq_) {
+		seek_key = ExtractUserKey(target);
+	}
 
-	status_ = helper_->PredictBlockRange(target, &begin_block_, &end_block_);
+	status_ = helper_->PredictBlockRange(seek_key, begin_block_, end_block_);
 	if (!status_.ok()) {
-		seek_mode_ = SeekMode::kUnknown;
+		return;
+	}
+	assert(end_block_ >= begin_block_);
+
+	current_ = GetMidpointBlockNumber();
+
+	SetCurrentIndexValue();
+	if (!status_.ok()) {
+		current_ = invalid_block_number_;
 		return;
 	}
 
-	assert(end_block_ >= begin_block_);
-	current_ = getMidpointBlockNumber();
 	seek_mode_ = SeekMode::kBinarySeek;
 }
 
@@ -113,16 +141,16 @@ void PLRBlockIter::Next() {
 
 	switch(seek_mode_) {
 		case SeekMode::kBinarySeek: {
-			if (isLastBinarySeek()) {
+			if (IsLastBinarySeek()) {
 				current_ = invalid_block_number_;
-				return;
+				break;
 			}
-			current_ = getMidpointBlockNumber();
+			current_ = GetMidpointBlockNumber();
 		} break;
 		case SeekMode::kLinearSeek: {
-			if (isLastLinearSeek()) {
+			if (IsLastLinearSeek()) {
 				current_ = invalid_block_number_;
-				return;
+				break;
 			}
 			++current_;
 		} break;
@@ -130,6 +158,12 @@ void PLRBlockIter::Next() {
 			status_ = Status::Aborted();
 			assert(!"Impossible to fall into this branch");
 		} break;
+	}
+
+	SetCurrentIndexValue();
+	if (!status_.ok()) {
+		current_ = invalid_block_number_;
+		return;
 	}
 }
 
@@ -140,8 +174,10 @@ void PLRBlockIter::Prev() {
 	assert(Valid());
 	assert(seek_mode_ == SeekMode::kLinearSeek)
 
-	// if current is 0 (i.e. pointing to begin_block_), it becomes
-	// invalid_block_number after --current_.
+	if (current_ == 0) {
+		current_ = invalid_block_number_;
+		return;
+	}
 	--current_;
 }
 
@@ -153,30 +189,50 @@ void PLRBlockIter::Prev() {
 //
 // REQUIRES: Valid()
 Slice PLRBlockIter::key() const {
-
+	assert(Valid());
+	return key_extraction_not_supported_;
 }
 
 // Use helper_ to return a BlockHandle given current_.
 // RQUIRES: Valid()
 IndexValue PLRBlockIter::value() const {
-
+	assert(Valid());
+	return value_;
 }
 
 Status PLRBlockIter::status() const {
 	return status_;
 }
 
-Status PLRBlockHelper::DecodePLRBlock(const BlockContents& 
-																				index_block_contents) {
-    // index_block_contents->GetValue().data
+void PLRBlockIter::SetCurrentIndexValue() {
+
+	if (!Valid()) {
+		return;
+	}
+	
+	value_ = IndexValue();
+	
+	BlockHandle handle = BlockHandle();
+	status_ = helper_->GetBlockHandle(current_, handle);
+
+	if (!status_.ok()) {
+		return;
+	}
+
+	value_.handle = handle;
 }
 
-Status PLRBlockHelper::PredictBlockRange(const Slice& target, int* begin_block, 
-																					int* end_block) const {
+Status PLRBlockHelper::DecodePLRBlock(const char* data) {
+  // index_block_contents->GetValue().data
+}
+
+Status PLRBlockHelper::PredictBlockRange(const Slice& target, int& begin_block, 
+																					int& end_block) const {
 
 }
 
-Status PLRBlockHelper::GetBlockHandle(BlockHandle* block_handle) const {
+Status PLRBlockHelper::GetBlockHandle(int current, 
+																				BlockHandle& block_handle) const {
 
 }
 

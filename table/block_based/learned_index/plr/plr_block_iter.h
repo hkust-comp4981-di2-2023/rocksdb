@@ -2,7 +2,9 @@
 
 #pragma once
 
+#include <algorithm>
 #include <string>
+
 #include "db/dbformat.h"
 #include "include/rocksdb/status.h"
 #include "rocksdb/comparator.h"
@@ -18,7 +20,18 @@ namespace ROCKSDB_NAMESPACE {
 // temporary design: https://drive.google.com/file/d/1Z2s31E8Pfxjy6GUOL2a9f5ea2-1hJOFV/view?usp=sharing
 class PLRBlockIter : public InternalIteratorBase<IndexValue> {
  public:
-	PLRBlockIter(BlockContents* block_contents);
+	PLRBlockIter(BlockContents* block_contents, bool key_includes_seq): 
+		InternalIteratorBase<IndexValue>(),
+		seek_mode_(SeekMode::kUnknown),
+		data_(block_contents->data.data()),
+		current_(invalid_block_number_),
+		begin_block_(invalid_block_number_),
+		end_block_(invalid_block_number_),
+		key_includes_seq_(key_includes_seq),
+		helper_(std::make_unique(new PLRBlockHelper()))
+	{
+		helper_->DecodePLRBlock(data_);
+	}
 
 	bool Valid() const override;
 
@@ -79,32 +92,51 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 	const char* data_;
 	uint32_t current_, begin_block_, end_block_;
 	static const uint32_t invalid_block_number_ = -1;
+
+	// If true, this means keys written in index block contains seq_no, which are
+	// internal keys. As a result, when we Seek() an internal key, we don't need
+	// to do any extraction.
+	// If false, this means keys written in index block are user keys. In this
+	// case, when we Seek() an internal key, we always need to extract the user
+	// key portion from it.
+	//
+	// Note: In Seek(target), target is always an internal key.
+	bool key_includes_seq_;
+	static const Slice key_extraction_not_supported_ = 
+											Slice("PLR_key()_not_supported");
 	IndexValue value_;
 	Status status_;
 
-	PLRBlockHelper* helper_;
+	std::unique_ptr<PLRBlockHelper> helper_;
 
-	inline bool isLastBinarySeek() const {
+	inline bool IsLastBinarySeek() const {
 		return begin_block_ > end_block_;
 	}
 
-	inline bool isLastLinearSeek() const {
+	inline bool IsLastLinearSeek() const {
 		return current_ == end_block_;
 	}
 
-	inline uint32_t getMidpointBlockNumber() const {
+	inline uint32_t GetMidpointBlockNumber() const {
 		return (begin_block_ + end_block_) / 2;
 	}
+
+	void GetCurrentIndexValue();
 };
 
 // Data members should be stack-allocated.
 class PLRBlockHelper {
  public:
+	PLRBlockHelper() = default;
+
 	// Decode two parts: PLR model parameters and Data block size array
-	Status DecodePLRBlock(const BlockContents& index_block_contents);
-	Status PredictBlockRange(const Slice& target, int* begin_block, 
-														int* end_block) const;
-	Status GetBlockHandle(BlockHandle* block_handle) const;
+	Status DecodePLRBlock(const char* data);
+	
+	Status PredictBlockRange(const Slice& target, int& begin_block, 
+														int& end_block) const;
+	
+	Status GetBlockHandle(int current, BlockHandle& block_handle) const;
+	
 	// If there's no data block, return an integer < 0.
 	inline uint32_t GetMaxDataBlockNumber() const { return max_block_number_; }
 
