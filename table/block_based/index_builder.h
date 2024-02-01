@@ -19,6 +19,7 @@
 #include "rocksdb/comparator.h"
 #include "table/block_based/block_based_table_factory.h"
 #include "table/block_based/block_builder.h"
+#include "table/block_based/learned_index/plr/external/plr/library.h"
 #include "table/format.h"
 
 namespace ROCKSDB_NAMESPACE {
@@ -439,5 +440,66 @@ class PartitionedIndexBuilder : public IndexBuilder {
   // true if it should cut the next filter partition block
   bool cut_filter_block = false;
   BlockHandle last_encoded_handle_;
+};
+
+// In PLRIndexBuilder, we do not rely on the ordinary BlockBuilder class for
+// adding key-value entries and building the actual index block Slice.
+//
+// Instead, we uses a tailor-made builder that will uses our standalone module 
+// by:
+// 1. Create a list of Points of (first key of data block, data block number).
+// 2. Pass the points to create a list of segments using GreedyPLR.
+// 3. Encode to a string using PLRDataRep.
+// The encoded string is stored as the final block contents in IndexBlocks.
+class PLRIndexBuilder: public IndexBuilder {
+ public:
+  void AddIndexEntry(std::string* last_key_in_current_block,
+                    const Slice* first_key_in_next_block,
+                    const BlockHandle& block_handle) override;
+  
+  void OnKeyAdded(const Slice& /*key*/) override;
+
+  Status Finish(IndexBlocks* index_blocks,
+                const BlockHandle& last_partition_block_handle) override;
+
+  size_t IndexSize() const override;
+
+ private:
+  // TODO(fyp): Consider moving this to table/block_based/learned_index/plr
+  //
+  // This is a wrapper class of our standalone PLR module.
+  // It takes inputs from PLRIndexBuilder::AddIndexEntry() etc and outputs
+  // the actual index block content Slice.
+  class PLRBuilderHelper {
+   public:
+    PLRBuilderHelper() = delete;
+
+    PLRBuilderHelper(uint32_t gamma): 
+      trainer_(gamma),
+      num_data_blocks_(0) {}
+
+    // Add a new point to trainer_. Increment num_data_blocks by 1.
+    void Add(const Slice& first_key_in_data_block) {}
+
+    // Create a function-scoped PLRDataRep to Encode() and return a Slice.
+    Slice Finish() {}
+  
+   private:
+    // TODO(fyp): Confirm data type
+    // TODO(fyp): Check below questions, to be dicussed - 1 & 2 are blockers
+    // Question:
+    // 1. When creating Points<double>, how data block key -?-> double?
+    // --> we need an encoding scheme (with varying base for each char), right?
+    // 2. Suppose we got this scheme when training model, how to retrieve
+    // same parameters when loading the model via iterator?
+    // --> we need some way to store scheme in index block :(
+    // --> cost of scheme: 1 byte per char
+    // 3. Suppose 1. and 2. is solved. Now I pass a key with len() >
+    // len(scheme #char), how to cope with this?
+    // --> easy, truncate the extra chars at the back.
+
+    GreedyPLR<uint32_t, double> trainer_;
+    uint32_t num_data_blocks_;
+  };
 };
 }  // namespace ROCKSDB_NAMESPACE
