@@ -14,13 +14,14 @@
 #include "table/internal_iterator.h"
 #include "table/block_based/learned_index/plr/external/plr/library.h"
 #include "test_util/sync_point.h"
+#include "stdint.h"
 
 namespace ROCKSDB_NAMESPACE {
 
 // temporary design: https://drive.google.com/file/d/1Z2s31E8Pfxjy6GUOL2a9f5ea2-1hJOFV/view?usp=sharing
 class PLRBlockIter : public InternalIteratorBase<IndexValue> {
  public:
-	PLRBlockIter(BlockContents* block_contents, bool key_includes_seq): 
+	PLRBlockIter(BlockContents* block_contents, bool key_includes_seq, uint32_t max_block_number): 
 		InternalIteratorBase<IndexValue>(),
 		seek_mode_(SeekMode::kUnknown),
 		data_(block_contents->data.data()),
@@ -28,10 +29,8 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 		begin_block_(invalid_block_number_),
 		end_block_(invalid_block_number_),
 		key_includes_seq_(key_includes_seq),
-		helper_(std::make_unique(new PLRBlockHelper()))
-	{
-		helper_->DecodePLRBlock(data_);
-	}
+		helper_(std::unique_ptr<PLRBlockHelper>(new PLRBlockHelper(max_block_number, data_)))
+		{}
 
 	bool Valid() const override;
 
@@ -93,7 +92,7 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 	const char* data_;
 	// TODO(fyp): Write binary search logic s.t. we know go left or go right after searching the current block
 	uint32_t current_, begin_block_, end_block_;
-	static const uint32_t invalid_block_number_ = -1;
+	static const uint32_t invalid_block_number_ = UINT32_MAX;
 
 	// If true, this means keys written in index block contains seq_no, which are
 	// internal keys. As a result, when we Seek() an internal key, we don't need
@@ -129,7 +128,12 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 // Data members should be stack-allocated.
 class PLRBlockHelper {
  public:
-	PLRBlockHelper() = default;
+	PLRBlockHelper(uint32_t max_block_number, const char* data_): 
+		max_block_number_(max_block_number), 
+		model_(-1.0),
+		handle_calculator_(BlockHandleCalculatorStub()){
+			DecodePLRBlock(data_);
+		}
 
 	// Decode two parts: PLR model parameters and Data block size array
 	// Construct stub

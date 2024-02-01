@@ -56,6 +56,7 @@
 #include "util/string_util.h"
 #include "util/util.h"
 #include "util/xxhash.h"
+#include "learned_index/plr/plr_block_iter.h"
 
 namespace ROCKSDB_NAMESPACE {
 
@@ -960,25 +961,7 @@ class PLRIndexReader: public BlockBasedTable::CustomIndexReaderCommon {
     // We don't return pinned data from index blocks, so no need
     // to set `block_contents_pinned`.
     // TODO(fyp): replace here
-    assert(false);
-    // &index_block_contents contains encoded PLR segments, extract segment info and call PLR to predict data block id)
-    /*
-    -> Iter
-    Iter->Seek(Key)
-
-      auto it = PLRBlockIter::Create? or wtever(index_block_contents) {
-          BlockHandle[] PLRHelper(index_block_contents) {
-            Status DecodePLRSegments(index_block_contents->GetValue().data, &segments, &gamma_)
-            if (s.ok()) {
-              Status BuildModel(&Model, segments) #Will sanitize data
-            }
-            # the returned iterator contains model, that can take key and output data block block handles by Seek(), Next() etc
-          }
-        }
-      # Transfer ownership of block content
-      index_block_contents.TransferTo(it)
-      return it
-    */
+    auto it = PLRBlockIter();
   }
 
   size_t ApproximateMemoryUsage() const override {
