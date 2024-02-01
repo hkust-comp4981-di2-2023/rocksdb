@@ -223,12 +223,15 @@ void PLRBlockIter::SetCurrentIndexValue() {
 }
 
 Status PLRBlockHelper::DecodePLRBlock(const char* data) {
-  // index_block_contents->GetValue().data
+  // Data decode into 2 parts first
+	// modelParams and blockSize
+	std::string encoded_str = model_params;
+ 	model_ = PLRDataRep(model_params);
 }
 
 Status PLRBlockHelper::PredictBlockRange(const Slice& target, int& begin_block, 
 																					int& end_block) const {
-
+	
 }
 
 Status PLRBlockHelper::GetBlockHandle(int current, 

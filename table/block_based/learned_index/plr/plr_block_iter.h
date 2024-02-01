@@ -63,6 +63,7 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 	}
 
 	void SetPinnedItersMgr(PinnedIteratorsManager* pinned_iters_mgr) override {
+		//TODO(fyp): Red underlined for _pinned_iters_mgr
 		_pinned_iters_mgr = pinned_iters_mgr;
 	}
 
@@ -90,6 +91,7 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 	// released (reference count - 1) when DoCleanup() is triggered in base-class 
 	// destructor, if block_content_->TransferTo(iter) was called.
 	const char* data_;
+	// TODO(fyp): Write binary search logic s.t. we know go left or go right after searching the current block
 	uint32_t current_, begin_block_, end_block_;
 	static const uint32_t invalid_block_number_ = -1;
 
@@ -130,11 +132,15 @@ class PLRBlockHelper {
 	PLRBlockHelper() = default;
 
 	// Decode two parts: PLR model parameters and Data block size array
+	// Construct stub
+	// Update max_block_number_, get from property block
 	Status DecodePLRBlock(const char* data);
 	
-	Status PredictBlockRange(const Slice& target, int& begin_block, 
-														int& end_block) const;
+	Status PredictBlockRange(const Slice& target, uint32_t& begin_block, 
+														uint32_t& end_block) const;
 	
+	// Get SINGLE blockhandle 
+	// Get blockhandle from stub with current_
 	Status GetBlockHandle(int current, BlockHandle& block_handle) const;
 	
 	// If there's no data block, return an integer < 0.
@@ -158,6 +164,9 @@ class BlockHandleCalculatorStub {
 	Status Decode(const std::string /* str */) {
 		return Status.NotSupported();
 	}
+
+	private:
+	 std::vector<BlockHandle> handles_;
 };
 
 } // namespace ROCKSDB_NAMESPACE
