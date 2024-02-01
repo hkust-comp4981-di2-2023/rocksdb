@@ -224,6 +224,7 @@ class BlockBasedTable : public TableReader {
   };
 
   class IndexReaderCommon;
+  class CustomIndexReaderCommon;
 
   static Slice GetCacheKey(const char* cache_key_prefix,
                            size_t cache_key_prefix_size,
