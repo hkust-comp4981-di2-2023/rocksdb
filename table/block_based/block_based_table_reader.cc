@@ -920,6 +920,8 @@ class PLRIndexReader: public BlockBasedTable::CustomIndexReaderCommon {
     assert(!pin || prefetch);
     assert(index_reader != nullptr);
 
+    // Allow NewIterator to access file, .get() returns value of unique_ptr
+    RandomAccessFileReader* file = table->get_rep()->file.get();
     CachableEntry<BlockContents> index_block_contents;
     if (prefetch || !use_cache) {
       const Status s =
@@ -939,6 +941,7 @@ class PLRIndexReader: public BlockBasedTable::CustomIndexReaderCommon {
 
     return Status::OK();
   }
+
   // TODO(fyp): Need parameter to indicate number of data blocks
   InternalIteratorBase<IndexValue>* NewIterator(
       const ReadOptions& read_options, bool /* disable_prefix_seek */,
@@ -960,8 +963,43 @@ class PLRIndexReader: public BlockBasedTable::CustomIndexReaderCommon {
     Statistics* kNullStats = nullptr;
     // We don't return pinned data from index blocks, so no need
     // to set `block_contents_pinned`.
-    // TODO(fyp): replace here
-    auto it = PLRBlockIter();
+    // TODO(fyp): Pass num_data_blocks_, note that it is uint64_t
+    // CachableEntry<T>.GetValue() returns pointer to value of type T
+    BlockContents* block_content = index_block_contents.GetValue();
+
+    /*
+      BlockFetcher(RandomAccessFileReader* file,
+               FilePrefetchBuffer* prefetch_buffer, const Footer& footer,
+               const ReadOptions& read_options, const BlockHandle& handle,
+               BlockContents* contents, const ImmutableCFOptions& ioptions,
+               bool do_uncompress, bool maybe_compressed, BlockType block_type,
+               const UncompressionDict& uncompression_dict,
+               const PersistentCacheOptions& cache_options,
+               MemoryAllocator* memory_allocator = nullptr,
+               MemoryAllocator* memory_allocator_compressed = nullptr,
+               bool for_compaction = false)
+    */
+
+    // TODO(fyp): For reading data block content, need verify if all are necessary
+    struct BlockFetecherParams {
+      RandomAccessFileReader* file;
+      FilePrefetchBuffer* prefetch_buffer;
+      const Footer& footer;
+      const ReadOptions& read_options;
+      const BlockHandle& handle;
+      BlockContents* contents;
+      const ImmutableCFOptions& ioptions;
+      bool do_uncompress;
+      bool maybe_compressed;
+      BlockType block_type;
+      const UncompressionDict& uncompression_dict;
+      const PersistentCacheOptions& cache_options;
+      MemoryAllocator* memory_allocator = nullptr;
+      MemoryAllocator* memory_allocator_compressed = nullptr;
+      bool for_compaction = false;
+    };
+
+    auto it = PLRBlockIter(block_content, index_key_includes_seq, num_data_blocks_);
   }
 
   size_t ApproximateMemoryUsage() const override {
@@ -975,9 +1013,13 @@ class PLRIndexReader: public BlockBasedTable::CustomIndexReaderCommon {
   }
 
  private:
+  RandomAccessFileReader* file_;
+  uint64_t num_data_blocks_;
   PLRIndexReader(const BlockBasedTable* t,
                           CachableEntry<BlockContents>&& index_block_contents)
-      : CustomIndexReaderCommon(t, std::move(index_block_contents)) {}
+      : CustomIndexReaderCommon(t, std::move(index_block_contents)),
+      // Get num_data_blocks in current table
+        num_data_blocks_(t->get_rep()->table_properties->num_data_blocks)  {}
 };
 
 void BlockBasedTable::UpdateCacheHitMetrics(BlockType block_type,

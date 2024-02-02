@@ -8,6 +8,8 @@
 #include "table/format.h"
 #include "table/internal_iterator.h"
 #include "table/block_based/learned_index/plr/plr_block_iter.h"
+#include "table/block_fetcher.h"
+#include <cmath>
 
 /*
 status_ = file_->Read(handle_.offset(), block_size_ + kBlockTrailerSize,
@@ -115,6 +117,7 @@ void PLRBlockIter::Seek(const Slice& target) {
 	}
 
 	seek_mode_ = SeekMode::kBinarySeek;
+
 }
 
 // Work differently based on seek_mode_.
@@ -137,7 +140,7 @@ void PLRBlockIter::Seek(const Slice& target) {
 // REQUIRES: seek_mode_ is either kBinarySeek or kLinearSeek.
 void PLRBlockIter::Next() {
 	assert(Valid());
-	assert(seek_mode_ != SeekMode::kUnknown)
+	assert(seek_mode_ != SeekMode::kUnknown);
 
 	switch(seek_mode_) {
 		case SeekMode::kBinarySeek: {
@@ -146,6 +149,15 @@ void PLRBlockIter::Next() {
 				break;
 			}
 			current_ = GetMidpointBlockNumber();
+			BlockHandle* handle();
+			RandomAccessFileReader* file = 
+			// TODO(fyp): How to pass all parameters?
+			BlockContents contents;
+			BlockFetcher block_fetcher(
+				file, prefetch_buffer, footer, options, handle, &contents, ioptions,
+				do_uncompress, maybe_compressed, block_type, uncompression_dict,
+				cache_options, memory_allocator, nullptr, for_compaction);
+			Status s = block_fetcher.ReadBlockContents();
 		} break;
 		case SeekMode::kLinearSeek: {
 			if (IsLastLinearSeek()) {
@@ -172,7 +184,7 @@ void PLRBlockIter::Next() {
 // REQUIRES: seek_mode_ is kLinearSeek.
 void PLRBlockIter::Prev() {
 	assert(Valid());
-	assert(seek_mode_ == SeekMode::kLinearSeek)
+	assert(seek_mode_ == SeekMode::kLinearSeek);
 
 	if (current_ == 0) {
 		current_ = invalid_block_number_;
@@ -205,12 +217,11 @@ Status PLRBlockIter::status() const {
 }
 
 void PLRBlockIter::SetCurrentIndexValue() {
-
 	if (!Valid()) {
 		return;
 	}
 	
-	value_ = IndexValue();
+	IndexValue value_ = IndexValue();
 	
 	BlockHandle handle = BlockHandle();
 	status_ = helper_->GetBlockHandle(current_, handle);
@@ -222,23 +233,83 @@ void PLRBlockIter::SetCurrentIndexValue() {
 	value_.handle = handle;
 }
 
-Status PLRBlockHelper::DecodePLRBlock(const char* data) {
-  // Data decode into 2 parts first
-	// modelParams and blockSize
-	std::string encoded_str = model_params;
- 	model_ = PLRDataRep(model_params);
+Status PLRBlockHelper::GetModelParamsAndBlockSizes(const char* data, std::string* model_params,
+												 	std::shared_ptr<uint64_t[]> block_sizes) {
+	// TODO(fyp): Finalize data format
+	assert(data != nullptr);
+	for (uint64_t i = num_data_blocks_-1; i >= 0; i--) {
+		block_sizes[i] = 0; /*data block size*/
+	}
+	*model_params = std::string(data);
+	return Status::OK();
 }
 
-Status PLRBlockHelper::PredictBlockRange(const Slice& target, int& begin_block, 
-																					int& end_block) const {
+Status PLRBlockHelper::DecodePLRBlock(const char* data, 
+					std::shared_ptr<uint64_t[]> block_sizes) {
+  	// Data decode into model_params and block_sizes for the stub
+	std::string model_params;
 	
+	// TODO(fyp): How to get model_params and block_sizes
+	Status s = GetModelParamsAndBlockSizes(data, &model_params, block_sizes);
+	if (!s.ok()) {
+		return Status::NotSupported();
+	}
+	// model constructed in PLRDataRep
+ 	model_ = PLRDataRep<uint64_t, double>(model_params);
+	
+	return Status::OK();
 }
 
-Status PLRBlockHelper::GetBlockHandle(int current, 
-																				BlockHandle& block_handle) const {
+Status PLRBlockHelper::PredictBlockRange(const Slice& target, uint64_t& begin_block, uint64_t& end_block) {
+	// Check if target has uint64_t size
+	assert(target.size() == sizeof(uint64_t));
+	// Cast back to uint64_t
+	uint64_t key = reinterpret_cast<uint64_t>(target.data());
 
+	// Get range, check for invalid range
+	std::pair<uint64_t, uint64_t> range =  model_.GetValue(key);
+	assert(range.first <= range.second);
+
+	// TODO(fyp): find min max header
+	begin_block = std::max(0, range.first);
+	end_block = std::min(num_data_blocks_, range.second);
+	return Status::OK();
 }
 
+Status PLRBlockHelper::GetBlockHandle(uint64_t current, BlockHandle& block_handle) const {
+	// Get block handle from stub
+	handle_calculator_.GetBlockHandle(current, block_handle);
+	return Status::OK();
+}
+
+Status BlockHandleCalculatorStub::GetBlockHandle(uint64_t current, BlockHandle& block_handle) const {
+	// Get block handle from stub
+	assert(current < handles_.size());
+	block_handle = handles_[current];
+	return Status::OK();
+}
+
+Status BlockHandleCalculatorStub::GetAllDataBlockHandles(std::shared_ptr<uint64_t[]> block_sizes,
+													uint64_t& begin_block, uint64_t& end_block) {
+    // Need: range, data block sizes
+	// Assuming data block is 0-indexed
+	// Assuming the index block data is stored as [offset1, size1, offset2, size2, ...]
+	assert(block_sizes != nullptr);
+	assert(end_block < num_data_blocks_);
+	uint64_t offset = 0;
+	int i = 0;
+	for (; i < begin_block; i++) {
+		offset += block_sizes[i];
+	}
+	for (; i < end_block; i++) {
+		BlockHandle block_handle;
+		block_handle.set_offset(offset);
+		block_handle.set_size(block_sizes[i]);
+		handles_.push_back(block_handle);
+		offset += block_sizes[i];
+	}
+	return Status::OK();
+  }
 } // namespace ROCKSDB_NAMESPACE
 
 

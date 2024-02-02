@@ -21,7 +21,7 @@ namespace ROCKSDB_NAMESPACE {
 // temporary design: https://drive.google.com/file/d/1Z2s31E8Pfxjy6GUOL2a9f5ea2-1hJOFV/view?usp=sharing
 class PLRBlockIter : public InternalIteratorBase<IndexValue> {
  public:
-	PLRBlockIter(BlockContents* block_contents, bool key_includes_seq, uint32_t max_block_number): 
+	PLRBlockIter(BlockContents* block_contents, bool key_includes_seq, const uint64_t num_data_blocks): 
 		InternalIteratorBase<IndexValue>(),
 		seek_mode_(SeekMode::kUnknown),
 		data_(block_contents->data.data()),
@@ -29,7 +29,8 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 		begin_block_(invalid_block_number_),
 		end_block_(invalid_block_number_),
 		key_includes_seq_(key_includes_seq),
-		helper_(std::unique_ptr<PLRBlockHelper>(new PLRBlockHelper(max_block_number, data_)))
+		helper_(std::unique_ptr<PLRBlockHelper>(new PLRBlockHelper(num_data_blocks, data_,
+																	begin_block_, end_block_)))
 		{}
 
 	bool Valid() const override;
@@ -57,13 +58,13 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 	// only need to verify status in debug build
 	~PLRBlockIter() override {
 		// Assert that the BlockIter is never deleted while Pinning is Enabled.
-		assert(!pinned_iters_mgr_ ||
-					(pinned_iters_mgr_ && !pinned_iters_mgr_->PinningEnabled()));
+	 	assert(!pinned_iters_mgr_ ||
+				(pinned_iters_mgr_ && !pinned_iters_mgr_->PinningEnabled()));
 	}
 
 	void SetPinnedItersMgr(PinnedIteratorsManager* pinned_iters_mgr) override {
 		//TODO(fyp): Red underlined for _pinned_iters_mgr
-		_pinned_iters_mgr = pinned_iters_mgr;
+		//_pinned_iters_mgr = pinned_iters_mgr;
 	}
 
 	PinnedIteratorsManager* pinned_iters_mgr = nullptr;
@@ -90,9 +91,11 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 	// released (reference count - 1) when DoCleanup() is triggered in base-class 
 	// destructor, if block_content_->TransferTo(iter) was called.
 	const char* data_;
-	// TODO(fyp): Write binary search logic s.t. we know go left or go right after searching the current block
-	uint32_t current_, begin_block_, end_block_;
-	static const uint32_t invalid_block_number_ = UINT32_MAX;
+	// TODO(fyp): Write binary search logic s.t. we know go left or go right after 
+	// searching the current block
+	// Changed to uint64_t to match the type of num_data_blocks_ 
+	uint64_t current_, begin_block_, end_block_;
+	static const uint64_t invalid_block_number_ = UINT64_MAX;
 
 	// If true, this means keys written in index block contains seq_no, which are
 	// internal keys. As a result, when we Seek() an internal key, we don't need
@@ -104,7 +107,7 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 	// Note: In Seek(target), target is always an internal key.
 	bool key_includes_seq_;
 	static const Slice key_extraction_not_supported_ = 
-											Slice("PLR_key()_not_supported");
+										Slice("PLR_key()_not_supported");
 	IndexValue value_;
 	Status status_;
 
@@ -118,59 +121,86 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 		return current_ == end_block_;
 	}
 
-	inline uint32_t GetMidpointBlockNumber() const {
+	inline uint64_t GetMidpointBlockNumber() const {
 		return (begin_block_ + end_block_) / 2;
 	}
 
-	void GetCurrentIndexValue();
+	Status BinarySearchBlockHandle(const Slice& target, uint64_t& begin_block, 
+									uint64_t& end_block);
+
+	void SetCurrentIndexValue();
 };
 
 // Data members should be stack-allocated.
 class PLRBlockHelper {
  public:
-	PLRBlockHelper(uint32_t max_block_number, const char* data_): 
-		max_block_number_(max_block_number), 
+	PLRBlockHelper(const uint64_t num_data_blocks, const char* data_, uint64_t& begin_block, 
+					uint64_t& end_block): 
+		// TODO(fyp): Need to store in Helper? Or simply pass into Stub?
+		num_data_blocks_(num_data_blocks),
+		// Dummy model with gamma = -1, overwritten by DecodePLRBlock
 		model_(-1.0),
-		handle_calculator_(BlockHandleCalculatorStub()){
-			DecodePLRBlock(data_);
+		block_sizes_(new uint64_t[num_data_blocks_]),
+		handle_calculator_(BlockHandleCalculatorStub(num_data_blocks, block_sizes_,
+													begin_block, end_block)) {
+			DecodePLRBlock(data_, block_sizes_);
 		}
 
 	// Decode two parts: PLR model parameters and Data block size array
 	// Construct stub
 	// Update max_block_number_, get from property block
-	Status DecodePLRBlock(const char* data);
+	Status DecodePLRBlock(const char* data, std::shared_ptr<uint64_t[]> block_sizes);
 	
-	Status PredictBlockRange(const Slice& target, uint32_t& begin_block, 
-														uint32_t& end_block) const;
+	// TODO(fyp): const necessary? cannot get range pair unless make GetValue() const
+	// or remove const here
+	Status PredictBlockRange(const Slice& target, uint64_t& begin_block, uint64_t& end_block);
 	
 	// Get SINGLE blockhandle 
 	// Get blockhandle from stub with current_
-	Status GetBlockHandle(int current, BlockHandle& block_handle) const;
+	Status GetBlockHandle(uint64_t current, BlockHandle& block_handle) const;
 	
-	// If there's no data block, return an integer < 0.
-	inline uint32_t GetMaxDataBlockNumber() const { return max_block_number_; }
+	// If there's no data block, return 0
+	inline uint64_t GetMaxDataBlockNumber() const { return num_data_blocks_; }
 
  private:
 	// TODO(fyp): Verify member types
-	PLRDataRep<std::string, double> model_;
-	uint32_t max_block_number_;
+	PLRDataRep<uint64_t, double> model_;
+	uint64_t num_data_blocks_;
 	BlockHandleCalculatorStub handle_calculator_;
+	std::shared_ptr<uint64_t[]> block_sizes_;
+
+	// Helper function to decode PLR block
+	Status GetModelParamsAndBlockSizes(const char* data, std::string* model_params,
+									 	std::shared_ptr<uint64_t[]> block_sizes);
+
 	// Need a function ptr for the 'rounding rule' when a decimal block is 
-	// returned
+	enum class RoundingRule: char {
+		kCeil = 0x00,
+		kFloor = 0x01
+	//	kFutureExtend = 0x02
+	};
 };
 
 class BlockHandleCalculatorStub {
  public:
-	Status CalculateHandle(uint32_t /* block_number */, 
-													BlockHandle* /* handle */) {
-		return Status.NotSupported();
+	BlockHandleCalculatorStub(uint64_t num_data_blocks,
+								std::shared_ptr<uint64_t[]> block_sizes,
+								uint64_t& begin_block, uint64_t& end_block): 
+								num_data_blocks_(num_data_blocks) {
+		Status s = GetAllDataBlockHandles(block_sizes, begin_block, end_block);
+		assert(s == Status::OK());
 	}
-	Status Decode(const std::string /* str */) {
-		return Status.NotSupported();
-	}
+
+	Status GetAllDataBlockHandles(std::shared_ptr<uint64_t[]> block_sizes, 
+									uint64_t& begin_block, uint64_t& end_block) {}
+
+	Status GetBlockHandle(uint64_t current, BlockHandle& block_handle) const {}
+
+	Status Decode(const std::string /* str */) {}
 
 	private:
 	 std::vector<BlockHandle> handles_;
+	 const uint64_t num_data_blocks_;
 };
 
 } // namespace ROCKSDB_NAMESPACE
