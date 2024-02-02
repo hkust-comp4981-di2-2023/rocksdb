@@ -451,13 +451,40 @@ class PartitionedIndexBuilder : public IndexBuilder {
 // 2. Pass the points to create a list of segments using GreedyPLR.
 // 3. Encode to a string using PLRDataRep.
 // The encoded string is stored as the final block contents in IndexBlocks.
+//
+// For now, we don't care about include_first_key_.
+// TODO(fyp): Find way to pass gamma to ctor(), take ref. from other ppl.
+// TODO(fyp): Complete Finish()
+// TODO(fyp): Test compilation
 class PLRIndexBuilder: public IndexBuilder {
  public:
+  PLRIndexBuilder() = delete;
+
+  PLRIndexBuilder(/**/): is_first_key_in_first_block_(true) {}
+
+  // Use helper_ to add a new Point for PLR training of (i+1)-th block. Also,
+  // store block_handle of i-th block in helper_. For the last function call, do
+  // not add a new Point, as first_key_in_next_block is nullptr, meaning there
+  // is no next block.
   void AddIndexEntry(std::string* last_key_in_current_block,
                     const Slice* first_key_in_next_block,
-                    const BlockHandle& block_handle) override;
+                    const BlockHandle& block_handle) override {
+    if (first_key_in_next_block != nullptr) {
+      // current AddIndexEntry() call is not processing with:
+      // current_block = last data block
+      helper_.AddPoint(first_key_in_next_block);
+    }
+    helper_.AddHandle(block_handle);
+  }
   
-  void OnKeyAdded(const Slice& /*key*/) override;
+  // If it is the first every key from the first data block, use helper_ to add
+  // a new Point for PLR training. Do nothing otherwise.
+  void OnKeyAdded(const Slice& key) override {
+    if (is_first_key_in_first_block_) {
+      is_first_key_in_first_block_ = false;
+      helper_.AddPoint(key);
+    }
+  }
 
   Status Finish(IndexBlocks* index_blocks,
                 const BlockHandle& last_partition_block_handle) override;
@@ -470,19 +497,44 @@ class PLRIndexBuilder: public IndexBuilder {
   // This is a wrapper class of our standalone PLR module.
   // It takes inputs from PLRIndexBuilder::AddIndexEntry() etc and outputs
   // the actual index block content Slice.
+  //
+  // The helper instance should stay alive until the Slice is actually written
+  // to the file/disk, because the Slice returned relies on this->buffer_.
   class PLRBuilderHelper {
    public:
     PLRBuilderHelper() = delete;
 
     PLRBuilderHelper(uint32_t gamma): 
+      gamma_(gamma),
       trainer_(gamma),
-      num_data_blocks_(0) {}
+      num_data_blocks_(0),
+      finished_(false) {}
 
     // Add a new point to trainer_. Increment num_data_blocks by 1.
-    void Add(const Slice& first_key_in_data_block) {}
+    // REQUIRES: !finished_
+    void AddPoint(const Slice& first_key_in_data_block) {
+      assert(!finished_);
+      
+      double first_key_floating_rep = DummyStr2DoubleFunction(first_key_in_data_block.data());
+      Point p<double>(first_key_floating_rep, num_data_blocks_);
+      trainer_.process(p);
+    }
+
+    // TODO(fyp)
+    void AddHandle(const BlockHandle& /* block_handle */ ) {}
 
     // Create a function-scoped PLRDataRep to Encode() and return a Slice.
-    Slice Finish() {}
+    // REQUIRES: !finished_
+    Slice Finish() {
+      assert(!finished_);
+
+      std::vector<Segment<uint64_t, double>> segments = trainer_.finish();
+      PLRDataRep<uint64_t, double> encoder = PLRDataRep(gamma_, segments);
+
+      buffer_ = encoder.Encode();
+      finished_ = true;
+      return Slice(buffer_);
+    }
   
    private:
     // TODO(fyp): Confirm data type
@@ -498,8 +550,24 @@ class PLRIndexBuilder: public IndexBuilder {
     // len(scheme #char), how to cope with this?
     // --> easy, truncate the extra chars at the back.
 
-    GreedyPLR<uint32_t, double> trainer_;
+    GreedyPLR<uint64_t, double> trainer_;
     uint32_t num_data_blocks_;
+    uint32_t gamma_;
+    // Make sure this class is not deleted before buffer_ referenced by
+    // return value of this->Finish() is written to disk; otherwise, that
+    // slice (return value) contains a dangling pointer.
+    std::string buffer_;
+    bool finished_;
   };
+
+  PLRBuilderHelper helper_;
+  // If true, OnKeyAdded() will use helper_ to add an Point for PLR training
+  // then set this flag to false.
+  bool is_first_key_in_first_block_;
 };
+
+double DummyStr2DoubleFunction(const char* str) {
+  // 2 step: 1. str2int 2. int2double (implicit cast?)
+  return 1.0;
+}
 }  // namespace ROCKSDB_NAMESPACE
