@@ -9,7 +9,7 @@
 #include "table/internal_iterator.h"
 #include "table/block_based/learned_index/plr/plr_block_iter.h"
 #include "table/block_fetcher.h"
-#include <cmath>
+#include <algorithm>
 
 /*
 status_ = file_->Read(handle_.offset(), block_size_ + kBlockTrailerSize,
