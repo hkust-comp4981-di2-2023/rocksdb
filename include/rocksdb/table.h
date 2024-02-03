@@ -329,6 +329,13 @@ struct BlockBasedTableOptions {
 
   IndexShorteningMode index_shortening =
       IndexShorteningMode::kShortenSeparators;
+  
+  // "Block number error bound" of PLR model prediction for index_type = 
+  // kLearnedIndexWithPLR.
+  //
+  // For example, when gamma = 2 and predicted data block number is 5,
+  // the corresponding key must be within data blocks [3, 7] if it exists.
+  uint32_t plr_index_block_gamma = 1;
 };
 
 // Table Properties that are specific to block-based table properties.
