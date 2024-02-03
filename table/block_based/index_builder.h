@@ -453,14 +453,17 @@ class PartitionedIndexBuilder : public IndexBuilder {
 // The encoded string is stored as the final block contents in IndexBlocks.
 //
 // For now, we don't care about include_first_key_.
-// TODO(fyp): Find way to pass gamma to ctor(), take ref. from other ppl.
-// TODO(fyp): Complete Finish()
+// TODO(fyp): Complete helper::AddHandle()
+// TODO(fyp): Modify helper::Finish() to include block size array also
 // TODO(fyp): Test compilation
 class PLRIndexBuilder: public IndexBuilder {
  public:
   PLRIndexBuilder() = delete;
 
-  PLRIndexBuilder(/**/): is_first_key_in_first_block_(true) {}
+  PLRIndexBuilder(uint32_t gamma): 
+    IndexBuilder(nullptr),
+    is_first_key_in_first_block_(true),
+    helper_(gamma) {}
 
   // Use helper_ to add a new Point for PLR training of (i+1)-th block. Also,
   // store block_handle of i-th block in helper_. For the last function call, do
@@ -469,6 +472,8 @@ class PLRIndexBuilder: public IndexBuilder {
   void AddIndexEntry(std::string* last_key_in_current_block,
                     const Slice* first_key_in_next_block,
                     const BlockHandle& block_handle) override {
+    assert(last_key_in_current_block != nullptr);
+
     if (first_key_in_next_block != nullptr) {
       // current AddIndexEntry() call is not processing with:
       // current_block = last data block
@@ -487,9 +492,16 @@ class PLRIndexBuilder: public IndexBuilder {
   }
 
   Status Finish(IndexBlocks* index_blocks,
-                const BlockHandle& last_partition_block_handle) override;
+                const BlockHandle& /*last_partition_block_handle*/) override {
+    assert(index_blocks != nullptr);
 
-  size_t IndexSize() const override;
+    index_blocks->index_block_contents = helper_.Finish();
+    index_size_ = index_blocks->index_block_contents.size();
+
+    return Status::OK();
+  }
+
+  size_t IndexSize() const override { return index_size_; }
 
  private:
   // TODO(fyp): Consider moving this to table/block_based/learned_index/plr
