@@ -462,22 +462,20 @@ class PLRIndexBuilder: public IndexBuilder {
 
   PLRIndexBuilder(uint32_t gamma): 
     IndexBuilder(nullptr),
-    is_first_key_in_first_block_(true),
-    helper_(gamma) {}
+    helper_(gamma),
+    is_first_key_in_first_block_(true) {}
 
   // Use helper_ to add a new Point for PLR training of (i+1)-th block. Also,
   // store block_handle of i-th block in helper_. For the last function call, do
   // not add a new Point, as first_key_in_next_block is nullptr, meaning there
   // is no next block.
-  void AddIndexEntry(std::string* last_key_in_current_block,
+  void AddIndexEntry(std::string* /*last_key_in_current_block*/,
                     const Slice* first_key_in_next_block,
                     const BlockHandle& block_handle) override {
-    assert(last_key_in_current_block != nullptr);
-
     if (first_key_in_next_block != nullptr) {
       // current AddIndexEntry() call is not processing with:
       // current_block = last data block
-      helper_.AddPoint(first_key_in_next_block);
+      helper_.AddPoint(*first_key_in_next_block);
     }
     helper_.AddHandle(block_handle);
   }
@@ -517,9 +515,10 @@ class PLRIndexBuilder: public IndexBuilder {
     PLRBuilderHelper() = delete;
 
     PLRBuilderHelper(uint32_t gamma): 
-      gamma_(gamma),
       trainer_(gamma),
       num_data_blocks_(0),
+      gamma_(gamma),
+      buffer_(),
       finished_(false) {}
 
     // Add a new point to trainer_. Increment num_data_blocks by 1.
@@ -528,7 +527,7 @@ class PLRIndexBuilder: public IndexBuilder {
       assert(!finished_);
       
       double first_key_floating_rep = DummyStr2DoubleFunction(first_key_in_data_block.data());
-      Point p<double>(first_key_floating_rep, num_data_blocks_);
+      Point<double> p(first_key_floating_rep, num_data_blocks_);
       trainer_.process(p);
     }
 
@@ -541,7 +540,7 @@ class PLRIndexBuilder: public IndexBuilder {
       assert(!finished_);
 
       std::vector<Segment<uint64_t, double>> segments = trainer_.finish();
-      PLRDataRep<uint64_t, double> encoder = PLRDataRep(gamma_, segments);
+      auto encoder = PLRDataRep<uint64_t, double>(gamma_, segments);
 
       buffer_ = encoder.Encode();
       finished_ = true;
@@ -549,6 +548,11 @@ class PLRIndexBuilder: public IndexBuilder {
     }
   
    private:
+    double DummyStr2DoubleFunction(const char* /*str*/) {
+      // 2 step: 1. str2int 2. int2double (implicit cast?)
+      return 1.0;
+    }
+
     // TODO(fyp): Confirm data type
     // TODO(fyp): Check below questions, to be dicussed - 1 & 2 are blockers
     // Question:
@@ -577,9 +581,4 @@ class PLRIndexBuilder: public IndexBuilder {
   // then set this flag to false.
   bool is_first_key_in_first_block_;
 };
-
-double DummyStr2DoubleFunction(const char* str) {
-  // 2 step: 1. str2int 2. int2double (implicit cast?)
-  return 1.0;
-}
 }  // namespace ROCKSDB_NAMESPACE
