@@ -956,7 +956,7 @@ class PLRIndexReader: public BlockBasedTable::CustomIndexReaderCommon {
       return NewErrorInternalIterator<IndexValue>(s);
     }
 
-    Statistics* kNullStats = nullptr;
+    // Statistics* kNullStats = nullptr;
     // We don't return pinned data from index blocks, so no need
     // to set `block_contents_pinned`.
     // TODO(fyp): replace here
