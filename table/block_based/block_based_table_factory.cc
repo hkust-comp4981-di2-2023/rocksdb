@@ -298,10 +298,6 @@ Status BlockBasedTableFactory::SanitizeOptions(
         "index type kLearnedIndexWithPLR, it should follow the default "
         "value 1 and will not instead be silently converted");
     }
-    if (table_options_.plr_index_block_gamma < 0) {
-      return Status::InvalidArgument(
-        "plr_index_block_gamma should be a non-negative number");
-    }
   }
   return Status::OK();
 }
