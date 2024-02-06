@@ -10,6 +10,8 @@
 #include "table/block_based/learned_index/plr/plr_block_iter.h"
 #include "table/block_fetcher.h"
 #include <algorithm>
+#include <sstream>
+#include "table/block_based/learned_index/plr/plr_block_fetcher_params.h"
 
 /*
 status_ = file_->Read(handle_.offset(), block_size_ + kBlockTrailerSize,
@@ -149,15 +151,6 @@ void PLRBlockIter::Next() {
 				break;
 			}
 			current_ = GetMidpointBlockNumber();
-			BlockHandle* handle();
-			RandomAccessFileReader* file = 
-			// TODO(fyp): How to pass all parameters?
-			BlockContents contents;
-			BlockFetcher block_fetcher(
-				file, prefetch_buffer, footer, options, handle, &contents, ioptions,
-				do_uncompress, maybe_compressed, block_type, uncompression_dict,
-				cache_options, memory_allocator, nullptr, for_compaction);
-			Status s = block_fetcher.ReadBlockContents();
 		} break;
 		case SeekMode::kLinearSeek: {
 			if (IsLastLinearSeek()) {
@@ -223,6 +216,7 @@ void PLRBlockIter::SetCurrentIndexValue() {
 	
 	IndexValue value_ = IndexValue();
 	
+	// Should use a handle from class attribute?
 	BlockHandle handle = BlockHandle();
 	status_ = helper_->GetBlockHandle(current_, handle);
 
@@ -231,31 +225,45 @@ void PLRBlockIter::SetCurrentIndexValue() {
 	}
 
 	value_.handle = handle;
+
+	if (seek_mode_ == SeekMode::kBinarySeek) {
+		// Update the begin_block_ or end_block_, based on current block value.
+		
+	}
 }
 
-Status PLRBlockHelper::GetModelParamsAndBlockSizes(const char* data, std::string* model_params,
+Status PLRBlockHelper::GetModelParamsAndBlockSizes(const char* data,
 												 	std::shared_ptr<uint64_t[]> block_sizes) {
-	// TODO(fyp): Finalize data format
 	assert(data != nullptr);
-	for (uint64_t i = num_data_blocks_-1; i >= 0; i--) {
-		block_sizes[i] = 0; /*data block size*/
-	}
-	*model_params = std::string(data);
+
+	static const uint64_t UINT64_T_SIZE = 8;
+	char* data_ptr;
+	
+	// Starting position of data block sizes
+    uint64_t startPos = std::max<uint64_t>(0, static_cast<uint64_t>(strlen(data)) - (UINT64_T_SIZE * num_data_blocks_));
+
+    for (uint64_t i = 0; i < num_data_blocks_; i++) {
+		// Starting position of current data block size
+		const char* startPos_value = data + startPos + (i * UINT64_T_SIZE);
+		std::stringstream ss(std::string(startPos_value, UINT64_T_SIZE));
+        uint64_t value;
+		// Extract as uint64_t 
+        ss >> value;
+        block_sizes[i] = value;
+    }
+
 	return Status::OK();
 }
 
 Status PLRBlockHelper::DecodePLRBlock(const char* data, 
 					std::shared_ptr<uint64_t[]> block_sizes) {
-  	// Data decode into model_params and block_sizes for the stub
-	std::string model_params;
-	
-	// TODO(fyp): How to get model_params and block_sizes
-	Status s = GetModelParamsAndBlockSizes(data, &model_params, block_sizes);
+	// Extract data block sizes
+	Status s = GetModelParamsAndBlockSizes(data, block_sizes);
 	if (!s.ok()) {
 		return Status::NotSupported();
 	}
 	// model constructed in PLRDataRep
- 	model_ = PLRDataRep<uint64_t, double>(model_params);
+ 	model_ = PLRDataRep<uint64_t, double>(data);
 	
 	return Status::OK();
 }
@@ -270,8 +278,7 @@ Status PLRBlockHelper::PredictBlockRange(const Slice& target, uint64_t& begin_bl
 	std::pair<uint64_t, uint64_t> range =  model_.GetValue(key);
 	assert(range.first <= range.second);
 
-	// TODO(fyp): find min max header
-	begin_block = std::max(0, range.first);
+	begin_block = std::max<uint64_t>(0, range.first);
 	end_block = std::min(num_data_blocks_, range.second);
 	return Status::OK();
 }

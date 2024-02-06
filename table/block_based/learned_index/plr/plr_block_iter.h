@@ -15,20 +15,22 @@
 #include "table/block_based/learned_index/plr/external/plr/library.h"
 #include "test_util/sync_point.h"
 #include "stdint.h"
+#include "table/block_based/learned_index/plr/plr_block_fetcher_params.h"
 
 namespace ROCKSDB_NAMESPACE {
 
 // temporary design: https://drive.google.com/file/d/1Z2s31E8Pfxjy6GUOL2a9f5ea2-1hJOFV/view?usp=sharing
 class PLRBlockIter : public InternalIteratorBase<IndexValue> {
  public:
-	PLRBlockIter(BlockContents* block_contents, bool key_includes_seq, const uint64_t num_data_blocks): 
+	PLRBlockIter(BlockFetcherParams* params, bool key_includes_seq, const uint64_t num_data_blocks): 
 		InternalIteratorBase<IndexValue>(),
 		seek_mode_(SeekMode::kUnknown),
-		data_(block_contents->data.data()),
+		data_(params->contents->data.data()),
 		current_(invalid_block_number_),
 		begin_block_(invalid_block_number_),
 		end_block_(invalid_block_number_),
 		key_includes_seq_(key_includes_seq),
+		params_(params),
 		helper_(std::unique_ptr<PLRBlockHelper>(new PLRBlockHelper(num_data_blocks, data_,
 																	begin_block_, end_block_)))
 		{}
@@ -85,6 +87,9 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 		kBinarySeek = 0x02,
 	};
 	SeekMode seek_mode_;
+
+	// Block fetcher parameters
+	BlockFetcherParams* params_;
 
 	// Actual block content.
 	// It is used only once when initializing helper_. The memory buffer will be
@@ -170,7 +175,8 @@ class PLRBlockHelper {
 	std::shared_ptr<uint64_t[]> block_sizes_;
 
 	// Helper function to decode PLR block
-	Status GetModelParamsAndBlockSizes(const char* data, std::string* model_params,
+	// Only extract block_sizes, PLRDataRep takes original encoded str
+	Status GetModelParamsAndBlockSizes(const char* data,
 									 	std::shared_ptr<uint64_t[]> block_sizes);
 
 	// Need a function ptr for the 'rounding rule' when a decimal block is 

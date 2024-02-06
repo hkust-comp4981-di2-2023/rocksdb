@@ -57,6 +57,7 @@
 #include "util/util.h"
 #include "util/xxhash.h"
 #include "learned_index/plr/plr_block_iter.h"
+#include "table/block_based/learned_index/plr/plr_block_fetcher_params.h"
 
 namespace ROCKSDB_NAMESPACE {
 
@@ -978,28 +979,30 @@ class PLRIndexReader: public BlockBasedTable::CustomIndexReaderCommon {
                MemoryAllocator* memory_allocator = nullptr,
                MemoryAllocator* memory_allocator_compressed = nullptr,
                bool for_compaction = false)
+
+      Status s = ReadBlockFromFile(
+      rep_->file.get(), prefetch_buffer, rep_->footer, ReadOptions(),
+      rep_->footer.metaindex_handle(), &metaindex, rep_->ioptions,
+      true , true , BlockType::kMetaIndex,
+      UncompressionDict::GetEmptyDict(), rep_->persistent_cache_options,
+      kDisableGlobalSequenceNumber, 0,
+      GetMemoryAllocator(rep_->table_options), false,
+      rep_->blocks_definitely_zstd_compressed, nullptr);
+
     */
 
     // TODO(fyp): For reading data block content, need verify if all are necessary
-    struct BlockFetecherParams {
-      RandomAccessFileReader* file;
-      FilePrefetchBuffer* prefetch_buffer;
-      const Footer& footer;
-      const ReadOptions& read_options;
-      const BlockHandle& handle;
-      BlockContents* contents;
-      const ImmutableCFOptions& ioptions;
-      bool do_uncompress;
-      bool maybe_compressed;
-      BlockType block_type;
-      const UncompressionDict& uncompression_dict;
-      const PersistentCacheOptions& cache_options;
-      MemoryAllocator* memory_allocator = nullptr;
-      MemoryAllocator* memory_allocator_compressed = nullptr;
-      bool for_compaction = false;
-    };
+    BlockFetcherParams* params = new BlockFetcherParams(table()->get_rep()->file.get(), nullptr, 
+                                        table()->get_rep()->footer, ReadOptions(), 
+                                        block_content, 
+                                        table()->get_rep()->ioptions, true, true, 
+                                        BlockType::kIndex, 
+                                        UncompressionDict::GetEmptyDict(), 
+                                        table()->get_rep()->persistent_cache_options, 
+                                        GetMemoryAllocator(table()->get_rep()->table_options), 
+                                        nullptr, false);
 
-    auto it = PLRBlockIter(block_content, index_key_includes_seq, num_data_blocks_);
+    auto it = PLRBlockIter(params, index_key_includes_seq, num_data_blocks_);
   }
 
   size_t ApproximateMemoryUsage() const override {
