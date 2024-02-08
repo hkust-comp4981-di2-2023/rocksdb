@@ -967,7 +967,9 @@ class PLRIndexReader: public BlockBasedTable::CustomIndexReaderCommon {
     // TODO(fyp): Pass num_data_blocks_, note that it is uint64_t
     // CachableEntry<T>.GetValue() returns pointer to value of type T
     BlockContents* block_content = index_block_contents.GetValue();
-    auto it = PLRBlockIter(block_content, index_key_includes_seq, num_data_blocks_);
+    // Allow comparison of target and key retrieved from data block
+    const Comparator* user_comparator = table()->get_rep()->internal_comparator.user_comparator();
+    auto it = PLRBlockIter(block_content, index_key_includes_seq, num_data_blocks_, user_comparator);
   }
 
   size_t ApproximateMemoryUsage() const override {

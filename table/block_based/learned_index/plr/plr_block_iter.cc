@@ -97,6 +97,9 @@ void PLRBlockIter::Seek(const Slice& target) {
 	TEST_SYNC_POINT("PLRBlockIter::Seek:0");
 	assert(helper_ != nullptr);
 	
+	// Allow Next() do comparison later on 
+	current_key_ = target;
+
 	seek_mode_ = SeekMode::kUnknown;
 	
 	Slice seek_key = target;
@@ -229,20 +232,16 @@ void PLRBlockIter::SetCurrentIndexValue() {
 
 	value_.handle = handle;
 
-	BlockContents* contents;
-
-	// Read data block
-	BlockFetcher block_fetcher(params_->file, params_->prefetch_buffer, 
-								params_->footer, params_->read_options, 
-								value_.handle, contents, params_->ioptions, 
-								true, true, BlockType::kData, params_->uncompression_dict, 
-								params_->cache_options, params_->memory_allocator, 
-								params_->memory_allocator_compressed, 
-								params_->for_compaction);
-
 	if (seek_mode_ == SeekMode::kBinarySeek) {
 		// Update the begin_block_ or end_block_, based on current block value.
-		
+		// Current key < first key
+		if (comparator_->Compare(current_key_, first_key_) < 0) {
+			end_block_ = current_ - 1;
+		}
+		// Current key > last key
+		else if (comparator_->Compare(current_key_, last_key_) > 0) {
+			begin_block_ = current_ + 1;
+		}
 	}
 }
 
