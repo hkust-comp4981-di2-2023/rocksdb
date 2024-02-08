@@ -63,6 +63,7 @@ class BlockBasedTableBuilder : public TableBuilder {
   // Add key,value to the table being constructed.
   // REQUIRES: key is after any previously added key according to comparator.
   // REQUIRES: Finish(), Abandon() have not been called
+  friend void BlockHandleCalculatorStub::AddBlockToBlockHandle(uint64_t offset, uint64_t size){}
   void Add(const Slice& key, const Slice& value) override;
 
   // Return non-ok iff some error has been detected.
@@ -100,6 +101,7 @@ class BlockBasedTableBuilder : public TableBuilder {
 
  private:
   bool ok() const { return status().ok(); }
+  /*todo create a private member of BlockHandleCalculatorStub() for use*/
 
   // Transition state from buffered to unbuffered. See `Rep::State` API comment
   // for details of the states.

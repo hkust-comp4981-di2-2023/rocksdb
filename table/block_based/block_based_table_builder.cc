@@ -48,6 +48,8 @@
 #include "util/string_util.h"
 #include "util/xxhash.h"
 
+#include "table/block_based/learned_index/plr/block_handle_cal.h"
+
 namespace ROCKSDB_NAMESPACE {
 
 extern const std::string kHashIndexPrefixesBlock;
@@ -500,6 +502,7 @@ BlockBasedTableBuilder::~BlockBasedTableBuilder() {
   delete rep_;
 }
 
+/* Implement BlockHandleCalculatorStub::AddBlockToBlockHandle() after flush to add offset to BlockHandleCalculatorStub*/
 void BlockBasedTableBuilder::Add(const Slice& key, const Slice& value) {
   Rep* r = rep_;
   assert(rep_->state != Rep::State::kClosed);
@@ -516,6 +519,11 @@ void BlockBasedTableBuilder::Add(const Slice& key, const Slice& value) {
     if (should_flush) {
       assert(!r->data_block.empty());
       Flush();
+
+      /*TODO*/
+      uint64_t offset = static_cast<uint64_t>(rep_->data_begin_offset);
+      uint64_t size = static_cast<uint64_t>(rep_->data_block.CurrentSizeEstimate());
+      AddBlockToBlockHandle(offset,size);
 
       if (r->state == Rep::State::kBuffered &&
           r->data_begin_offset > r->target_file_size) {
