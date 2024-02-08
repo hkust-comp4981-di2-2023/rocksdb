@@ -967,42 +967,7 @@ class PLRIndexReader: public BlockBasedTable::CustomIndexReaderCommon {
     // TODO(fyp): Pass num_data_blocks_, note that it is uint64_t
     // CachableEntry<T>.GetValue() returns pointer to value of type T
     BlockContents* block_content = index_block_contents.GetValue();
-
-    /*
-      BlockFetcher(RandomAccessFileReader* file,
-               FilePrefetchBuffer* prefetch_buffer, const Footer& footer,
-               const ReadOptions& read_options, const BlockHandle& handle,
-               BlockContents* contents, const ImmutableCFOptions& ioptions,
-               bool do_uncompress, bool maybe_compressed, BlockType block_type,
-               const UncompressionDict& uncompression_dict,
-               const PersistentCacheOptions& cache_options,
-               MemoryAllocator* memory_allocator = nullptr,
-               MemoryAllocator* memory_allocator_compressed = nullptr,
-               bool for_compaction = false)
-
-      Status s = ReadBlockFromFile(
-      rep_->file.get(), prefetch_buffer, rep_->footer, ReadOptions(),
-      rep_->footer.metaindex_handle(), &metaindex, rep_->ioptions,
-      true , true , BlockType::kMetaIndex,
-      UncompressionDict::GetEmptyDict(), rep_->persistent_cache_options,
-      kDisableGlobalSequenceNumber, 0,
-      GetMemoryAllocator(rep_->table_options), false,
-      rep_->blocks_definitely_zstd_compressed, nullptr);
-
-    */
-
-    // TODO(fyp): For reading data block content, need verify if all are necessary
-    BlockFetcherParams* params = new BlockFetcherParams(table()->get_rep()->file.get(), nullptr, 
-                                        table()->get_rep()->footer, ReadOptions(), 
-                                        block_content, 
-                                        table()->get_rep()->ioptions, true, true, 
-                                        BlockType::kIndex, 
-                                        UncompressionDict::GetEmptyDict(), 
-                                        table()->get_rep()->persistent_cache_options, 
-                                        GetMemoryAllocator(table()->get_rep()->table_options), 
-                                        nullptr, false);
-
-    auto it = PLRBlockIter(params, index_key_includes_seq, num_data_blocks_);
+    auto it = PLRBlockIter(block_content, index_key_includes_seq, num_data_blocks_);
   }
 
   size_t ApproximateMemoryUsage() const override {
@@ -3593,6 +3558,8 @@ Status BlockBasedTable::Get(const ReadOptions& read_options, const Slice& key,
         rep_->internal_comparator.user_comparator()->timestamp_size();
     bool matched = false;  // if such user key mathced a key in SST
     bool done = false;
+
+    // TODO(fyp): Update first key and last key
     for (iiter->Seek(key); iiter->Valid() && !done; iiter->Next()) {
       IndexValue v = iiter->value();
 
@@ -3612,20 +3579,23 @@ Status BlockBasedTable::Get(const ReadOptions& read_options, const Slice& key,
         break;
       }
 
-      if (!v.first_internal_key.empty() && !skip_filters &&
+      // No internal key stored in index block for PLR, skipped
+      if (rep_->index_type != BlockBasedTableOptions::kLearnedIndexWithPLR && 
+          !v.first_internal_key.empty() && !skip_filters &&
           UserComparatorWrapper(rep_->internal_comparator.user_comparator())
                   .Compare(ExtractUserKey(key),
-                           ExtractUserKey(v.first_internal_key)) < 0) {
+                          ExtractUserKey(v.first_internal_key)) < 0) {
         // The requested key falls between highest key in previous block and
         // lowest key in current block.
         break;
       }
-
+        
       BlockCacheLookupContext lookup_data_block_context{
           TableReaderCaller::kUserGet, tracing_get_id,
           /*get_from_user_specified_snapshot=*/read_options.snapshot !=
               nullptr};
       bool does_referenced_key_exist = false;
+
       DataBlockIter biter;
       uint64_t referenced_data_size = 0;
       NewDataBlockIterator<DataBlockIter>(

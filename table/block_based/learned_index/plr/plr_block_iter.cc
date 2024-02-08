@@ -151,6 +151,9 @@ void PLRBlockIter::Next() {
 				break;
 			}
 			current_ = GetMidpointBlockNumber();
+			/*
+			first_key = table->get_rep()->
+			*/
 		} break;
 		case SeekMode::kLinearSeek: {
 			if (IsLastLinearSeek()) {
@@ -226,13 +229,24 @@ void PLRBlockIter::SetCurrentIndexValue() {
 
 	value_.handle = handle;
 
+	BlockContents* contents;
+
+	// Read data block
+	BlockFetcher block_fetcher(params_->file, params_->prefetch_buffer, 
+								params_->footer, params_->read_options, 
+								value_.handle, contents, params_->ioptions, 
+								true, true, BlockType::kData, params_->uncompression_dict, 
+								params_->cache_options, params_->memory_allocator, 
+								params_->memory_allocator_compressed, 
+								params_->for_compaction);
+
 	if (seek_mode_ == SeekMode::kBinarySeek) {
 		// Update the begin_block_ or end_block_, based on current block value.
 		
 	}
 }
 
-Status PLRBlockHelper::GetModelParamsAndBlockSizes(const char* data,
+Status PLRBlockHelper::GetBlockSizes(const char* data,
 												 	std::shared_ptr<uint64_t[]> block_sizes) {
 	assert(data != nullptr);
 
@@ -258,7 +272,7 @@ Status PLRBlockHelper::GetModelParamsAndBlockSizes(const char* data,
 Status PLRBlockHelper::DecodePLRBlock(const char* data, 
 					std::shared_ptr<uint64_t[]> block_sizes) {
 	// Extract data block sizes
-	Status s = GetModelParamsAndBlockSizes(data, block_sizes);
+	Status s = GetBlockSizes(data, block_sizes);
 	if (!s.ok()) {
 		return Status::NotSupported();
 	}
