@@ -967,9 +967,10 @@ class PLRIndexReader: public BlockBasedTable::CustomIndexReaderCommon {
     // TODO(fyp): Pass num_data_blocks_, note that it is uint64_t
     // CachableEntry<T>.GetValue() returns pointer to value of type T
     BlockContents* block_content = index_block_contents.GetValue();
-    // Allow comparison of target and key retrieved from data block
-    const Comparator* user_comparator = table()->get_rep()->internal_comparator.user_comparator();
-    auto it = PLRBlockIter(block_content, index_key_includes_seq, num_data_blocks_, user_comparator);
+
+    auto it = PLRBlockIter(block_content, index_key_includes_seq, num_data_blocks_);
+
+    return it;
   }
 
   size_t ApproximateMemoryUsage() const override {
@@ -3617,7 +3618,37 @@ Status BlockBasedTable::Get(const ReadOptions& read_options, const Slice& key,
         break;
       }
 
-      bool may_exist = biter.SeekForGet(key);
+      TEST_SYNC_POINT_CALLBACK("BlockBasedTable::Get:BeforeSetDataIterFirst&LastKey", &biter);
+      // TODO(fyp): Check if key is in the data block, if not then goes on, for PLR only
+      bool plr_may_exist = true;
+      if (rep_->index_type == BlockBasedTableOptions::kLearnedIndexWithPLR) {
+        biter.SeekToFirst();
+        Slice first_key = biter.key();
+        if (!biter.Valid()) {
+          // The data block is empty, we should go on to the next block
+          plr_may_exist = false;
+        }
+        else {
+          // Data block not empty, can move on
+          biter.SeekToLast();
+          Slice last_key = biter.key();
+          if (rep_->internal_comparator.Compare(ExtractUserKey(key), ExtractUserKey(first_key)) < 0) {
+            plr_may_exist = false;
+            // This will change block range, use with precaution
+            // Will be changed if have time
+            iiter->SetEndBlockAsCurrent();
+          }
+          if (rep_->internal_comparator.Compare(ExtractUserKey(key), ExtractUserKey(last_key)) > 0) {
+            plr_may_exist = false;
+            // This will change block range, use with precaution
+            // Will be changed if have time
+            iiter->SetBeginBlockAsCurrent();
+          }
+        }
+      }
+      TEST_SYNC_POINT_CALLBACK("BlockBasedTable::Get:AfterSetDataIterFirst&LastKey", &biter);
+
+      bool may_exist = biter.SeekForGet(key) && plr_may_exist;
       // If user-specified timestamp is supported, we cannot end the search
       // just because hash index lookup indicates the key+ts does not exist.
       if (!may_exist && ts_sz == 0) {
@@ -3633,7 +3664,6 @@ Status BlockBasedTable::Get(const ReadOptions& read_options, const Slice& key,
           if (!ParseInternalKey(biter.key(), &parsed_key)) {
             s = Status::Corruption(Slice());
           }
-
           if (!get_context->SaveValue(
                   parsed_key, biter.value(), &matched,
                   biter.IsValuePinned() ? &biter : nullptr)) {

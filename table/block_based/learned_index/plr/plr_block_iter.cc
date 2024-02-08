@@ -96,9 +96,6 @@ void PLRBlockIter::SeekToLast() {
 void PLRBlockIter::Seek(const Slice& target) {
 	TEST_SYNC_POINT("PLRBlockIter::Seek:0");
 	assert(helper_ != nullptr);
-	
-	// Allow Next() do comparison later on 
-	current_key_ = target;
 
 	seek_mode_ = SeekMode::kUnknown;
 	
@@ -122,7 +119,6 @@ void PLRBlockIter::Seek(const Slice& target) {
 	}
 
 	seek_mode_ = SeekMode::kBinarySeek;
-
 }
 
 // Work differently based on seek_mode_.
@@ -154,9 +150,6 @@ void PLRBlockIter::Next() {
 				break;
 			}
 			current_ = GetMidpointBlockNumber();
-			/*
-			first_key = table->get_rep()->
-			*/
 		} break;
 		case SeekMode::kLinearSeek: {
 			if (IsLastLinearSeek()) {
@@ -222,7 +215,6 @@ void PLRBlockIter::SetCurrentIndexValue() {
 	
 	IndexValue value_ = IndexValue();
 	
-	// Should use a handle from class attribute?
 	BlockHandle handle = BlockHandle();
 	status_ = helper_->GetBlockHandle(current_, handle);
 
@@ -234,14 +226,7 @@ void PLRBlockIter::SetCurrentIndexValue() {
 
 	if (seek_mode_ == SeekMode::kBinarySeek) {
 		// Update the begin_block_ or end_block_, based on current block value.
-		// Current key < first key
-		if (comparator_->Compare(current_key_, first_key_) < 0) {
-			end_block_ = current_ - 1;
-		}
-		// Current key > last key
-		else if (comparator_->Compare(current_key_, last_key_) > 0) {
-			begin_block_ = current_ + 1;
-		}
+		// do nothing currently, unless have time to change SetBeginBlockAsCurrent()
 	}
 }
 

@@ -24,8 +24,7 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
  public:
 	PLRBlockIter(BlockContents* contents, 
 				bool key_includes_seq, 
-				const uint64_t num_data_blocks,
-				const Comparator* comparator): 
+				const uint64_t num_data_blocks): 
 		InternalIteratorBase<IndexValue>(),
 		seek_mode_(SeekMode::kUnknown),
 		data_(contents->data.data()),
@@ -33,7 +32,6 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 		begin_block_(invalid_block_number_),
 		end_block_(invalid_block_number_),
 		key_includes_seq_(key_includes_seq),
-		comparator_(comparator),
 		helper_(std::unique_ptr<PLRBlockHelper>(new PLRBlockHelper(num_data_blocks, data_,
 																	begin_block_, end_block_)))
 		{}
@@ -83,13 +81,12 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 	// this function should return false.
 	bool IsValuePinned() const override { return false; }
 
-	// Allow passing back of first and last key of current data block
-	inline void SetFirstKey(const Slice& first_key) {
-		first_key_ = first_key;
+	inline void SetBeginBlockAsCurrent() {
+		begin_block_ = current_ + 1;
 	}
 
-	inline void SetLastKey(const Slice& last_key) {
-		last_key_ = last_key;
+	inline void SetEndBlockAsCurrent() {
+		end_block_ = current_ - 1;
 	}
 
  private:
@@ -111,10 +108,8 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 	uint64_t current_, begin_block_, end_block_;
 	static const uint64_t invalid_block_number_ = UINT64_MAX;
 
-	// Comparator for keys
-	const Comparator* comparator_;
 	// First and last key of current data block, also the key of current search
-	Slice first_key_, last_key_, current_key_;
+	// Slice first_key_, last_key_, current_key_;
 
 	// If true, this means keys written in index block contains seq_no, which are
 	// internal keys. As a result, when we Seek() an internal key, we don't need
