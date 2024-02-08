@@ -968,7 +968,8 @@ class PLRIndexReader: public BlockBasedTable::CustomIndexReaderCommon {
     // CachableEntry<T>.GetValue() returns pointer to value of type T
     BlockContents* block_content = index_block_contents.GetValue();
 
-    auto it = PLRBlockIter(block_content, index_key_includes_seq, num_data_blocks_);
+    // TODO(fyp): 99% will leak memory, need to fix, but lets see if logic is correct first
+    auto it = new PLRBlockIter(block_content, index_key_includes_seq, num_data_blocks_);
 
     return it;
   }
