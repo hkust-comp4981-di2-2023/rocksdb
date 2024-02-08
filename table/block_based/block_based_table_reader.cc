@@ -968,41 +968,10 @@ class PLRIndexReader: public BlockBasedTable::CustomIndexReaderCommon {
     // CachableEntry<T>.GetValue() returns pointer to value of type T
     BlockContents* block_content = index_block_contents.GetValue();
 
-    /*
-      BlockFetcher(RandomAccessFileReader* file,
-               FilePrefetchBuffer* prefetch_buffer, const Footer& footer,
-               const ReadOptions& read_options, const BlockHandle& handle,
-               BlockContents* contents, const ImmutableCFOptions& ioptions,
-               bool do_uncompress, bool maybe_compressed, BlockType block_type,
-               const UncompressionDict& uncompression_dict,
-               const PersistentCacheOptions& cache_options,
-               MemoryAllocator* memory_allocator = nullptr,
-               MemoryAllocator* memory_allocator_compressed = nullptr,
-               bool for_compaction = false)
+    // TODO(fyp): 99% will leak memory, need to fix, but lets see if logic is correct first
+    auto it = new PLRBlockIter(block_content, index_key_includes_seq, num_data_blocks_);
 
-      Status s = ReadBlockFromFile(
-      rep_->file.get(), prefetch_buffer, rep_->footer, ReadOptions(),
-      rep_->footer.metaindex_handle(), &metaindex, rep_->ioptions,
-      true , true , BlockType::kMetaIndex,
-      UncompressionDict::GetEmptyDict(), rep_->persistent_cache_options,
-      kDisableGlobalSequenceNumber, 0,
-      GetMemoryAllocator(rep_->table_options), false,
-      rep_->blocks_definitely_zstd_compressed, nullptr);
-
-    */
-
-    // TODO(fyp): For reading data block content, need verify if all are necessary
-    BlockFetcherParams* params = new BlockFetcherParams(table()->get_rep()->file.get(), nullptr, 
-                                        table()->get_rep()->footer, ReadOptions(), 
-                                        block_content, 
-                                        table()->get_rep()->ioptions, true, true, 
-                                        BlockType::kIndex, 
-                                        UncompressionDict::GetEmptyDict(), 
-                                        table()->get_rep()->persistent_cache_options, 
-                                        GetMemoryAllocator(table()->get_rep()->table_options), 
-                                        nullptr, false);
-
-    auto it = PLRBlockIter(params, index_key_includes_seq, num_data_blocks_);
+    return it;
   }
 
   size_t ApproximateMemoryUsage() const override {
@@ -3593,6 +3562,8 @@ Status BlockBasedTable::Get(const ReadOptions& read_options, const Slice& key,
         rep_->internal_comparator.user_comparator()->timestamp_size();
     bool matched = false;  // if such user key mathced a key in SST
     bool done = false;
+
+    // TODO(fyp): Update first key and last key
     for (iiter->Seek(key); iiter->Valid() && !done; iiter->Next()) {
       IndexValue v = iiter->value();
 
@@ -3612,20 +3583,23 @@ Status BlockBasedTable::Get(const ReadOptions& read_options, const Slice& key,
         break;
       }
 
-      if (!v.first_internal_key.empty() && !skip_filters &&
+      // No internal key stored in index block for PLR, skipped
+      if (rep_->index_type != BlockBasedTableOptions::kLearnedIndexWithPLR && 
+          !v.first_internal_key.empty() && !skip_filters &&
           UserComparatorWrapper(rep_->internal_comparator.user_comparator())
                   .Compare(ExtractUserKey(key),
-                           ExtractUserKey(v.first_internal_key)) < 0) {
+                          ExtractUserKey(v.first_internal_key)) < 0) {
         // The requested key falls between highest key in previous block and
         // lowest key in current block.
         break;
       }
-
+        
       BlockCacheLookupContext lookup_data_block_context{
           TableReaderCaller::kUserGet, tracing_get_id,
           /*get_from_user_specified_snapshot=*/read_options.snapshot !=
               nullptr};
       bool does_referenced_key_exist = false;
+
       DataBlockIter biter;
       uint64_t referenced_data_size = 0;
       NewDataBlockIterator<DataBlockIter>(
@@ -3645,7 +3619,37 @@ Status BlockBasedTable::Get(const ReadOptions& read_options, const Slice& key,
         break;
       }
 
-      bool may_exist = biter.SeekForGet(key);
+      TEST_SYNC_POINT_CALLBACK("BlockBasedTable::Get:BeforeSetDataIterFirst&LastKey", &biter);
+      // TODO(fyp): Check if key is in the data block, if not then goes on, for PLR only
+      bool plr_may_exist = true;
+      if (rep_->index_type == BlockBasedTableOptions::kLearnedIndexWithPLR) {
+        biter.SeekToFirst();
+        Slice first_key = biter.key();
+        if (!biter.Valid()) {
+          // The data block is empty, we should go on to the next block
+          plr_may_exist = false;
+        }
+        else {
+          // Data block not empty, can move on
+          biter.SeekToLast();
+          Slice last_key = biter.key();
+          if (rep_->internal_comparator.Compare(ExtractUserKey(key), ExtractUserKey(first_key)) < 0) {
+            plr_may_exist = false;
+            // This will change block range, use with precaution
+            // Will be changed if have time
+            iiter->SetEndBlockAsCurrent();
+          }
+          if (rep_->internal_comparator.Compare(ExtractUserKey(key), ExtractUserKey(last_key)) > 0) {
+            plr_may_exist = false;
+            // This will change block range, use with precaution
+            // Will be changed if have time
+            iiter->SetBeginBlockAsCurrent();
+          }
+        }
+      }
+      TEST_SYNC_POINT_CALLBACK("BlockBasedTable::Get:AfterSetDataIterFirst&LastKey", &biter);
+
+      bool may_exist = biter.SeekForGet(key) && plr_may_exist;
       // If user-specified timestamp is supported, we cannot end the search
       // just because hash index lookup indicates the key+ts does not exist.
       if (!may_exist && ts_sz == 0) {
@@ -3661,7 +3665,6 @@ Status BlockBasedTable::Get(const ReadOptions& read_options, const Slice& key,
           if (!ParseInternalKey(biter.key(), &parsed_key)) {
             s = Status::Corruption(Slice());
           }
-
           if (!get_context->SaveValue(
                   parsed_key, biter.value(), &matched,
                   biter.IsValuePinned() ? &biter : nullptr)) {

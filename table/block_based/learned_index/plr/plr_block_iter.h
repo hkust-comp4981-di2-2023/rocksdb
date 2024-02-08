@@ -22,15 +22,16 @@ namespace ROCKSDB_NAMESPACE {
 // temporary design: https://drive.google.com/file/d/1Z2s31E8Pfxjy6GUOL2a9f5ea2-1hJOFV/view?usp=sharing
 class PLRBlockIter : public InternalIteratorBase<IndexValue> {
  public:
-	PLRBlockIter(BlockFetcherParams* params, bool key_includes_seq, const uint64_t num_data_blocks): 
+	PLRBlockIter(BlockContents* contents, 
+				bool key_includes_seq, 
+				const uint64_t num_data_blocks): 
 		InternalIteratorBase<IndexValue>(),
 		seek_mode_(SeekMode::kUnknown),
-		data_(params->contents->data.data()),
+		data_(contents->data.data()),
 		current_(invalid_block_number_),
 		begin_block_(invalid_block_number_),
 		end_block_(invalid_block_number_),
 		key_includes_seq_(key_includes_seq),
-		params_(params),
 		helper_(std::unique_ptr<PLRBlockHelper>(new PLRBlockHelper(num_data_blocks, data_,
 																	begin_block_, end_block_)))
 		{}
@@ -80,6 +81,14 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 	// this function should return false.
 	bool IsValuePinned() const override { return false; }
 
+	inline void SetBeginBlockAsCurrent() {
+		begin_block_ = current_ + 1;
+	}
+
+	inline void SetEndBlockAsCurrent() {
+		end_block_ = current_ - 1;
+	}
+
  private:
 	enum class SeekMode : char {
 		kUnknown = 0x00,
@@ -87,9 +96,6 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 		kBinarySeek = 0x02,
 	};
 	SeekMode seek_mode_;
-
-	// Block fetcher parameters
-	BlockFetcherParams* params_;
 
 	// Actual block content.
 	// It is used only once when initializing helper_. The memory buffer will be
@@ -101,6 +107,9 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 	// Changed to uint64_t to match the type of num_data_blocks_ 
 	uint64_t current_, begin_block_, end_block_;
 	static const uint64_t invalid_block_number_ = UINT64_MAX;
+
+	// First and last key of current data block, also the key of current search
+	// Slice first_key_, last_key_, current_key_;
 
 	// If true, this means keys written in index block contains seq_no, which are
 	// internal keys. As a result, when we Seek() an internal key, we don't need
@@ -129,9 +138,6 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 	inline uint64_t GetMidpointBlockNumber() const {
 		return (begin_block_ + end_block_) / 2;
 	}
-
-	Status BinarySearchBlockHandle(const Slice& target, uint64_t& begin_block, 
-									uint64_t& end_block);
 
 	void SetCurrentIndexValue();
 };
@@ -176,7 +182,7 @@ class PLRBlockHelper {
 
 	// Helper function to decode PLR block
 	// Only extract block_sizes, PLRDataRep takes original encoded str
-	Status GetModelParamsAndBlockSizes(const char* data,
+	Status GetBlockSizes(const char* data,
 									 	std::shared_ptr<uint64_t[]> block_sizes);
 
 	// Need a function ptr for the 'rounding rule' when a decimal block is 

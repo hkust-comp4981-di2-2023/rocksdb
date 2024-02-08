@@ -96,7 +96,7 @@ void PLRBlockIter::SeekToLast() {
 void PLRBlockIter::Seek(const Slice& target) {
 	TEST_SYNC_POINT("PLRBlockIter::Seek:0");
 	assert(helper_ != nullptr);
-	
+
 	seek_mode_ = SeekMode::kUnknown;
 	
 	Slice seek_key = target;
@@ -119,7 +119,6 @@ void PLRBlockIter::Seek(const Slice& target) {
 	}
 
 	seek_mode_ = SeekMode::kBinarySeek;
-
 }
 
 // Work differently based on seek_mode_.
@@ -216,7 +215,6 @@ void PLRBlockIter::SetCurrentIndexValue() {
 	
 	IndexValue value_ = IndexValue();
 	
-	// Should use a handle from class attribute?
 	BlockHandle handle = BlockHandle();
 	status_ = helper_->GetBlockHandle(current_, handle);
 
@@ -228,11 +226,11 @@ void PLRBlockIter::SetCurrentIndexValue() {
 
 	if (seek_mode_ == SeekMode::kBinarySeek) {
 		// Update the begin_block_ or end_block_, based on current block value.
-		
+		// do nothing currently, unless have time to change SetBeginBlockAsCurrent()
 	}
 }
 
-Status PLRBlockHelper::GetModelParamsAndBlockSizes(const char* data,
+Status PLRBlockHelper::GetBlockSizes(const char* data,
 												 	std::shared_ptr<uint64_t[]> block_sizes) {
 	assert(data != nullptr);
 
@@ -258,7 +256,7 @@ Status PLRBlockHelper::GetModelParamsAndBlockSizes(const char* data,
 Status PLRBlockHelper::DecodePLRBlock(const char* data, 
 					std::shared_ptr<uint64_t[]> block_sizes) {
 	// Extract data block sizes
-	Status s = GetModelParamsAndBlockSizes(data, block_sizes);
+	Status s = GetBlockSizes(data, block_sizes);
 	if (!s.ok()) {
 		return Status::NotSupported();
 	}
