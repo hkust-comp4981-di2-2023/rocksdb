@@ -475,7 +475,7 @@ class PLRIndexBuilder: public IndexBuilder {
     if (first_key_in_next_block != nullptr) {
       // current AddIndexEntry() call is not processing with:
       // current_block = last data block
-      helper_.AddPoint(*first_key_in_next_block);
+      helper_.AddPLRTrainingPoint(*first_key_in_next_block);
     }
     helper_.AddHandle(block_handle);
   }
@@ -485,7 +485,7 @@ class PLRIndexBuilder: public IndexBuilder {
   void OnKeyAdded(const Slice& key) override {
     if (is_first_key_in_first_block_) {
       is_first_key_in_first_block_ = false;
-      helper_.AddPoint(key);
+      helper_.AddPLRTrainingPoint(key);
     }
   }
 
@@ -522,8 +522,10 @@ class PLRIndexBuilder: public IndexBuilder {
       finished_(false) {}
 
     // Add a new point to trainer_. Increment num_data_blocks by 1.
+    // This assumes AddPLRTrainingPoint() is called in the sorted order of
+    // data blocks.
     // REQUIRES: !finished_
-    void AddPoint(const Slice& first_key_in_data_block) {
+    void AddPLRTrainingPoint(const Slice& first_key_in_data_block) {
       assert(!finished_);
       
       double first_key_floating_rep = DummyStr2DoubleFunction(first_key_in_data_block.data());
