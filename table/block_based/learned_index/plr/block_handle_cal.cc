@@ -75,20 +75,21 @@ Status Encode(std::string* encoded_ptr,std::vector<BlockHandle> handle) /*encode
 
 Status BlockHandleCalculatorStub::Decode_size(const std::string encoded_data, std::shared_ptr<uint64_t[]> block_sizes)
 {
+	// Handle the case where input encoded_data's length doesn't match
+	// Return an error or an appropriate response
+	assert(encoded_data.size() == 8 * total_num_data_blocks);
+	
 	/*not sure do we have to decode all num_data_blocks*/
 	for(uint64_t i=0; i<total_num_data_blocks; i++)
 	{
-		// Handle the case where the input string is smaller than 8 bytes
-        // Return an error or an appropriate response
-		assert(encoded_data.size() < 8);
 
 		// Extract 8 bytes from the string
 		uint64_t count = i*8;
-		std::string temp = encoded_data.substr(0+count, 7+count);
+		std::string temp = encoded_data.substr(count, 8);
 		//cast it to char*
 		const char* charPtr = temp.c_str();
 		//decode and put into block_sizes
-		DecodeFixed64(charPtr, block_sizes[i]);
+		block_sizes[i] = DecodeFixed64(charPtr);
 	}
 	return Status::OK();
 }
