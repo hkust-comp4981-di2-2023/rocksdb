@@ -19,7 +19,7 @@
 #include "rocksdb/comparator.h"
 #include "table/block_based/block_based_table_factory.h"
 #include "table/block_based/block_builder.h"
-#include "table/block_based/learned_index/plr/external/plr/library.h"
+#include "table/block_based/learned_index/plr/plr_index_builder_helper.h"
 #include "table/format.h"
 
 namespace ROCKSDB_NAMESPACE {
@@ -502,82 +502,6 @@ class PLRIndexBuilder: public IndexBuilder {
   size_t IndexSize() const override { return index_size_; }
 
  private:
-  // TODO(fyp): Consider moving this to table/block_based/learned_index/plr
-  //
-  // This is a wrapper class of our standalone PLR module.
-  // It takes inputs from PLRIndexBuilder::AddIndexEntry() etc and outputs
-  // the actual index block content Slice.
-  //
-  // The helper instance should stay alive until the Slice is actually written
-  // to the file/disk, because the Slice returned relies on this->buffer_.
-  class PLRBuilderHelper {
-   public:
-    PLRBuilderHelper() = delete;
-
-    PLRBuilderHelper(uint32_t gamma): 
-      trainer_(gamma),
-      num_data_blocks_(0),
-      gamma_(gamma),
-      buffer_(),
-      finished_(false) {}
-
-    // Add a new point to trainer_. Increment num_data_blocks by 1.
-    // This assumes AddPLRTrainingPoint() is called in the sorted order of
-    // data blocks.
-    // REQUIRES: !finished_
-    void AddPLRTrainingPoint(const Slice& first_key_in_data_block) {
-      assert(!finished_);
-      
-      double first_key_floating_rep = DummyStr2DoubleFunction(first_key_in_data_block.data());
-      Point<double> p(first_key_floating_rep, num_data_blocks_);
-      trainer_.process(p);
-    }
-
-    // TODO(fyp)
-    void AddHandle(const BlockHandle& /* block_handle */ ) {}
-
-    // Create a function-scoped PLRDataRep to Encode() and return a Slice.
-    // REQUIRES: !finished_
-    Slice Finish() {
-      assert(!finished_);
-
-      std::vector<Segment<uint64_t, double>> segments = trainer_.finish();
-      auto encoder = PLRDataRep<uint64_t, double>(gamma_, segments);
-
-      buffer_ = encoder.Encode();
-      finished_ = true;
-      return Slice(buffer_);
-    }
-  
-   private:
-    double DummyStr2DoubleFunction(const char* /*str*/) {
-      // 2 step: 1. str2int 2. int2double (implicit cast?)
-      return 1.0;
-    }
-
-    // TODO(fyp): Confirm data type
-    // TODO(fyp): Check below questions, to be dicussed - 1 & 2 are blockers
-    // Question:
-    // 1. When creating Points<double>, how data block key -?-> double?
-    // --> we need an encoding scheme (with varying base for each char), right?
-    // 2. Suppose we got this scheme when training model, how to retrieve
-    // same parameters when loading the model via iterator?
-    // --> we need some way to store scheme in index block :(
-    // --> cost of scheme: 1 byte per char
-    // 3. Suppose 1. and 2. is solved. Now I pass a key with len() >
-    // len(scheme #char), how to cope with this?
-    // --> easy, truncate the extra chars at the back.
-
-    GreedyPLR<uint64_t, double> trainer_;
-    uint32_t num_data_blocks_;
-    uint32_t gamma_;
-    // Make sure this class is not deleted before buffer_ referenced by
-    // return value of this->Finish() is written to disk; otherwise, that
-    // slice (return value) contains a dangling pointer.
-    std::string buffer_;
-    bool finished_;
-  };
-
   PLRBuilderHelper helper_;
   // If true, OnKeyAdded() will use helper_ to add an Point for PLR training
   // then set this flag to false.
