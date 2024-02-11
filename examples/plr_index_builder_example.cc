@@ -47,8 +47,8 @@ int main() {
   std::vector<Slice>::const_iterator it = keys.begin();
   it++;
   std::vector<BlockHandle>::const_iterator bhit = bh.begin();
-  for (; it != keys.end(); it++, bh++) {
-    builder->AddIndexEntry(nullptr, *it, *bh);
+  for (; it != keys.end(); it++, bhit++) {
+    builder->AddIndexEntry(nullptr, *it, *bhit);
   }
   builder->AddIndexEntry(nullptr, nullptr, bh.back());
 
@@ -56,7 +56,7 @@ int main() {
   IndexBuilder::IndexBlocks ib;
   ib.index_block_contents = MakeSlice(result);
 
-  builder->Finish(ib, bh.back());
+  builder->Finish(&ib, bh.back());
 
   printf("Encoded string: %s\n", ib.index_block_contents.data());
 
