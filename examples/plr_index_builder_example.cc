@@ -44,9 +44,10 @@ int main() {
 
 
   builder->OnKeyAdded(keys[0]);
-  for (std::vector<std::string>::const_iterator it = keys.begin() + 1,
-        std::vector<BlockHandle>::const_iterator bhit = bh.begin();
-        it != keys.end(); it++, bh++) {
+  std::vector<Slice>::const_iterator it = keys.begin();
+  it++;
+  std::vector<BlockHandle>::const_iterator bhit = bh.begin();
+  for (; it != keys.end(); it++, bh++) {
     builder->AddIndexEntry(nullptr, *it, *bh);
   }
   builder->AddIndexEntry(nullptr, nullptr, bh.back());
