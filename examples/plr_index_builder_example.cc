@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <string>
 #include <vector>
+#include <algorith>
 
 #include "rocksdb/db.h"
 #include "rocksdb/slice.h"
@@ -29,6 +30,7 @@ int main() {
   std::vector<std::string> tmp = {"yamada", "anna", "totemo", "kawaii", 
   "ichikawa", "kyotaro", "mo", "kokkoi",
   "kanojo", "dekite", "hoshii"};
+  std::sort(tmp.begin(), tmp.end());
   std::vector<Slice> keys;
   std::transform(tmp.begin(), tmp.end(), std::back_inserter(keys), MakeSlice);
 
