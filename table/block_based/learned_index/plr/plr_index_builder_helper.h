@@ -91,7 +91,7 @@ class PLRBuilderHelper {
   double DummyStr2DoubleFunction(const char* str, size_t size) {
     assert(size <= 8);
     uint64_t int_rep = 0;
-    for (int i = 0; i < size; ++i) {
+    for (size_t i = 0; i < size; ++i) {
       int_rep <<= 8;
       int_rep += (int) str[i];
     }
