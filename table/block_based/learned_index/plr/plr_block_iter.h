@@ -154,7 +154,7 @@ class PLRBlockHelper {
 		block_sizes_(new uint64_t[num_data_blocks_]),
 		handle_calculator_(BlockHandleCalculatorStub(num_data_blocks, block_sizes_,
 													begin_block, end_block)) {
-			DecodePLRBlock(data_, block_sizes_);
+			DecodePLRBlock(data_);
 		}
 
 	// Decode two parts: PLR model parameters and Data block size array
