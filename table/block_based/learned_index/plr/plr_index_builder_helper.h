@@ -12,9 +12,6 @@ class DataBlockHandlesEncoder {
  public:
   DataBlockHandlesEncoder() = default;
 
-  DataBlockHandlesEncoder(uint64_t num_data_blocks): 
-    data_block_sizes_(num_data_blocks) {}
-
   void AddHandle(const BlockHandle& handle) {
     data_block_sizes_.emplace_back(handle.size());
   }
@@ -62,7 +59,7 @@ class PLRBuilderHelper {
     
     double first_key_floating_rep = DummyStr2DoubleFunction(
       first_key_in_data_block.data(), first_key_in_data_block.size());
-    Point<double> p(first_key_floating_rep, num_data_blocks_);
+    Point<double> p(first_key_floating_rep, num_data_blocks_++);
     trainer_.process(p);
   }
 
