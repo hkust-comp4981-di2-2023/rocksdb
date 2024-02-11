@@ -6,7 +6,7 @@
 #include <cstdio>
 #include <string>
 #include <vector>
-#include <algorith>
+#include <algorithm>
 
 #include "rocksdb/db.h"
 #include "rocksdb/slice.h"
