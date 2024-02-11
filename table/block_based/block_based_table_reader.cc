@@ -985,7 +985,6 @@ class PLRIndexReader: public BlockBasedTable::CustomIndexReaderCommon {
   }
 
  private:
-  RandomAccessFileReader* file_;
   uint64_t num_data_blocks_;
   PLRIndexReader(const BlockBasedTable* t,
                           CachableEntry<BlockContents>&& index_block_contents)

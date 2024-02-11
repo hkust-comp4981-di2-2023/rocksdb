@@ -230,8 +230,7 @@ void PLRBlockIter::SetCurrentIndexValue() {
 	}
 }
 
-Status PLRBlockHelper::GetBlockSizes(const char* data,
-												 	std::shared_ptr<uint64_t[]> block_sizes) {
+Status PLRBlockHelper::GetBlockSizes(const char* data) {
 	assert(data != nullptr);
 
 	static const uint64_t UINT64_T_SIZE = 8;
@@ -247,7 +246,7 @@ Status PLRBlockHelper::GetBlockSizes(const char* data,
         uint64_t value;
 		// Extract as uint64_t 
         ss >> value;
-        block_sizes[i] = value;
+        block_sizes_[i] = value;
     }
 
 	return Status::OK();

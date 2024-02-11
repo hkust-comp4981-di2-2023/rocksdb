@@ -182,8 +182,7 @@ class PLRBlockHelper {
 
 	// Helper function to decode PLR block
 	// Only extract block_sizes, PLRDataRep takes original encoded str
-	Status GetBlockSizes(const char* data,
-									 	std::shared_ptr<uint64_t[]> block_sizes);
+	Status GetBlockSizes(const char* data);
 
 	// Need a function ptr for the 'rounding rule' when a decimal block is 
 	enum class RoundingRule: char {
