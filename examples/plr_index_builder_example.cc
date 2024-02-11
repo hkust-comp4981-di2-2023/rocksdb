@@ -21,7 +21,7 @@ Slice MakeSlice(std::string& element) {
   return Slice(element);
 }
 
-BlockHandle MakeBlockHandle(int& offset_and_size) {
+BlockHandle MakeBlockHandle(const int& offset_and_size) {
   return BlockHandle(offset_and_size, offset_and_size);
 }
 
@@ -48,17 +48,21 @@ int main() {
   it++;
   std::vector<BlockHandle>::const_iterator bhit = bh.begin();
   for (; it != keys.end(); it++, bhit++) {
-    builder->AddIndexEntry(nullptr, *it, *bhit);
+    builder->AddIndexEntry(nullptr, &(*it), *bhit);
   }
-  builder->AddIndexEntry(nullptr, nullptr, bh.back());
+  builder->AddIndexEntry(nullptr, nullptr, *bhit);
 
   std::string result;
   IndexBuilder::IndexBlocks ib;
   ib.index_block_contents = MakeSlice(result);
 
-  builder->Finish(&ib, bh.back());
+  builder->Finish(&ib, *bhit);
 
-  printf("Encoded string: %s\n", ib.index_block_contents.data());
+  printf("Encoded string size: %d\n", ib.index_block_contents.size());
+  for (size_t i = 0; i < ib.index_block_contents.size(); ++i) {
+    printf("%hhu;", ib.index_block_contents.data()[i]);
+  }
+  printf("\n");
 
   delete builder;
 
