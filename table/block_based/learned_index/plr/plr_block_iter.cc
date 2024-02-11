@@ -252,10 +252,9 @@ Status PLRBlockHelper::GetBlockSizes(const char* data) {
 	return Status::OK();
 }
 
-Status PLRBlockHelper::DecodePLRBlock(const char* data, 
-					std::shared_ptr<uint64_t[]> block_sizes) {
+Status PLRBlockHelper::DecodePLRBlock(const char* data) {
 	// Extract data block sizes
-	Status s = GetBlockSizes(data, block_sizes);
+	Status s = GetBlockSizes(data);
 	if (!s.ok()) {
 		return Status::NotSupported();
 	}

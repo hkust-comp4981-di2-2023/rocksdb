@@ -160,7 +160,7 @@ class PLRBlockHelper {
 	// Decode two parts: PLR model parameters and Data block size array
 	// Construct stub
 	// Update max_block_number_, get from property block
-	Status DecodePLRBlock(const char* data, std::shared_ptr<uint64_t[]> block_sizes);
+	Status DecodePLRBlock(const char* data);
 	
 	// TODO(fyp): const necessary? cannot get range pair unless make GetValue() const
 	// or remove const here
