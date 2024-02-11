@@ -45,7 +45,7 @@ class PLRBuilderHelper {
  public:
   PLRBuilderHelper() = delete;
 
-  PLRBuilderHelper(uint32_t gamma): 
+  PLRBuilderHelper(double gamma): 
     trainer_(gamma),
     data_block_handles_encoder_(),
     num_data_blocks_(0),
@@ -102,7 +102,7 @@ class PLRBuilderHelper {
   GreedyPLR<uint64_t, double> trainer_;
   DataBlockHandlesEncoder data_block_handles_encoder_;
   uint32_t num_data_blocks_;
-  uint32_t gamma_;
+  double gamma_;
   // Make sure this class is not deleted before buffer_ referenced by
   // return value of this->Finish() is written to disk; otherwise, that
   // slice (return value) contains a dangling pointer.

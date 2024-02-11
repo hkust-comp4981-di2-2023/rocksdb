@@ -335,7 +335,7 @@ struct BlockBasedTableOptions {
   //
   // For example, when gamma = 2 and predicted data block number is 5,
   // the corresponding key must be within data blocks [3, 7] if it exists.
-  uint32_t plr_index_block_gamma = 1;
+  double plr_index_block_gamma = 0.5;
 };
 
 // Table Properties that are specific to block-based table properties.

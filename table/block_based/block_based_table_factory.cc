@@ -425,7 +425,7 @@ std::string BlockBasedTableFactory::GetPrintableTableOptions() const {
   snprintf(buffer, kBufferSize, "  block_align: %d\n",
            table_options_.block_align);
   ret.append(buffer);
-  snprintf(buffer, kBufferSize, "  plr_index_block_gamma: %d\n",
+  snprintf(buffer, kBufferSize, "  plr_index_block_gamma: %.2f\n",
            table_options_.plr_index_block_gamma);
   ret.append(buffer);
   return ret;

@@ -193,6 +193,6 @@ static std::unordered_map<std::string, OptionTypeInfo>
           OptionType::kBoolean, OptionVerificationType::kNormal, false, 0}},
         {"plr_index_block_gamma",
          {offsetof(struct BlockBasedTableOptions, plr_index_block_gamma),
-          OptionType::kUInt32T, OptionVerificationType::kNormal, false, 0}}};
+          OptionType::kDouble, OptionVerificationType::kNormal, false, 0}}};
 #endif  // !ROCKSDB_LITE
 }  // namespace ROCKSDB_NAMESPACE

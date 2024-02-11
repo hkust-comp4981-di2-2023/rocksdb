@@ -40,7 +40,7 @@ int main() {
                   std::back_inserter(bh), MakeBlockHandle);
 
 
-  PLRIndexBuilder* builder = new PLRIndexBuilder(2);
+  PLRIndexBuilder* builder = new PLRIndexBuilder(0.3);
 
 
   builder->OnKeyAdded(keys[0]);

@@ -460,7 +460,7 @@ class PLRIndexBuilder: public IndexBuilder {
  public:
   PLRIndexBuilder() = delete;
 
-  PLRIndexBuilder(uint32_t gamma): 
+  PLRIndexBuilder(double gamma): 
     IndexBuilder(nullptr),
     helper_(gamma),
     is_first_key_in_first_block_(true) {}
