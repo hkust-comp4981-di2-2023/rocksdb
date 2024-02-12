@@ -523,7 +523,7 @@ void BlockBasedTableBuilder::Add(const Slice& key, const Slice& value) {
       /*TODO*/
       uint64_t offset = static_cast<uint64_t>(rep_->data_begin_offset);
       uint64_t size = static_cast<uint64_t>(rep_->data_block.CurrentSizeEstimate());
-      AddBlockToBlockHandle(offset,size);
+      block_handle_cal.AddBlockToBlockHandle(offset,size);
 
       if (r->state == Rep::State::kBuffered &&
           r->data_begin_offset > r->target_file_size) {

@@ -102,6 +102,7 @@ class BlockBasedTableBuilder : public TableBuilder {
  private:
   bool ok() const { return status().ok(); }
   /*todo create a private member of BlockHandleCalculatorStub() for use*/
+  BlockHandleCalculatorStub block_handle_cal;
 
   // Transition state from buffered to unbuffered. See `Rep::State` API comment
   // for details of the states.
