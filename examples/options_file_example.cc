@@ -80,7 +80,8 @@ int main() {
 
   // PLR related examples
   ColumnFamilyHandle* cf2;
-  s = db->CreateColumnFamily(ColumnFamilyOptions(), "plr_cf", &cf2);
+  s = db->CreateColumnFamily(cf_descs[2].options, "plr_cf", &cf2);
+  delete cf2;
   assert(s.ok());
 
   // close DB

@@ -1690,7 +1690,9 @@ std::unordered_map<std::string, BlockBasedTableOptions::IndexType>
         {"kTwoLevelIndexSearch",
          BlockBasedTableOptions::IndexType::kTwoLevelIndexSearch},
         {"kBinarySearchWithFirstKey",
-         BlockBasedTableOptions::IndexType::kBinarySearchWithFirstKey}};
+         BlockBasedTableOptions::IndexType::kBinarySearchWithFirstKey},
+        {"kLearnedIndexWithPLR",
+         BlockBasedTableOptions::IndexType::kLearnedIndexWithPLR}};
 
 std::unordered_map<std::string, BlockBasedTableOptions::DataBlockIndexType>
     OptionsHelper::block_base_table_data_block_index_type_string_map = {
