@@ -64,6 +64,7 @@ int main() {
   plr_bbt_opts.block_cache = cache;
   plr_bbt_opts.index_type = BlockBasedTableOptions::kLearnedIndexWithPLR;
   plr_bbt_opts.plr_index_block_gamma = 0.3;
+  cf_descs[2].options.table_factory.reset(NewBlockBasedTableFactory(plr_bbt_opts));
 
   // destroy and open DB
   DB* db;
@@ -78,7 +79,8 @@ int main() {
   assert(s.ok());
 
   // PLR related examples
-  s = db->CreateColumnFamily(ColumnFamilyOptions(), "plr_cf", &cf);
+  ColumnFamilyHandle* cf2;
+  s = db->CreateColumnFamily(ColumnFamilyOptions(), "plr_cf", &cf2);
   assert(s.ok());
 
   // close DB
