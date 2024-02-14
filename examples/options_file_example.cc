@@ -116,6 +116,7 @@ int main() {
   loaded_cf_descs[0].options.compaction_filter = compaction_filter.get();
 
   // PLR related examples
+  // index of column family "plr_cf" should be 2 - change it otherwise
   auto* loaded_bbt_opt = reinterpret_cast<BlockBasedTableOptions*>(
     loaded_cf_descs[2].options.table_factory->GetOptions());
   assert(loaded_bbt_opt->index_type == 
