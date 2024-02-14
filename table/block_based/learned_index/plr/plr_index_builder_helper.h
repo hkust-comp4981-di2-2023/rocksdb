@@ -57,7 +57,7 @@ class PLRBuilderHelper {
   void AddPLRTrainingPoint(const Slice& first_key_in_data_block) {
     assert(!finished_);
     
-    double first_key_floating_rep = DummyStr2DoubleFunction(
+    double first_key_floating_rep = Str2Double(
       first_key_in_data_block.data(), first_key_in_data_block.size());
     Point<double> p(first_key_floating_rep, num_data_blocks_++);
     trainer_.process(p);
@@ -84,15 +84,19 @@ class PLRBuilderHelper {
   }
 
  private:
-  // TODO(fyp): replace with oscar's function
-  double DummyStr2DoubleFunction(const char* str, size_t size) {
+  // TODO(fyp): reading non-active member from union is UB, although most
+  // compiler defined its behavior as a non-standard extension?
+  double Str2Double(const char* str, size_t size) {
     assert(size <= 8);
-    uint64_t int_rep = 0;
-    for (size_t i = 0; i < size; ++i) {
-      int_rep <<= 8;
-      int_rep += (int) str[i];
-    }
-    int_rep <<= 8 * (8 - size);
+    // uint64_t int_rep = 0;
+    // for (size_t i = 0; i < size; ++i) {
+    //   int_rep <<= 8;
+    //   int_rep += 0xff & str[i];
+    // }
+    // int_rep <<= 8 * (8 - size);
+    std::string s(str, size);
+
+    uint64_t int_rep = stringToNumber<uint64_t>(s);
     return (double) int_rep;
   }
 
