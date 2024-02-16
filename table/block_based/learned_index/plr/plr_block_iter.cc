@@ -13,12 +13,6 @@
 #include <sstream>
 #include "table/block_based/learned_index/plr/plr_block_fetcher_params.h"
 
-/*
-status_ = file_->Read(handle_.offset(), block_size_ + kBlockTrailerSize,
-                            &slice_, used_buf_, for_compaction_);
-!!! Remember to add 5 bytes for kBlockTrailerSize for each block !!!
-*/
-
 namespace ROCKSDB_NAMESPACE {
 
 bool PLRBlockIter::Valid() const {
@@ -213,7 +207,7 @@ void PLRBlockIter::SetCurrentIndexValue() {
 		return;
 	}
 	
-	IndexValue value_ = IndexValue();
+	value_ = IndexValue();
 	
 	BlockHandle handle = BlockHandle();
 	status_ = helper_->GetBlockHandle(current_, handle);
@@ -224,54 +218,52 @@ void PLRBlockIter::SetCurrentIndexValue() {
 
 	value_.handle = handle;
 
-	if (seek_mode_ == SeekMode::kBinarySeek) {
-		// Update the begin_block_ or end_block_, based on current block value.
-		// do nothing currently, unless have time to change SetBeginBlockAsCurrent()
-	}
+	// TODO(fyp): What is this??
+	// if (seek_mode_ == SeekMode::kBinarySeek) {
+	// 	// Update the begin_block_ or end_block_, based on current block value.
+	// 	// do nothing currently, unless have time to change SetBeginBlockAsCurrent()
+	// }
 }
 
-Status PLRBlockHelper::GetBlockSizes(const char* data) {
-	assert(data != nullptr);
+Status PLRBlockHelper::DecodePLRBlock(const Slice& data, 
+																			const uint64_t first_data_block_offset) {
+	// Extract the substring corr. to PLR Segments and Data block sizes
+	const size_t total_length = data.size();
 
-	static const uint64_t UINT64_T_SIZE = 8;
-	char* data_ptr;
+	const size_t block_handles_length = kParamSize * num_data_blocks_;
+	assert(total_length > block_handles_length);
+
+	const size_t plr_segments_length = total_length - block_handles_length;
+	assert(plr_segments_length % kParamSize == 0);
 	
-	// Starting position of data block sizes
-    uint64_t startPos = std::max<uint64_t>(0, static_cast<uint64_t>(strlen(data)) - (UINT64_T_SIZE * num_data_blocks_));
+	const char* plr_segments_start = data.data();
+	const char* block_handles_start = plr_segments_start + plr_segments_length;
 
-    for (uint64_t i = 0; i < num_data_blocks_; i++) {
-		// Starting position of current data block size
-		const char* startPos_value = data + startPos + (i * UINT64_T_SIZE);
-		std::stringstream ss(std::string(startPos_value, UINT64_T_SIZE));
-        uint64_t value;
-		// Extract as uint64_t 
-        ss >> value;
-        block_sizes_[i] = value;
-    }
+	std::string encoded_plr_segments(plr_segments_start, plr_segments_length);
+	std::string encoded_block_handles(block_handles_start, block_handles_length);
 
-	return Status::OK();
-}
-
-Status PLRBlockHelper::DecodePLRBlock(const char* data) {
-	// Extract data block sizes
-	Status s = GetBlockSizes(data);
-	if (!s.ok()) {
-		return Status::NotSupported();
-	}
-	// model constructed in PLRDataRep
- 	model_ = PLRDataRep<uint64_t, double>(data);
+	// Initialize model_ and handle_calculator_
+	model_->reset(
+		new PLRDataRep<EncodedStrBaseType, double>(encoded_plr_segments));
+	handle_calculator_->reset(
+		new BlockHandleCalculator(encoded_block_handles, num_data_blocks_, 
+															first_data_block_offset));
 	
 	return Status::OK();
 }
 
-Status PLRBlockHelper::PredictBlockRange(const Slice& target, uint64_t& begin_block, uint64_t& end_block) {
+Status PLRBlockHelper::PredictBlockRange(const Slice& target, 
+																					uint64_t& begin_block, 
+																					uint64_t& end_block) {
 	// Check if target has uint64_t size
-	assert(target.size() == sizeof(uint64_t));
+	assert(target.size() == kKeySize);
+	
 	// Cast back to uint64_t
-	uint64_t key = reinterpret_cast<uint64_t>(target.data());
+	std::string target_str(target.data(), target.size());
+	KeyInternalRep key = stringToNumber<KeyInternalRep>(target_str);
 
 	// Get range, check for invalid range
-	std::pair<uint64_t, uint64_t> range =  model_.GetValue(key);
+	auto range =  model_->GetValue(key);
 	assert(range.first <= range.second);
 
 	begin_block = std::max<uint64_t>(0, range.first);
@@ -279,40 +271,10 @@ Status PLRBlockHelper::PredictBlockRange(const Slice& target, uint64_t& begin_bl
 	return Status::OK();
 }
 
-Status PLRBlockHelper::GetBlockHandle(uint64_t current, BlockHandle& block_handle) const {
-	// Get block handle from stub
-	handle_calculator_.GetBlockHandle(current, block_handle);
-	return Status::OK();
-}
+Status PLRBlockHelper::GetBlockHandle(const uint64_t data_block_number, 
+																			BlockHandle& block_handle) const {
+	assert(data_block_number < num_data_blocks_);
 
-Status BlockHandleCalculatorStub::GetBlockHandle(uint64_t current, BlockHandle& block_handle) const {
-	// Get block handle from stub
-	assert(current < handles_.size());
-	block_handle = handles_[current];
-	return Status::OK();
+	return handle_calculator_->GetBlockHandle(data_block_number, block_handle);
 }
-
-Status BlockHandleCalculatorStub::GetAllDataBlockHandles(std::shared_ptr<uint64_t[]> block_sizes,
-													uint64_t& begin_block, uint64_t& end_block) {
-    // Need: range, data block sizes
-	// Assuming data block is 0-indexed
-	// Assuming the index block data is stored as [offset1, size1, offset2, size2, ...]
-	assert(block_sizes != nullptr);
-	assert(end_block < num_data_blocks_);
-	uint64_t offset = 0;
-	int i = 0;
-	for (; i < begin_block; i++) {
-		offset += block_sizes[i];
-	}
-	for (; i < end_block; i++) {
-		BlockHandle block_handle;
-		block_handle.set_offset(offset);
-		block_handle.set_size(block_sizes[i]);
-		handles_.push_back(block_handle);
-		offset += block_sizes[i];
-	}
-	return Status::OK();
-  }
 } // namespace ROCKSDB_NAMESPACE
-
-
