@@ -921,8 +921,6 @@ class PLRIndexReader: public BlockBasedTable::CustomIndexReaderCommon {
     assert(!pin || prefetch);
     assert(index_reader != nullptr);
 
-    // Allow NewIterator to access file, .get() returns value of unique_ptr
-    RandomAccessFileReader* file = table->get_rep()->file.get();
     CachableEntry<BlockContents> index_block_contents;
     if (prefetch || !use_cache) {
       const Status s =
@@ -943,7 +941,6 @@ class PLRIndexReader: public BlockBasedTable::CustomIndexReaderCommon {
     return Status::OK();
   }
 
-  // TODO(fyp): Need parameter to indicate number of data blocks
   InternalIteratorBase<IndexValue>* NewIterator(
       const ReadOptions& read_options, bool /* disable_prefix_seek */,
       IndexBlockIter* iter, GetContext* get_context,
@@ -964,12 +961,13 @@ class PLRIndexReader: public BlockBasedTable::CustomIndexReaderCommon {
     Statistics* kNullStats = nullptr;
     // We don't return pinned data from index blocks, so no need
     // to set `block_contents_pinned`.
-    // TODO(fyp): Pass num_data_blocks_, note that it is uint64_t
-    // CachableEntry<T>.GetValue() returns pointer to value of type T
+    
     BlockContents* block_content = index_block_contents.GetValue();
 
     // TODO(fyp): 99% will leak memory, need to fix, but lets see if logic is correct first
-    auto it = new PLRBlockIter(block_content, index_key_includes_seq, num_data_blocks_);
+    auto it = new PLRBlockIter(block_content, index_key_includes_seq(), 
+                                num_data_blocks_);
+    index_block_contents.TransferTo(it);
 
     return it;
   }
@@ -987,10 +985,9 @@ class PLRIndexReader: public BlockBasedTable::CustomIndexReaderCommon {
  private:
   uint64_t num_data_blocks_;
   PLRIndexReader(const BlockBasedTable* t,
-                          CachableEntry<BlockContents>&& index_block_contents)
+                  CachableEntry<BlockContents>&& index_block_contents)
       : CustomIndexReaderCommon(t, std::move(index_block_contents)),
-      // Get num_data_blocks in current table
-        num_data_blocks_(t->get_rep()->table_properties->num_data_blocks)  {}
+        num_data_blocks_(t->get_rep()->table_properties->num_data_blocks) {}
 };
 
 void BlockBasedTable::UpdateCacheHitMetrics(BlockType block_type,
