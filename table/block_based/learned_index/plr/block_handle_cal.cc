@@ -13,85 +13,46 @@
 #include "coding.h"
 #include <algorithm>
 
-/**TODO: 1. every write encode, every read decode
-         2. every datablock creation call add offset, at the same time update the array
-         3. everytime adding a new block will update the update handle_ and num_data_blocks_ **/
-
 namespace ROCKSDB_NAMESPACE {
 
-void BlockHandleCalculatorStub::AddBlockToBlockHandle(uint64_t offset, uint64_t size) /* add blocks into the particular block*/
-{
-    /* need to check anything?*/   
-	BlockHandle handler(offset,size); 
-    handles_.push_back(handler); /*do i put BlockHandle of all data block in handles_?*/
-	total_num_data_blocks++;
-}
+// Retrieve the data block handle given a data block number.
+//
+// REQUIRES: input block number should be within [0, num_data_blocks_).
+Status BlockHandleCalculator::GetBlockHandle(const uint64_t data_block_number, 
+																							BlockHandle& block_handle) const {
+	assert(data_block_number < num_data_blocks_);
+	assert(data_block_handles_.size() == num_data_blocks_);
 
-uint64_t BlockHandleCalculatorStub::GetTotalNumDataBlock()
-{
-	return total_num_data_blocks;
-}
+	block_handle.set_offset(data_block_handles_[data_block_number].offset());
+	block_handle.set_size(data_block_handles_[data_block_number].size());
 
-
-Status BlockHandleCalculatorStub::GetBlockHandle(uint64_t current, BlockHandle& block_handle) const {
-	// Get block handle from stub
-	assert(current < handles_.size());
-	block_handle = handles_[current];
 	return Status::OK();
 }
 
-Status BlockHandleCalculatorStub::GetAllDataBlockHandles(std::shared_ptr<uint64_t[]> block_sizes,
-													uint64_t& begin_block, uint64_t& end_block) {
-    // Need: range, data block sizes
-	// Assuming data block is 0-indexed
-	// Assuming the index block data is stored as [offset1, size1, offset2, size2, ...]
-	assert(block_sizes != nullptr);
-	assert(end_block < num_data_blocks_);
-	uint64_t offset = 0;
-	int i = 0;
-	for (; i < begin_block; i++) {
-		offset += block_sizes[i];
-	}
-	for (; i < end_block; i++) {
-		BlockHandle block_handle;
-		block_handle.set_offset(offset);
-		block_handle.set_size(block_sizes[i]);
-		handles_.push_back(block_handle);
-		offset += block_sizes[i];
-	}
-	return Status::OK();
-  }
+// Decode encoded_string to get the list of data block sizes. Then calculate
+// the corresponding block handle per data block. Update the offset of the next
+// data block after each iteration.
+//
+// TODO(fyp): check if DecodeFixed64() work expectedly: expect yes because we 
+// are passing address by pointers, so even null characters in between has 
+// no effect
+Status BlockHandleCalculator::Decode(const std::string& encoded_string) {
+	assert(encoded_string.size() == sizeof(uint64_t) * num_data_blocks_);
 
-Status Encode(std::string* encoded_ptr,std::vector<BlockHandle> handle) /*encode size into string*/
-{
-	for(std::vector<BlockHandle>::iterator it = handle.begin() ; it != handle.end(); ++it)
-	{
-		// Sanity check that all fields have been set
-		assert(it->size() != ~static_cast<uint64_t>(0));
-		PutFixed64(encoded_ptr, it->size());
+	uint64_t current_data_block_size;
+	uint64_t current_offset = first_data_block_offset_;
+
+	for (uint64_t i = 0; i < num_data_blocks_; ++i) {
+		uint64_t start = i * sizeof(uint64_t);
+		std::string handle_size = encoded_string.substr(start, sizeof(uint64_t));
+		current_data_block_size = DecodeFixed64(handle_size.c_str());
+		
+		BlockHandle handle;
+		handle.set_offset(current_offset);
+		handle.set_offset(current_data_block_size);
+		data_block_handles_[i] = handle;
+
+		current_offset += current_data_block_size + kBlockTrailerSize;
 	}
-	return Status::OK();
 }
-
-Status BlockHandleCalculatorStub::Decode_size(const std::string encoded_data, std::shared_ptr<uint64_t[]> block_sizes)
-{
-	// Handle the case where input encoded_data's length doesn't match
-	// Return an error or an appropriate response
-	assert(encoded_data.size() == 8 * total_num_data_blocks);
-	
-	/*not sure do we have to decode all num_data_blocks*/
-	for(uint64_t i=0; i<total_num_data_blocks; i++)
-	{
-
-		// Extract 8 bytes from the string
-		uint64_t count = i*8;
-		std::string temp = encoded_data.substr(count, 8);
-		//cast it to char*
-		const char* charPtr = temp.c_str();
-		//decode and put into block_sizes
-		block_sizes[i] = DecodeFixed64(charPtr);
-	}
-	return Status::OK();
-}
-
 } // namespace ROCKSDB_NAMESPACE
