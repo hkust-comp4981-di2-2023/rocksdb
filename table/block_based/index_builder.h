@@ -452,10 +452,7 @@ class PartitionedIndexBuilder : public IndexBuilder {
 // 3. Encode to a string using PLRDataRep.
 // The encoded string is stored as the final block contents in IndexBlocks.
 //
-// For now, we don't care about include_first_key_.
-// TODO(fyp): Complete helper::AddHandle()
-// TODO(fyp): Modify helper::Finish() to include block size array also
-// TODO(fyp): Test compilation
+// Note: For now, we don't care about include_first_key_.
 class PLRIndexBuilder: public IndexBuilder {
  public:
   PLRIndexBuilder() = delete;

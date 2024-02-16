@@ -11,12 +11,17 @@ namespace ROCKSDB_NAMESPACE {
 class DataBlockHandlesEncoder {
  public:
   DataBlockHandlesEncoder() = default;
+  
+  void AddHandleOffset(const BlockHandle& handle) {
+    first_data_block_offset_ = handle.offset();
+  }
 
-  void AddHandle(const BlockHandle& handle) {
+  void AddHandleSize(const BlockHandle& handle) {
     data_block_sizes_.emplace_back(handle.size());
   }
 
   void Encode(std::string* encoded_string) {
+    PutFixed64(encoded_string, first_data_block_offset_);
     for (std::vector<uint64_t>::const_iterator it = data_block_sizes_.begin();
           it != data_block_sizes_.end(); it++) {
       assert(*it != 0);
@@ -25,6 +30,7 @@ class DataBlockHandlesEncoder {
   }
 
  private:
+  uint64_t first_data_block_offset_;
   std::vector<uint64_t> data_block_sizes_;
 };
 
@@ -48,6 +54,7 @@ class PLRBuilderHelper {
     num_data_blocks_(0),
     gamma_(gamma),
     buffer_(),
+    added_first_data_block_offset_(false),
     finished_(false) {}
 
   // Add a new point to trainer_. Increment num_data_blocks by 1.
@@ -65,7 +72,11 @@ class PLRBuilderHelper {
 
   // Add the current data block handle's size() to encoder
   void AddHandle(const BlockHandle& block_handle) {
-    data_block_handles_encoder_.AddHandle(block_handle);
+    if (!added_first_data_block_offset_) {
+      data_block_handles_encoder_.AddHandleOffset(block_handle);
+      added_first_data_block_offset_ = true;
+    }
+    data_block_handles_encoder_.AddHandleSize(block_handle);
   }
 
   // Create a function-scoped PLRDataRep for Encode() and return a Slice.
@@ -108,6 +119,7 @@ class PLRBuilderHelper {
   // return value of this->Finish() is written to disk; otherwise, that
   // slice (return value) contains a dangling pointer.
   std::string buffer_;
+  bool added_first_data_block_offset_;
   bool finished_;
 };
 }
