@@ -21,11 +21,9 @@ namespace ROCKSDB_NAMESPACE {
 class BlockHandleCalculator {
  public:
 	BlockHandleCalculator(const std::string& encoded_string, 
-												const uint64_t num_data_blocks, 
-												const uint64_t first_data_block_offset):
+												const uint64_t num_data_blocks):
 												data_block_handles_(),
-												num_data_blocks_(num_data_blocks),
-												first_data_block_offset_(first_data_block_offset) {
+												num_data_blocks_(num_data_blocks) {
 		data_block_handles_.reserve(num_data_blocks_);
 		Status s = Decode(encoded_string);
 		assert(s.ok());
@@ -39,6 +37,6 @@ class BlockHandleCalculator {
  private:
 	std::vector<BlockHandle> data_block_handles_;
 	const uint64_t num_data_blocks_;
-	const uint64_t first_data_block_offset_;
+	uint64_t first_data_block_offset_;
 };
 }// namespace ROCKSDB_NAMESPACE

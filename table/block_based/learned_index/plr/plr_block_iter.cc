@@ -225,8 +225,7 @@ void PLRBlockIter::SetCurrentIndexValue() {
 	// }
 }
 
-Status PLRBlockHelper::DecodePLRBlock(const Slice& data, 
-																			const uint64_t first_data_block_offset) {
+Status PLRBlockHelper::DecodePLRBlock(const Slice& data) {
 	// Extract the substring corr. to PLR Segments and Data block sizes
 	const size_t total_length = data.size();
 
@@ -246,8 +245,7 @@ Status PLRBlockHelper::DecodePLRBlock(const Slice& data,
 	model_->reset(
 		new PLRDataRep<EncodedStrBaseType, double>(encoded_plr_segments));
 	handle_calculator_->reset(
-		new BlockHandleCalculator(encoded_block_handles, num_data_blocks_, 
-															first_data_block_offset));
+		new BlockHandleCalculator(encoded_block_handles, num_data_blocks_));
 	
 	return Status::OK();
 }

@@ -32,18 +32,25 @@ Status BlockHandleCalculator::GetBlockHandle(const uint64_t data_block_number,
 // Decode encoded_string to get the list of data block sizes. Then calculate
 // the corresponding block handle per data block. Update the offset of the next
 // data block after each iteration.
+// The first uint64_t is the offset of the first block. The remaining uint64_t
+// are block sizes.
 //
 // TODO(fyp): check if DecodeFixed64() work expectedly: expect yes because we 
 // are passing address by pointers, so even null characters in between has 
 // no effect
 Status BlockHandleCalculator::Decode(const std::string& encoded_string) {
-	assert(encoded_string.size() == sizeof(uint64_t) * num_data_blocks_);
+	assert(encoded_string.size() == 
+					sizeof(uint64_t) * num_data_blocks_ + sizeof(uint64_t));
+
+	std::string first_offset_substr = encoded_string.substr(0u, sizeof(uint64_t));
+	first_data_block_offset_ = DecodeFixed64(first_offset_substr.c_str());
 
 	uint64_t current_data_block_size;
 	uint64_t current_offset = first_data_block_offset_;
 
 	for (uint64_t i = 0; i < num_data_blocks_; ++i) {
-		uint64_t start = i * sizeof(uint64_t);
+		// (i + 1) takes first data block offset into account.
+		uint64_t start = (i + 1) * sizeof(uint64_t);
 		std::string handle_size = encoded_string.substr(start, sizeof(uint64_t));
 		current_data_block_size = DecodeFixed64(handle_size.c_str());
 		

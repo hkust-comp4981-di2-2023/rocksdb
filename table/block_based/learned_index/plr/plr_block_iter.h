@@ -23,7 +23,7 @@ namespace ROCKSDB_NAMESPACE {
 class PLRBlockIter : public InternalIteratorBase<IndexValue> {
  public:
 	PLRBlockIter(const BlockContents* contents, const bool key_includes_seq, 
-				const uint64_t num_data_blocks, const uint64_t first_data_block_offset):
+				const uint64_t num_data_blocks):
 		InternalIteratorBase<IndexValue>(),
 		seek_mode_(SeekMode::kUnknown),
 		data_(contents->data),
@@ -34,7 +34,7 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 		value_(),
 		status_(),
 		helper_(std::unique_ptr<PLRBlockHelper>(
-			new PLRBlockHelper(num_data_blocks, data_, first_data_block_offset)))
+			new PLRBlockHelper(num_data_blocks, data_)))
 		{}
 
 	bool Valid() const override;
@@ -144,20 +144,18 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 // PLRBlockHelper should handle the lifecylce of all its data members properly.
 class PLRBlockHelper {
  public:
-	PLRBlockHelper(const uint64_t num_data_blocks, const Slice& data, 
-									const uint64_t first_data_block_offset):
+	PLRBlockHelper(const uint64_t num_data_blocks, const Slice& data):
 		model_(nullptr),
 		handle_calculator_(nullptr),
 		num_data_blocks_(num_data_blocks) {
-		DecodePLRBlock(data, first_data_block_offset); 
+		DecodePLRBlock(data); 
 	}
 
 	// Only called at constructor.
 	//
 	// Decode two parts: PLR model parameters and Data block size array.
 	// Initialize model_ and handle_calculator_ properly.
-	Status DecodePLRBlock(const Slice& data, 
-												const uint64_t first_data_block_offset);
+	Status DecodePLRBlock(const Slice& data);
 	
 	Status PredictBlockRange(const Slice& target, uint64_t& begin_block, 
 														uint64_t& end_block);
