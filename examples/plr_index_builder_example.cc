@@ -28,18 +28,19 @@ BlockHandle MakeBlockHandle(const int& offset_and_size) {
 
 int main() {
   std::vector<std::string> tmp = {"yamada", "anna", "totemo", "kawaii", 
-  "ichikawa", "kyotaro", "mo", "kokkoi",
-  "kanojo", "dekite", "hoshii"};
+    "ichikawa", "kyotaro", "mo", "kokkoi",
+    "kanojo", "dekite", "hoshii"};
   std::sort(tmp.begin(), tmp.end());
   std::vector<Slice> keys;
   std::transform(tmp.begin(), tmp.end(), std::back_inserter(keys), MakeSlice);
 
   std::vector<uint64_t> offset_and_size = {1, 12, 56, 78,
-  91, 126, 954, 1045,
-  5506, 20687, 50489};
+    91, 126, 954, 1045,
+    5506, 20687, 50489};
   std::vector<BlockHandle> bh;
   std::transform(offset_and_size.begin(), offset_and_size.end(), 
                   std::back_inserter(bh), MakeBlockHandle);
+  bh[0].set_offset(1111);
 
 
   PLRIndexBuilder* builder = new PLRIndexBuilder(0.3);
