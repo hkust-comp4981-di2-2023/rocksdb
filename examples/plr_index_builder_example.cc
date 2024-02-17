@@ -23,7 +23,7 @@ BlockHandle MakeBlockHandle(const int& offset_and_size) {
 
 int main() {
   std::vector<std::string> tmp = {"yamada", "anna", "totemo", "kawaii", 
-    "ichikawa", "kyotaro", "mo", "kokkoi",
+    "ichikawa", "kyotaro", "mo", "kakkoi",
     "kanojo", "dekite", "hoshii"};
   std::sort(tmp.begin(), tmp.end());
   std::vector<Slice> keys;
