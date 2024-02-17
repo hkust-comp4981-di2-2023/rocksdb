@@ -1,20 +1,12 @@
-//TODO: the whole class
 #pragma once
 
 #include <algorithm>
 #include <string>
 
 #include "db/dbformat.h"
-#include "include/rocksdb/status.h"
-#include "rocksdb/comparator.h"
-#include "rocksdb/iterator.h"
 #include "rocksdb/status.h"
 #include "table/format.h"
-#include "table/internal_iterator.h"
-#include "table/block_based/learned_index/plr/external/plr/library.h"
-#include "coding.h"
-#include "test_util/sync_point.h"
-#include "stdint.h"
+#include "util/coding.h"
 
 namespace ROCKSDB_NAMESPACE {
 

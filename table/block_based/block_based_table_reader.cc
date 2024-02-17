@@ -57,7 +57,6 @@
 #include "util/util.h"
 #include "util/xxhash.h"
 #include "learned_index/plr/plr_block_iter.h"
-#include "table/block_based/learned_index/plr/plr_block_fetcher_params.h"
 
 namespace ROCKSDB_NAMESPACE {
 
@@ -956,7 +955,7 @@ class PLRIndexReader: public BlockBasedTable::CustomIndexReaderCommon {
       return NewErrorInternalIterator<IndexValue>(s);
     }
 
-    Statistics* kNullStats = nullptr;
+    // Statistics* kNullStats = nullptr;
     // We don't return pinned data from index blocks, so no need
     // to set `block_contents_pinned`.
     

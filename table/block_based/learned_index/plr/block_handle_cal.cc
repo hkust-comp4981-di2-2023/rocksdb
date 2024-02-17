@@ -1,17 +1,6 @@
 #pragma once
 
-#include <string>
-#include "db/dbformat.h"
-#include "rocksdb/comparator.h"
-#include "rocksdb/iterator.h"
-#include "rocksdb/status.h"
-#include "table/format.h"
-#include "table/internal_iterator.h"
-#include "table/block_based/learned_index/plr/plr_block_iter.h"
 #include "table/block_based/learned_index/plr/block_handle_cal.h"
-#include "table/block_fetcher.h"
-#include "coding.h"
-#include <algorithm>
 
 namespace ROCKSDB_NAMESPACE {
 

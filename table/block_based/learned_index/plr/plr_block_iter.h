@@ -16,9 +16,56 @@
 #include "table/block_based/learned_index/plr/block_handle_cal.h"
 #include "test_util/sync_point.h"
 #include "stdint.h"
-#include "table/block_based/learned_index/plr/plr_block_fetcher_params.h"
 
 namespace ROCKSDB_NAMESPACE {
+
+// PLRBlockHelper should handle the lifecylce of all its data members properly.
+class PLRBlockHelper {
+ public:
+	PLRBlockHelper(const uint64_t num_data_blocks, const Slice& data):
+		model_(nullptr),
+		handle_calculator_(nullptr),
+		num_data_blocks_(num_data_blocks) {
+		DecodePLRBlock(data); 
+	}
+
+	// Only called at constructor.
+	//
+	// Decode two parts: PLR model parameters and Data block size array.
+	// Initialize model_ and handle_calculator_ properly.
+	Status DecodePLRBlock(const Slice& data);
+	
+	Status PredictBlockRange(const Slice& target, uint64_t& begin_block, 
+														uint64_t& end_block);
+	
+	// Get SINGLE blockhandle.
+	// TODO(fyp): do we need to if() check input block number?
+	//
+	// REQUIRES: input block number within [0, num_data_blocks_)
+	Status GetBlockHandle(const uint64_t data_block_number, 
+												BlockHandle& block_handle) const;
+	
+	// If there's no data block, return 0
+	inline uint64_t GetMaxDataBlockNumber() const { return num_data_blocks_; }
+
+ private:
+	typedef uint64_t KeyInternalRep;
+	typedef uint64_t EncodedStrBaseType;
+	static const size_t kKeySize = sizeof(KeyInternalRep);
+	static const size_t kParamSize = sizeof(EncodedStrBaseType);
+
+	// TODO(fyp): Verify member types
+	std::unique_ptr<PLRDataRep<EncodedStrBaseType, double>> model_;
+	std::unique_ptr<BlockHandleCalculator> handle_calculator_;
+	const uint64_t num_data_blocks_;
+
+	// Need a function ptr for the 'rounding rule' when a decimal block is 
+	enum class RoundingRule: char {
+		kCeil = 0x00,
+		kFloor = 0x01
+	//	kFutureExtend = 0x02
+	};
+};
 
 class PLRBlockIter : public InternalIteratorBase<IndexValue> {
  public:
@@ -119,8 +166,8 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 	//
 	// Note: In Seek(target), target is always an internal key.
 	bool key_includes_seq_;
-	static const Slice key_extraction_not_supported_ = 
-										Slice("PLR_key()_not_supported");
+	static constexpr const char* key_extraction_not_supported_ = 
+																											"PLR_key()_not_supported";
 	IndexValue value_;
 	Status status_;
 
@@ -139,53 +186,5 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 	}
 
 	void SetCurrentIndexValue();
-};
-
-// PLRBlockHelper should handle the lifecylce of all its data members properly.
-class PLRBlockHelper {
- public:
-	PLRBlockHelper(const uint64_t num_data_blocks, const Slice& data):
-		model_(nullptr),
-		handle_calculator_(nullptr),
-		num_data_blocks_(num_data_blocks) {
-		DecodePLRBlock(data); 
-	}
-
-	// Only called at constructor.
-	//
-	// Decode two parts: PLR model parameters and Data block size array.
-	// Initialize model_ and handle_calculator_ properly.
-	Status DecodePLRBlock(const Slice& data);
-	
-	Status PredictBlockRange(const Slice& target, uint64_t& begin_block, 
-														uint64_t& end_block);
-	
-	// Get SINGLE blockhandle.
-	// TODO(fyp): do we need to if() check input block number?
-	//
-	// REQUIRES: input block number within [0, num_data_blocks_)
-	Status GetBlockHandle(const uint64_t data_block_number, 
-												BlockHandle& block_handle) const;
-	
-	// If there's no data block, return 0
-	inline uint64_t GetMaxDataBlockNumber() const { return num_data_blocks_; }
-
- private:
-	typedef uint64_t KeyInternalRep;
-	typedef uint64_t EncodedStrBaseType;
-	static const size_t kKeySize = sizeof(KeyInternalRep);
-	static const size_t kParamSize = sizeof(EncodedStrBaseType);
-
-	// TODO(fyp): Verify member types
-	std::unique_ptr<PLRDataRep<EncodedStrBaseType, double>> model_;
-	std::unique_ptr<BlockHandleCalculator> handle_calculator_;
-	const uint64_t num_data_blocks_;
-
-	// Need a function ptr for the 'rounding rule' when a decimal block is 
-	enum class RoundingRule: char {
-		kCeil = 0x00,
-		kFloor = 0x01
-	//	kFutureExtend = 0x02
-	};
 };
 } // namespace ROCKSDB_NAMESPACE

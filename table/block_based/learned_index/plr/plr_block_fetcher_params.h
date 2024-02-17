@@ -1,3 +1,4 @@
+/*
 #pragma once
 
 #include "db/dbformat.h"
@@ -54,3 +55,4 @@ struct BlockFetcherParams {
     };
 
 }
+*/

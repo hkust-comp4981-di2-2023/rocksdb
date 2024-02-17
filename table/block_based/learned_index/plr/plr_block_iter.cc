@@ -11,7 +11,6 @@
 #include "table/block_fetcher.h"
 #include <algorithm>
 #include <sstream>
-#include "table/block_based/learned_index/plr/plr_block_fetcher_params.h"
 
 namespace ROCKSDB_NAMESPACE {
 
@@ -188,7 +187,7 @@ void PLRBlockIter::Prev() {
 // REQUIRES: Valid()
 Slice PLRBlockIter::key() const {
 	assert(Valid());
-	return key_extraction_not_supported_;
+	return Slice(key_extraction_not_supported_);
 }
 
 // Use helper_ to return a BlockHandle given current_.
