@@ -114,11 +114,10 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 	}
 
 	void SetPinnedItersMgr(PinnedIteratorsManager* pinned_iters_mgr) override {
-		//TODO(fyp): Red underlined for _pinned_iters_mgr
-		//_pinned_iters_mgr = pinned_iters_mgr;
+		pinned_iters_mgr_ = pinned_iters_mgr;
 	}
 
-	PinnedIteratorsManager* pinned_iters_mgr = nullptr;
+	PinnedIteratorsManager* pinned_iters_mgr_ = nullptr;
 #endif
 
 	// PLRBlockIter never owns a memory for key, so return false always

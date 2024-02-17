@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <iostream>
 
 #include "rocksdb/db.h"
 #include "rocksdb/slice.h"
@@ -63,9 +64,9 @@ int main() {
 
   builder->Finish(&ib, *bhit);
 
-  printf("Encoded string size: %d\n", ib.index_block_contents.size());
+  printf("Encoded string size: %lu\n", ib.index_block_contents.size());
   for (size_t i = 0; i < ib.index_block_contents.size(); ++i) {
-    printf("%lu;", ib.index_block_contents.data()[i]);
+    printf("%u;", ib.index_block_contents.data()[i]);
   }
   printf("\n");
 
@@ -85,7 +86,7 @@ int main() {
   }
   printf("Trained with the following data blocks (Gamma = %.2f):\n", gamma);
   for (const auto& pair : data_blocks) {
-    printf("%s -> %s\n", pair->first, pair->second.TosString());
+    printf("%s -> %s\n", pair.first, pair.second.TosString());
   }
 
   uint64_t begin_num, end_num;
@@ -103,9 +104,13 @@ int main() {
     reader.PredictBlockRange(*it, begin_num, end_num);
     reader.GetBlockHandle(begin_num, begin_bh);
     reader.GetBlockHandle(end_num, end_bh);
-    printf("Target [%s] -> Output [Begin (block#: %lu; handle: %s)"
-            "End (block#: %lu; handle: %s)]\n",
-            *it, begin_num, begin_bh.ToString(), end_num, end_bh.ToString());
+    std::cout << "Target [" << *it << "] -> Output [Begin (block#: ";
+    std::cout << begin_num << "; handle: " << begin_bh.ToString();
+    std::cout << ")End (block#: " << end_num << "; handle: ";
+    std::cout << end_bh.ToString() << ")]" << std::endl;
+    // printf("Target [%s] -> Output [Begin (block#: %lu; handle: %s)"
+    //         "End (block#: %lu; handle: %s)]\n",
+    //         *it, begin_num, begin_bh.ToString(), end_num, end_bh.ToString());
   }
 
   return 0;
