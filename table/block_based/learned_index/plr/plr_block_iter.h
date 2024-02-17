@@ -91,7 +91,13 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 	void SeekToFirst() override;
 	void SeekToLast() override;
 	void Seek(const Slice& target) override;
-	void SeekForPrev(const Slice& target) override;
+	void SeekForPrev(const Slice&) override {
+    assert(false);
+    current_ = invalid_block_number_;
+    status_ = Status::InvalidArgument(
+        "RocksDB internal error: should never call SeekForPrev() on index "
+        "blocks");
+  }
 
 	void Next() override;
 	void Prev() override;
