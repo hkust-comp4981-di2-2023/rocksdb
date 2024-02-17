@@ -455,7 +455,7 @@ Status BlockBasedTable::CustomIndexReaderCommon::ReadIndexBlock(
 Status BlockBasedTable::CustomIndexReaderCommon::GetOrReadIndexBlock(
     bool no_io, GetContext* get_context,
     BlockCacheLookupContext* lookup_context,
-    CachableEntry<Block>* index_block_contents) const {
+    CachableEntry<BlockContents>* index_block_contents) const {
   assert(index_block_contents != nullptr);
 
   if (!index_block_contents_.IsEmpty()) {
@@ -929,7 +929,7 @@ class PLRIndexReader: public BlockBasedTable::CustomIndexReaderCommon {
       }
 
       if (use_cache && !pin) {
-        index_block.Reset();
+        index_block_contents.Reset();
       }
     }
 
@@ -956,7 +956,7 @@ class PLRIndexReader: public BlockBasedTable::CustomIndexReaderCommon {
       return NewErrorInternalIterator<IndexValue>(s);
     }
 
-    Statistics* kNullStats = nullptr;
+    // Statistics* kNullStats = nullptr;
     // We don't return pinned data from index blocks, so no need
     // to set `block_contents_pinned`.
     // TODO(fyp): replace here
@@ -4292,7 +4292,8 @@ Status BlockBasedTable::CreateIndexReader(
     }
     case BlockBasedTableOptions::kLearnedIndexWithPLR: {
       // TODO(fyp)
-      return PLRIndexReader::Create();
+      return PLRIndexReader::Create(this, prefetch_buffer, use_cache, prefetch,
+                                    pin, lookup_context, index_reader);
     }
     default: {
       std::string error_message =

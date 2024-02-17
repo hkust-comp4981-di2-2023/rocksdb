@@ -19,6 +19,7 @@
 #include "rocksdb/comparator.h"
 #include "table/block_based/block_based_table_factory.h"
 #include "table/block_based/block_builder.h"
+#include "table/block_based/learned_index/plr/plr_index_builder_helper.h"
 #include "table/format.h"
 
 namespace ROCKSDB_NAMESPACE {
@@ -439,5 +440,68 @@ class PartitionedIndexBuilder : public IndexBuilder {
   // true if it should cut the next filter partition block
   bool cut_filter_block = false;
   BlockHandle last_encoded_handle_;
+};
+
+// In PLRIndexBuilder, we do not rely on the ordinary BlockBuilder class for
+// adding key-value entries and building the actual index block Slice.
+//
+// Instead, we uses a tailor-made builder that will uses our standalone module 
+// by:
+// 1. Create a list of Points of (first key of data block, data block number).
+// 2. Pass the points to create a list of segments using GreedyPLR.
+// 3. Encode to a string using PLRDataRep.
+// The encoded string is stored as the final block contents in IndexBlocks.
+//
+// Note: For now, we don't care about include_first_key_.
+class PLRIndexBuilder: public IndexBuilder {
+ public:
+  PLRIndexBuilder() = delete;
+
+  PLRIndexBuilder(double gamma): 
+    IndexBuilder(nullptr),
+    helper_(gamma),
+    is_first_key_in_first_block_(true) {}
+
+  // Use helper_ to add a new Point for PLR training of (i+1)-th block. Also,
+  // store block_handle of i-th block in helper_. For the last function call, do
+  // not add a new Point, as first_key_in_next_block is nullptr, meaning there
+  // is no next block.
+  void AddIndexEntry(std::string* /*last_key_in_current_block*/,
+                    const Slice* first_key_in_next_block,
+                    const BlockHandle& block_handle) override {
+    if (first_key_in_next_block != nullptr) {
+      // current AddIndexEntry() call is not processing with:
+      // current_block = last data block
+      helper_.AddPLRTrainingPoint(*first_key_in_next_block);
+    }
+    helper_.AddHandle(block_handle);
+  }
+  
+  // If it is the first every key from the first data block, use helper_ to add
+  // a new Point for PLR training. Do nothing otherwise.
+  void OnKeyAdded(const Slice& key) override {
+    if (is_first_key_in_first_block_) {
+      is_first_key_in_first_block_ = false;
+      helper_.AddPLRTrainingPoint(key);
+    }
+  }
+
+  Status Finish(IndexBlocks* index_blocks,
+                const BlockHandle& /*last_partition_block_handle*/) override {
+    assert(index_blocks != nullptr);
+
+    index_blocks->index_block_contents = helper_.Finish();
+    index_size_ = index_blocks->index_block_contents.size();
+
+    return Status::OK();
+  }
+
+  size_t IndexSize() const override { return index_size_; }
+
+ private:
+  PLRBuilderHelper helper_;
+  // If true, OnKeyAdded() will use helper_ to add an Point for PLR training
+  // then set this flag to false.
+  bool is_first_key_in_first_block_;
 };
 }  // namespace ROCKSDB_NAMESPACE
