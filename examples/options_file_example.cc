@@ -57,6 +57,15 @@ int main() {
   cf_descs[0].options.compaction_filter = compaction_filter.get();
   cf_descs[1].options.table_factory.reset(NewBlockBasedTableFactory(bbt_opts));
 
+  // PLR related examples
+  cf_descs.push_back({"plr_cf", ColumnFamilyOptions()});
+  BlockBasedTableOptions plr_bbt_opts;
+  plr_bbt_opts.block_size = 32 * 1024;
+  plr_bbt_opts.block_cache = cache;
+  plr_bbt_opts.index_type = BlockBasedTableOptions::kLearnedIndexWithPLR;
+  plr_bbt_opts.plr_index_block_gamma = 0.3;
+  cf_descs[2].options.table_factory.reset(NewBlockBasedTableFactory(plr_bbt_opts));
+
   // destroy and open DB
   DB* db;
   Status s = DestroyDB(kDBPath, Options(db_opt, cf_descs[0].options));
@@ -67,6 +76,12 @@ int main() {
   // Create column family, and rocksdb will persist the options.
   ColumnFamilyHandle* cf;
   s = db->CreateColumnFamily(ColumnFamilyOptions(), "new_cf", &cf);
+  assert(s.ok());
+
+  // PLR related examples
+  ColumnFamilyHandle* cf2;
+  s = db->CreateColumnFamily(cf_descs[2].options, "plr_cf", &cf2);
+  delete cf2;
   assert(s.ok());
 
   // close DB
@@ -100,6 +115,14 @@ int main() {
   assert(loaded_cf_descs[0].options.compaction_filter == nullptr);
   loaded_cf_descs[0].options.compaction_filter = compaction_filter.get();
 
+  // PLR related examples
+  // index of column family "plr_cf" should be 2 - change it otherwise
+  auto* loaded_bbt_opt = reinterpret_cast<BlockBasedTableOptions*>(
+    loaded_cf_descs[2].options.table_factory->GetOptions());
+  assert(loaded_bbt_opt->index_type == 
+          BlockBasedTableOptions::kLearnedIndexWithPLR);
+  assert(loaded_bbt_opt->plr_index_block_gamma == 0.3);
+  
   // reopen the db using the loaded options.
   std::vector<ColumnFamilyHandle*> handles;
   s = DB::Open(loaded_db_opt, kDBPath, loaded_cf_descs, &handles, &db);
