@@ -106,11 +106,23 @@ int main() {
     reader.GetBlockHandle(end_num, end_bh);
     std::cout << "Target [" << *it << "] -> Output [Begin (block#: ";
     std::cout << begin_num << "; handle: " << begin_bh.ToString();
-    std::cout << ")End (block#: " << end_num << "; handle: ";
+    std::cout << ") End (block#: " << end_num << "; handle: ";
     std::cout << end_bh.ToString() << ")]" << std::endl;
-    // printf("Target [%s] -> Output [Begin (block#: %lu; handle: %s)"
-    //         "End (block#: %lu; handle: %s)]\n",
-    //         *it, begin_num, begin_bh.ToString(), end_num, end_bh.ToString());
+
+    assert(begin_num <= end_num);
+
+    if (std::binary_search(sorted_data_block_keys.begin(), sorted_data_block_keys.end(), *it)) {
+      size_t pos = std::lower_bound(sorted_data_block_keys.begin(), 
+          sorted_data_block_keys.end(), *it) - sorted_data_block_keys.begin();
+      assert(begin_num <= pos && pos <= end_num);
+    }
+    else {
+      size_t pos = std::lower_bound(sorted_data_block_keys.begin(), 
+          sorted_data_block_keys.end(), *it) - sorted_data_block_keys.begin();
+      pos = pos == 0 ? pos : pos - 1;
+      assert(begin_num <= pos && pos <= end_num);
+    }
+
   }
 
   return 0;
