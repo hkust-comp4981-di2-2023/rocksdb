@@ -1,16 +1,4 @@
-#pragma once
-
-#include <string>
-#include "db/dbformat.h"
-#include "rocksdb/comparator.h"
-#include "rocksdb/iterator.h"
-#include "rocksdb/status.h"
-#include "table/format.h"
-#include "table/internal_iterator.h"
 #include "table/block_based/learned_index/plr/plr_block_iter.h"
-#include "table/block_fetcher.h"
-#include <algorithm>
-#include <sstream>
 
 namespace ROCKSDB_NAMESPACE {
 
@@ -32,11 +20,12 @@ void PLRBlockIter::SeekToFirst() {
 	seek_mode_ = SeekMode::kUnknown;
 
 	begin_block_ = 0;
-	end_block_ = helper_->GetMaxDataBlockNumber();
-	if (end_block_ < 0) {
+	end_block_ = helper_->GetNumberOfDataBlock();
+	if (end_block_ == 0) {
 		current_ = invalid_block_number_;
 		return;
 	}
+	end_block_ -= 1;
 	current_ = 0;
 
 	SetCurrentIndexValue();
@@ -61,11 +50,12 @@ void PLRBlockIter::SeekToLast() {
 	seek_mode_ = SeekMode::kUnknown;
 
 	begin_block_ = 0;
-	end_block_ = helper_->GetMaxDataBlockNumber();
-	if (end_block_ < 0) {
+	end_block_ = helper_->GetNumberOfDataBlock();
+	if (end_block_ == 0) {
 		current_ = invalid_block_number_;
 		return;
 	}
+	end_block_ -= 1;
 	current_ = end_block_;
 
 	SetCurrentIndexValue();
@@ -241,9 +231,9 @@ Status PLRBlockHelper::DecodePLRBlock(const Slice& data) {
 	std::string encoded_block_handles(block_handles_start, block_handles_length);
 
 	// Initialize model_ and handle_calculator_
-	model_->reset(
+	model_.reset(
 		new PLRDataRep<EncodedStrBaseType, double>(encoded_plr_segments));
-	handle_calculator_->reset(
+	handle_calculator_.reset(
 		new BlockHandleCalculator(encoded_block_handles, num_data_blocks_));
 	
 	return Status::OK();

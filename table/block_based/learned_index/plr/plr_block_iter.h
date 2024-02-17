@@ -18,6 +18,7 @@
 #include "test_util/sync_point.h"
 #include "stdint.h"
 
+
 namespace ROCKSDB_NAMESPACE {
 
 // PLRBlockHelper should handle the lifecylce of all its data members properly.
@@ -47,7 +48,7 @@ class PLRBlockHelper {
 												BlockHandle& block_handle) const;
 	
 	// If there's no data block, return 0
-	inline uint64_t GetMaxDataBlockNumber() const { return num_data_blocks_; }
+	inline uint64_t GetNumberOfDataBlock() const { return num_data_blocks_; }
 
  private:
 	typedef uint64_t KeyInternalRep;
