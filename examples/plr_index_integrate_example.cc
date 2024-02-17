@@ -86,7 +86,7 @@ int main() {
   }
   printf("Trained with the following data blocks (Gamma = %.2f):\n", gamma);
   for (const auto& pair : data_blocks) {
-    printf("%s -> %s\n", pair.first, pair.second.TosString());
+    std::cout << pair.first << " -> " << pair.second.ToString() << std::endl;
   }
 
   uint64_t begin_num, end_num;

@@ -6,6 +6,7 @@
 #include <string>
 
 #include "db/dbformat.h"
+#include "db/pinned_iterators_manager.h"
 #include "include/rocksdb/status.h"
 #include "rocksdb/comparator.h"
 #include "rocksdb/iterator.h"
