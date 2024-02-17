@@ -729,6 +729,7 @@ set(SOURCES
 
         # PLR Learned Index
         table/block_based/learned_index/plr/plr_block_iter.cc
+        table/block_based/learned_index/plr/block_handle_cal.cc
         $<TARGET_OBJECTS:build_version>)
 
 if(HAVE_SSE42 AND NOT MSVC)

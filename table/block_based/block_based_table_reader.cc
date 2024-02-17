@@ -903,8 +903,6 @@ class HashIndexReader : public BlockBasedTable::IndexReaderCommon {
   std::unique_ptr<BlockPrefixIndex> prefix_index_;
 };
 
-// TODO(fyp)
-// Take reference from `BinarySearchIndexReader`.
 class PLRIndexReader: public BlockBasedTable::CustomIndexReaderCommon {
  public:
   // Read index from the file and create an intance for
@@ -3559,6 +3557,7 @@ Status BlockBasedTable::Get(const ReadOptions& read_options, const Slice& key,
     bool matched = false;  // if such user key mathced a key in SST
     bool done = false;
 
+    // TODO(fyp): Integration to block based table - leave for another pr
     // TODO(fyp): Update first key and last key
     for (iiter->Seek(key); iiter->Valid() && !done; iiter->Next()) {
       IndexValue v = iiter->value();
@@ -3580,7 +3579,7 @@ Status BlockBasedTable::Get(const ReadOptions& read_options, const Slice& key,
       }
 
       // No internal key stored in index block for PLR, skipped
-      if (rep_->index_type != BlockBasedTableOptions::kLearnedIndexWithPLR && 
+      if (/*rep_->index_type != BlockBasedTableOptions::kLearnedIndexWithPLR &&*/ 
           !v.first_internal_key.empty() && !skip_filters &&
           UserComparatorWrapper(rep_->internal_comparator.user_comparator())
                   .Compare(ExtractUserKey(key),
@@ -3589,13 +3588,12 @@ Status BlockBasedTable::Get(const ReadOptions& read_options, const Slice& key,
         // lowest key in current block.
         break;
       }
-        
+
       BlockCacheLookupContext lookup_data_block_context{
           TableReaderCaller::kUserGet, tracing_get_id,
           /*get_from_user_specified_snapshot=*/read_options.snapshot !=
               nullptr};
       bool does_referenced_key_exist = false;
-
       DataBlockIter biter;
       uint64_t referenced_data_size = 0;
       NewDataBlockIterator<DataBlockIter>(
@@ -3615,6 +3613,7 @@ Status BlockBasedTable::Get(const ReadOptions& read_options, const Slice& key,
         break;
       }
 
+      /*
       TEST_SYNC_POINT_CALLBACK("BlockBasedTable::Get:BeforeSetDataIterFirst&LastKey", &biter);
       // TODO(fyp): Check if key is in the data block, if not then goes on, for PLR only
       bool plr_may_exist = true;
@@ -3644,8 +3643,9 @@ Status BlockBasedTable::Get(const ReadOptions& read_options, const Slice& key,
         }
       }
       TEST_SYNC_POINT_CALLBACK("BlockBasedTable::Get:AfterSetDataIterFirst&LastKey", &biter);
+      */
 
-      bool may_exist = biter.SeekForGet(key) && plr_may_exist;
+      bool may_exist = biter.SeekForGet(key) /*&& plr_may_exist*/;
       // If user-specified timestamp is supported, we cannot end the search
       // just because hash index lookup indicates the key+ts does not exist.
       if (!may_exist && ts_sz == 0) {
@@ -3661,6 +3661,7 @@ Status BlockBasedTable::Get(const ReadOptions& read_options, const Slice& key,
           if (!ParseInternalKey(biter.key(), &parsed_key)) {
             s = Status::Corruption(Slice());
           }
+
           if (!get_context->SaveValue(
                   parsed_key, biter.value(), &matched,
                   biter.IsValuePinned() ? &biter : nullptr)) {
@@ -4326,7 +4327,6 @@ Status BlockBasedTable::CreateIndexReader(
       }
     }
     case BlockBasedTableOptions::kLearnedIndexWithPLR: {
-      // TODO(fyp)
       return PLRIndexReader::Create(this, prefetch_buffer, use_cache, prefetch,
                                     pin, lookup_context, index_reader);
     }
