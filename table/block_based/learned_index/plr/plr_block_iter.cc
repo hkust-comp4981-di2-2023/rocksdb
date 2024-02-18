@@ -218,7 +218,7 @@ Status PLRBlockHelper::DecodePLRBlock(const Slice& data) {
 	// Extract the substring corr. to PLR Segments and Data block sizes
 	const size_t total_length = data.size();
 
-	const size_t block_handles_length = kParamSize * num_data_blocks_;
+	const size_t block_handles_length = kParamSize * (num_data_blocks_ + 1);
 	assert(total_length > block_handles_length);
 
 	const size_t plr_segments_length = total_length - block_handles_length;
