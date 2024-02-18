@@ -28,6 +28,8 @@ int main() {
   std::cout << "===== Index block content building using PLRIndexBuilder =====" 
     << std::endl;
   
+  // Prepare training data for PLR:
+  // Sort tmp and make the vector to std::vector<Slice>
   std::vector<std::string> tmp = {"yamada", "anna", "totemo", "kawaii", 
     "ichikawa", "kyotaro", "mo", "kakkoi",
     "kanojo", "dekite", "hoshii"};
@@ -35,6 +37,7 @@ int main() {
   std::vector<Slice> keys;
   std::transform(tmp.begin(), tmp.end(), std::back_inserter(keys), MakeSlice);
 
+  // Prepare data for BlockHandleCalculator, not relevant to PLR training
   std::vector<uint64_t> offset_and_size = {1, 12, 56, 78,
     91, 126, 954, 1045,
     5506, 20687, 50489};
@@ -49,7 +52,7 @@ int main() {
   double gamma = 0.3;
   PLRIndexBuilder* builder = new PLRIndexBuilder(gamma);
 
-
+  // Start feeding data to PLR trainer and BHEncoder inside PLRIndexBuilder
   builder->OnKeyAdded(keys[0]);
   std::vector<Slice>::const_iterator it = keys.begin();
   it++;
@@ -65,10 +68,11 @@ int main() {
 
   builder->Finish(&ib, *bhit);
 
+  // Output from index builder
   std::cout << "Encoded string size: " << ib.index_block_contents.size()
     << std::endl;
   for (size_t i = 0; i < ib.index_block_contents.size(); ++i) {
-    std::cout << ib.index_block_contents.data()[i] << ";";
+    std::cout << (uint64_t) ib.index_block_contents.data()[i] << ";";
   }
   std::cout << std::endl;
 
@@ -86,6 +90,7 @@ int main() {
 
   PLRBlockHelper reader(num_data_blocks, ib.index_block_contents);
 
+  // Prepare the actual data used for training
   std::vector<std::string> sorted_data_block_keys = {"anna", "dekite", "hoshii",
     "ichikawa", "kakkoi", "kanojo", "kawaii", 
     "kyotaro", "mo", "totemo", "yamada"};
@@ -98,6 +103,7 @@ int main() {
     std::cout << pair.first << " -> " << pair.second.ToString() << std::endl;
   }
 
+  // Test the model output
   uint64_t begin_num, end_num;
   BlockHandle begin_bh, end_bh;
   std::vector<std::string> targets = {
@@ -114,18 +120,19 @@ int main() {
     reader.GetBlockHandle(begin_num, begin_bh);
     reader.GetBlockHandle(end_num, end_bh);
     std::cout << "---- Test " << it - targets.begin() << ":" << std::endl;
-    std::cout << "Target [ " << *it << " ] -> Output [ Begin (block#: "
+    std::cout << "Target [ " << *it << " ] -> Prediction [ Begin (block#: "
       << begin_num << "; handle: " << begin_bh.ToString()
       << ") End (block#: " << end_num << "; handle: "
       << end_bh.ToString() << ") ]" << std::endl;
 
     assert(begin_num <= end_num);
 
+    // Verifying the correctness of model with actual training data
     if (std::binary_search(sorted_data_block_keys.begin(), 
                             sorted_data_block_keys.end(), *it)) {
       size_t pos = std::lower_bound(sorted_data_block_keys.begin(), 
           sorted_data_block_keys.end(), *it) - sorted_data_block_keys.begin();
-      std::cout << "actual block#: " << pos << std::endl;
+      std::cout << "Actual block#: " << pos << std::endl;
       // assert(begin_num <= pos && pos <= end_num);
     }
     else {
@@ -135,7 +142,7 @@ int main() {
                             pos : 
                             (pos == num_data_blocks || 
                             sorted_data_block_keys[pos] > *it ? pos - 1 : pos);
-      std::cout << "actual block#: " << adjusted_pos << " (before adjustment: "
+      std::cout << "Actual block#: " << adjusted_pos << " (before adjustment: "
         << pos << ")" << std::endl;
       // assert(begin_num <= adjusted_pos && adjusted_pos <= end_num);
     }
