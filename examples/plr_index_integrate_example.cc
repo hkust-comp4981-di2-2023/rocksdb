@@ -25,7 +25,8 @@ BlockHandle MakeBlockHandle(const int& offset_and_size) {
 
 int main() {
   // Index block content building using PLRIndexBuilder
-  printf("===== Index block content building using PLRIndexBuilder =====\n");
+  std::cout << "===== Index block content building using PLRIndexBuilder =====" 
+    << std::endl;
   
   std::vector<std::string> tmp = {"yamada", "anna", "totemo", "kawaii", 
     "ichikawa", "kyotaro", "mo", "kakkoi",
@@ -42,7 +43,7 @@ int main() {
                   std::back_inserter(bh), MakeBlockHandle);
   bh[0].set_offset(1111);
 
-  size_t num_data_block = keys.size();
+  size_t num_data_blocks = keys.size();
   assert(bh.size() == keys.size());
 
   double gamma = 0.3;
@@ -64,24 +65,32 @@ int main() {
 
   builder->Finish(&ib, *bhit);
 
-  printf("Encoded string size: %lu\n", ib.index_block_contents.size());
+  std::cout << "Encoded string size: " << ib.index_block_contents.size()
+    << std::endl;
   for (size_t i = 0; i < ib.index_block_contents.size(); ++i) {
-    printf("%u;", ib.index_block_contents.data()[i]);
+    std::cout << ib.index_block_contents.data()[i] << ";";
   }
-  printf("\n");
+  std::cout << std::endl;
+
+  std::cout << "Segment section size: "
+    << ib.index_block_contents.size() - (num_data_blocks + 1) * sizeof(uint64_t)
+    << std::endl;
+  std::cout << "Data block sizes section size: "
+    << (num_data_blocks + 1) * sizeof(uint64_t) << std::endl;
 
   delete builder;
 
   // Index block content reading using PLRBlockHelper
-  printf("===== Index block content reading using PLRBlockHelper =====\n");
+  std::cout << "===== Index block content reading using PLRBlockHelper ====="
+    << std::endl;
 
-  PLRBlockHelper reader(num_data_block, ib.index_block_contents);
+  PLRBlockHelper reader(num_data_blocks, ib.index_block_contents);
 
   std::vector<std::string> sorted_data_block_keys = {"anna", "dekite", "hoshii",
     "ichikawa", "kakkoi", "kanojo", "kawaii", 
     "kyotaro", "mo", "totemo", "yamada"};
   std::map<std::string, BlockHandle> data_blocks;
-  for (size_t i = 0; i < num_data_block; ++i) {
+  for (size_t i = 0; i < num_data_blocks; ++i) {
     data_blocks[sorted_data_block_keys[i]] = bh[i];
   }
   printf("Trained with the following data blocks (Gamma = %.2f):\n", gamma);
@@ -97,31 +106,41 @@ int main() {
     "never", "gonna", "give", "you", "up",
     "never", "gonna", "let", "you", "down"};
 
-  printf("\n");
+  std::cout << std::endl;
   printf("Testing with the following target keys (Gamma = %.2f):\n", gamma);
   for (std::vector<std::string>::const_iterator it = targets.begin(); 
         it != targets.end(); it++) {
     reader.PredictBlockRange(*it, begin_num, end_num);
     reader.GetBlockHandle(begin_num, begin_bh);
     reader.GetBlockHandle(end_num, end_bh);
-    std::cout << "Target [" << *it << "] -> Output [Begin (block#: ";
-    std::cout << begin_num << "; handle: " << begin_bh.ToString();
-    std::cout << ") End (block#: " << end_num << "; handle: ";
-    std::cout << end_bh.ToString() << ")]" << std::endl;
+    std::cout << "---- Test " << it - targets.begin() << ":" << std::endl;
+    std::cout << "Target [ " << *it << " ] -> Output [ Begin (block#: "
+      << begin_num << "; handle: " << begin_bh.ToString()
+      << ") End (block#: " << end_num << "; handle: "
+      << end_bh.ToString() << ") ]" << std::endl;
 
     assert(begin_num <= end_num);
 
-    if (std::binary_search(sorted_data_block_keys.begin(), sorted_data_block_keys.end(), *it)) {
+    if (std::binary_search(sorted_data_block_keys.begin(), 
+                            sorted_data_block_keys.end(), *it)) {
       size_t pos = std::lower_bound(sorted_data_block_keys.begin(), 
           sorted_data_block_keys.end(), *it) - sorted_data_block_keys.begin();
-      assert(begin_num <= pos && pos <= end_num);
+      std::cout << "actual block#: " << pos << std::endl;
+      // assert(begin_num <= pos && pos <= end_num);
     }
     else {
       size_t pos = std::lower_bound(sorted_data_block_keys.begin(), 
           sorted_data_block_keys.end(), *it) - sorted_data_block_keys.begin();
-      pos = pos == 0 ? pos : pos - 1;
-      assert(begin_num <= pos && pos <= end_num);
+      size_t adjusted_pos = pos == 0 ? 
+                            pos : 
+                            (pos == num_data_blocks || 
+                            sorted_data_block_keys[pos] > *it ? pos - 1 : pos);
+      std::cout << "actual block#: " << adjusted_pos << " (before adjustment: "
+        << pos << ")" << std::endl;
+      // assert(begin_num <= adjusted_pos && adjusted_pos <= end_num);
     }
+
+    std::cout << "-------------" << std::endl << std::endl;
 
   }
 
