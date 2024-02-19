@@ -27,6 +27,8 @@
 #include "test_util/testutil.h"
 #include "util/random.h"
 
+#include "table/block_based/index_builder.h"
+
 namespace ROCKSDB_NAMESPACE {
 
 static std::string RandomString(Random *rnd, int len) {
@@ -618,6 +620,59 @@ INSTANTIATE_TEST_CASE_P(P, IndexBlockTest,
                                           std::make_tuple(false, true),
                                           std::make_tuple(true, false),
                                           std::make_tuple(true, true)));
+
+class PLRIndexBlockTest
+    : public testing::Test,
+      public testing::WithParamInterface<double> {
+ public:
+  PLRIndexBlockTest() = default;
+
+  double gamma() const { return GetParam(); }
+};
+
+TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
+  // TODO(fyp)
+  Random rnd(302);
+  Options options = Options();
+
+  std::vector<std::string> separators; // not used actually
+  std::vector<BlockHandle> block_handles;
+  std::vector<std::string> first_keys;
+  
+  PLRIndexBuilder builder(gamma());
+  int num_records = 100;
+
+  GenerateRandomIndexEntries(&separators, &block_handles, &first_keys,
+                             num_records);
+  
+  BlockHandle last_encoded_handle;
+  for (int i = 0; i < num_records; i++) {
+    // IndexValue entry(block_handles[i], first_keys[i]);
+    // std::string encoded_entry;
+    // std::string delta_encoded_entry;
+    // entry.EncodeTo(&encoded_entry, includeFirstKey(), nullptr);
+    // if (useValueDeltaEncoding() && i > 0) {
+    //   entry.EncodeTo(&delta_encoded_entry, includeFirstKey(),
+    //                  &last_encoded_handle);
+    // }
+    // last_encoded_handle = entry.handle;
+    // const Slice delta_encoded_entry_slice(delta_encoded_entry);
+    // builder.Add(separators[i], encoded_entry, &delta_encoded_entry_slice);
+  }
+
+  // read serialized contents of the block
+  // Slice rawblock = builder.Finish();
+
+}
+
+INSTANTIATE_TEST_CASE_P(PLR, PLRIndexBlockTest,
+                        ::testing::Values(0.03, 
+                                          0.06, 
+                                          0.3, 
+                                          0.6, 
+                                          1.0, 
+                                          1.2, 
+                                          2.0));
 
 }  // namespace ROCKSDB_NAMESPACE
 
