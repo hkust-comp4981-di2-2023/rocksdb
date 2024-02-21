@@ -72,7 +72,9 @@ int main() {
   std::cout << "Encoded string size: " << ib.index_block_contents.size()
     << std::endl;
   for (size_t i = 0; i < ib.index_block_contents.size(); ++i) {
-    std::cout << (uint8_t) ib.index_block_contents.data()[i] << ";";
+    std::cout 
+      << (unsigned int) ((unsigned char) ib.index_block_contents.data()[i]) 
+      << ";";
   }
   std::cout << std::endl;
 
