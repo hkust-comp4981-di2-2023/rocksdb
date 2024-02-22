@@ -84,8 +84,6 @@ int main() {
   std::cout << "Data block sizes section size: "
     << (num_data_blocks + 1) * sizeof(uint64_t) << std::endl;
 
-  delete builder;
-
   // Index block content reading using PLRBlockHelper
   std::cout << "===== Index block content reading using PLRBlockHelper ====="
     << std::endl;
@@ -150,7 +148,9 @@ int main() {
     }
 
     std::cout << "-------------" << std::endl << std::endl;
-
+    
+    // never put this before decoding the encoded string to reader
+    delete builder;
   }
 
   return 0;
