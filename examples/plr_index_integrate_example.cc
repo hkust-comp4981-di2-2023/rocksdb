@@ -133,7 +133,7 @@ int main() {
       size_t pos = std::lower_bound(sorted_data_block_keys.begin(), 
           sorted_data_block_keys.end(), *it) - sorted_data_block_keys.begin();
       std::cout << "Actual block#: " << pos << std::endl;
-      // assert(begin_num <= pos && pos <= end_num);
+      assert(begin_num <= pos && pos <= end_num);
     }
     else {
       size_t pos = std::lower_bound(sorted_data_block_keys.begin(), 
@@ -144,7 +144,7 @@ int main() {
                             sorted_data_block_keys[pos] > *it ? pos - 1 : pos);
       std::cout << "Actual block#: " << adjusted_pos << " (before adjustment: "
         << pos << ")" << std::endl;
-      // assert(begin_num <= adjusted_pos && adjusted_pos <= end_num);
+      assert(begin_num <= adjusted_pos && adjusted_pos <= end_num);
     }
 
     std::cout << "-------------" << std::endl << std::endl;  

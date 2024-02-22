@@ -683,17 +683,17 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   builder.OnKeyAdded(key);
   for (int i = 1; i < num_records; i++) {
     key = Slice(first_keys[i]);
-    builder.AddIndexEntry(nullptr, key, block_handles[i-1]);
+    builder.AddIndexEntry(nullptr, &key, block_handles[i-1]);
   }
   builder.AddIndexEntry(nullptr, nullptr, block_handles[num_records-1]);
 
   // read serialized contents of the block
   IndexBuilder::IndexBlocks rawblock;
-  builder.Finish(&rawblock, nullptr);
-  BlockContents block_contents(rawblock);
+  builder.Finish(&rawblock, block_handles[num_records-1]);
+  BlockContents block_contents(rawblock.index_block_contents);
 
   PLRBlockIter* iter = new PLRBlockIter(block_contents, false, 
-                                        num_records, options.comparator);
+                                        num_records, &options.comparator);
 
   // Test: Read block contents sequentially.
   // Note: We won't test key(), because key() is not supported.
@@ -717,7 +717,7 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   // Expected behavior: After several Next(), ultimately the iterator should
   // point to the correct index entry.
   iter = new PLRBlockIter(block_contents, false, 
-                          num_records, options.comparator);
+                          num_records, &options.comparator);
   for (int i = 0; i < num_records * 2; i++) {
     // find a random key in the lookaside array
     int index = rnd.Uniform(num_records);
@@ -752,7 +752,7 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   // Expected behavior: After several Next(), ultimately the iterator should
   // point to the correct index entry.
   iter = new PLRBlockIter(block_contents, false, 
-                          num_records, options.comparator);
+                          num_records, &options.comparator);
   for (int i = 0; i < num_records * 2; i++) {
     // find a random key in the lookaside array
     int index = rnd.Uniform(num_records);
