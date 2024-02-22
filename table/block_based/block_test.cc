@@ -28,6 +28,7 @@
 #include "util/random.h"
 
 #include "table/block_based/index_builder.h"
+#include "table/block_based/learned_index/plr/plr_block_iter.h"
 
 namespace ROCKSDB_NAMESPACE {
 
@@ -630,38 +631,194 @@ class PLRIndexBlockTest
   double gamma() const { return GetParam(); }
 };
 
+// Similar to GenerateRandomIndexEntries but for index block contents.
+void GenerateRandomPLRIndexEntries(std::vector<std::string> *in_block_keys,
+                                std::vector<BlockHandle> *block_handles,
+                                std::vector<std::string> *first_keys,
+                                std::vector<std::string> *last_keys,
+                                std::vector<std::string> *out_of_block_keys,
+                                const int len) {
+  Random rnd(42);
+
+  // For each of `len` blocks, we need to generate a first and last key.
+  // Let's generate n*4 random keys, sort them, group into consecutive pairs.
+  std::set<std::string> keys;
+  while ((int)keys.size() < len * 4) {
+    // PLR index only support key of length 8
+    keys.insert(test::RandomKey(&rnd, 8));
+  }
+
+  uint64_t offset = 0;
+  for (auto it = keys.begin(); it != keys.end();) {
+    first_keys->emplace_back(*it++);
+    in_block_keys->emplace_back(*it++);
+    last_keys->emplace_back(*it++);
+    out_of_block_keys->emplace_back(*it++);
+
+    uint64_t size = rnd.Uniform(1024 * 16);
+    BlockHandle handle(offset, size);
+    offset += size + kBlockTrailerSize;
+    block_handles->emplace_back(handle);
+  }
+}
+
 TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   // TODO(fyp)
   Random rnd(302);
   Options options = Options();
 
-  std::vector<std::string> separators; // not used actually
   std::vector<BlockHandle> block_handles;
   std::vector<std::string> first_keys;
+  std::vector<std::string> query_keys;
+  std::vector<std::string> last_keys;
+  std::vector<std::string> out_of_block_keys;
   
   PLRIndexBuilder builder(gamma());
   int num_records = 100;
 
-  GenerateRandomIndexEntries(&separators, &block_handles, &first_keys,
-                             num_records);
+  GenerateRandomPLRIndexEntries(&query_keys, &block_handles, &first_keys,
+                                &last_keys, &out_of_block_keys, num_records);
   
-  BlockHandle last_encoded_handle;
-  for (int i = 0; i < num_records; i++) {
-    // IndexValue entry(block_handles[i], first_keys[i]);
-    // std::string encoded_entry;
-    // std::string delta_encoded_entry;
-    // entry.EncodeTo(&encoded_entry, includeFirstKey(), nullptr);
-    // if (useValueDeltaEncoding() && i > 0) {
-    //   entry.EncodeTo(&delta_encoded_entry, includeFirstKey(),
-    //                  &last_encoded_handle);
-    // }
-    // last_encoded_handle = entry.handle;
-    // const Slice delta_encoded_entry_slice(delta_encoded_entry);
-    // builder.Add(separators[i], encoded_entry, &delta_encoded_entry_slice);
+  Slice key(first_keys[0]);
+  builder.OnKeyAdded(key);
+  for (int i = 1; i < num_records; i++) {
+    key = Slice(first_keys[i]);
+    builder.AddIndexEntry(nullptr, key, block_handles[i-1]);
   }
+  builder.AddIndexEntry(nullptr, nullptr, block_handles[num_records-1]);
 
   // read serialized contents of the block
-  // Slice rawblock = builder.Finish();
+  IndexBuilder::IndexBlocks rawblock;
+  builder.Finish(&rawblock, nullptr);
+  BlockContents block_contents(rawblock);
+
+  PLRBlockIter* iter = new PLRBlockIter(block_contents, false, 
+                                        num_records, options.comparator);
+
+  // Test: Read block contents sequentially.
+  // Note: We won't test key(), because key() is not supported.
+  iter->SeekToFirst();
+  for (int index = 0; index < num_records; ++index) {
+    ASSERT_TRUE(iter->Valid());
+
+    // Slice k = iter->key();
+    IndexValue v = iter->value();
+
+    // EXPECT_EQ(separators[index], k.ToString());
+    EXPECT_EQ(block_handles[index].offset(), v.handle.offset());
+    EXPECT_EQ(block_handles[index].size(), v.handle.size());
+
+    iter->Next();
+  }
+  delete iter;
+  iter = nullptr;
+
+  // Test: Read block contents randomly, using first_key.
+  // Expected behavior: After several Next(), ultimately the iterator should
+  // point to the correct index entry.
+  iter = new PLRBlockIter(block_contents, false, 
+                          num_records, options.comparator);
+  for (int i = 0; i < num_records * 2; i++) {
+    // find a random key in the lookaside array
+    int index = rnd.Uniform(num_records);
+    Slice k(first_keys[index]);
+    Slice data_block_last_key(last_keys[index]);
+
+    // search in block for this key
+    iter->Seek(k);
+    IndexValue v;
+    while (iter->Valid()) {
+      v = iter->value();
+      
+      // check if the extracted block_handle matches the one in block_handles
+      if (block_handles[index].offset() == v.handle.offset() && 
+          block_handles[index].size() == v.handle.size()) {
+        break;
+      } else {
+        iter->UpdateBinarySeekRange(k, k, data_block_last_key);
+        iter->Next();
+      }
+    }
+    
+    // EXPECT_EQ(separators[index], iter->key().ToString());
+    ASSERT_TRUE(iter->Valid());
+    EXPECT_EQ(block_handles[index].offset(), v.handle.offset());
+    EXPECT_EQ(block_handles[index].size(), v.handle.size());
+  }
+  delete iter;
+  iter = nullptr;
+
+  // Test: Read block contents randomly, using query_key.
+  // Expected behavior: After several Next(), ultimately the iterator should
+  // point to the correct index entry.
+  iter = new PLRBlockIter(block_contents, false, 
+                          num_records, options.comparator);
+  for (int i = 0; i < num_records * 2; i++) {
+    // find a random key in the lookaside array
+    int index = rnd.Uniform(num_records);
+    Slice k(query_keys[index]);
+    Slice data_block_first_key(first_keys[index]);
+    Slice data_block_last_key(last_keys[index]);
+
+    // search in block for this key
+    iter->Seek(k);
+    IndexValue v;
+    while (iter->Valid()) {
+      v = iter->value();
+      
+      // check if the extracted block_handle matches the one in block_handles
+      if (block_handles[index].offset() == v.handle.offset() && 
+          block_handles[index].size() == v.handle.size()) {
+        break;
+      } else {
+        iter->UpdateBinarySeekRange(k, data_block_first_key, 
+                                    data_block_last_key);
+        iter->Next();
+      }
+    }
+    
+    // EXPECT_EQ(separators[index], iter->key().ToString());
+    ASSERT_TRUE(iter->Valid());
+    EXPECT_EQ(block_handles[index].offset(), v.handle.offset());
+    EXPECT_EQ(block_handles[index].size(), v.handle.size());
+  }
+  delete iter;
+  iter = nullptr;
+
+  // Test: Read block contents randomly, using out_of_block_key.
+  // Expected behavior: After several Next(), ultimately the iterator should
+  // find out no index entry matches
+  iter = new PLRBlockIter(block_contents, false, 
+                          num_records, options.comparator);
+  for (int i = 0; i < num_records * 2; i++) {
+    // find a random key in the lookaside array
+    int index = rnd.Uniform(num_records);
+    Slice k(out_of_block_keys[index]);
+    Slice data_block_first_key(first_keys[index]);
+    Slice data_block_last_key(last_keys[index]);
+
+    // search in block for this key
+    iter->Seek(k);
+    IndexValue v;
+    while (iter->Valid()) {
+      v = iter->value();
+      
+      // check if the extracted block_handle matches the one in block_handles
+      if (block_handles[index].offset() == v.handle.offset() && 
+          block_handles[index].size() == v.handle.size()) {
+        break;
+      } else {
+        iter->UpdateBinarySeekRange(k, data_block_first_key, 
+                                    data_block_last_key);
+        iter->Next();
+      }
+    }
+    
+    // EXPECT_EQ(separators[index], iter->key().ToString());
+    ASSERT_TRUE(!iter->Valid());
+  }
+  delete iter;
+  iter = nullptr;
 
 }
 

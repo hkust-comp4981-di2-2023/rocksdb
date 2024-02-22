@@ -963,7 +963,8 @@ class PLRIndexReader: public BlockBasedTable::CustomIndexReaderCommon {
 
     // TODO(fyp): 99% will leak memory, need to fix, but lets see if logic is correct first
     auto it = new PLRBlockIter(block_content, index_key_includes_seq(), 
-                                num_data_blocks_);
+                                num_data_blocks_, 
+                                internal_comparator()->user_comparator());
     index_block_contents.TransferTo(it);
 
     return it;

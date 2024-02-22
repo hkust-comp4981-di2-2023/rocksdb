@@ -214,6 +214,49 @@ void PLRBlockIter::SetCurrentIndexValue() {
 	// }
 }
 
+// This function should be called if the Seek key does not exist in the current_
+// data block in binary seek mode. It updates the seek range correspondingly,
+// such that the next PLRBlockIter::Next() will update current_ to a correct
+// value.
+//
+// Note: This function assumes input data_block first/last keys are the keys of
+// the current data block (as pointed by current_).
+// Note: Only accepts user keys, but not internal keys.
+//
+// REQUIRES: Valid()
+// REQUIRES: binary seek mode
+void PLRBlockIter::UpdateBinarySeekRange(const Slice& seek_key,
+																					const Slice& data_block_first_key,
+																					const Slice& data_block_last_key) {
+	assert(Valid());
+	assert(seek_mode_ == SeekMode::kBinarySeek);
+
+	assert(user_comparator_.Compare(data_block_first_key, 
+																	data_block_last_key) <= 0);
+	
+	// Case 1: Seek key > All keys in current data block.
+	if (user_comparator_.Compare(data_block_last_key, seek_key) < 0) {
+		SetBeginBlockAsCurrent();
+		return;
+	}
+
+	// Case 2: Seek key < All keys in current data block.
+	if (user_comparator_.Compare(seek_key, data_block_first_key) < 0) {
+		SetEndBlockAsCurrent();
+		return;
+	}
+
+	// Case 3: First key in data block <= Seek key <= Last key in data block.
+	// Then Seek key must lie within the current data block if it exists.
+	// However, this function is only called if the Seek key does not exist.
+	// This implies the Seek key does not exist in the SSTable.
+	//
+	// Then we can adjust the seek range such that after the next Next(),
+	// the iterator becomes !Valid().
+	begin_block_ = end_block_+1;
+	assert(IsLastBinarySeek());
+}
+
 Status PLRBlockHelper::DecodePLRBlock(const Slice& data) {
 	// Extract the substring corr. to PLR Segments and Data block sizes
 	const size_t total_length = data.size();
