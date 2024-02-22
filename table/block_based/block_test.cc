@@ -632,9 +632,9 @@ class PLRIndexBlockTest
 };
 
 // Similar to GenerateRandomIndexEntries but for index block contents.
-void GenerateRandomPLRIndexEntries(std::vector<std::string> *in_block_keys,
-                                std::vector<BlockHandle> *block_handles,
+void GenerateRandomPLRIndexEntries(std::vector<BlockHandle> *block_handles,
                                 std::vector<std::string> *first_keys,
+                                std::vector<std::string> *in_block_keys,
                                 std::vector<std::string> *last_keys,
                                 std::vector<std::string> *out_of_block_keys,
                                 std::map<int, int> &reverse_index,
@@ -666,13 +666,12 @@ void GenerateRandomPLRIndexEntries(std::vector<std::string> *in_block_keys,
 }
 
 TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
-  // TODO(fyp)
   Random rnd(302);
   Options options = Options();
 
   std::vector<BlockHandle> block_handles;
   std::vector<std::string> first_keys;
-  std::vector<std::string> query_keys;
+  std::vector<std::string> in_block_keys;
   std::vector<std::string> last_keys;
   std::vector<std::string> out_of_block_keys;
   std::map<int, int> reverse_index; // use handle.offset() to look up idx number
@@ -680,7 +679,7 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   PLRIndexBuilder builder(gamma());
   int num_records = 100;
 
-  GenerateRandomPLRIndexEntries(&query_keys, &block_handles, &first_keys,
+  GenerateRandomPLRIndexEntries(&block_handles, &first_keys, &in_block_keys,
                                 &last_keys, &out_of_block_keys, reverse_index,
                                 num_records);
   
@@ -700,8 +699,9 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   PLRBlockIter* iter = new PLRBlockIter(&block_contents, true, 
                                         num_records, options.comparator);
 
-  // Test: Read block contents sequentially.
+  // Test 1: Read block contents sequentially.
   // Note: We won't test key(), because key() is not supported.
+  printf("Test 1\n");
   iter->SeekToFirst();
   for (int index = 0; index < num_records; ++index) {
     ASSERT_TRUE(iter->Valid());
@@ -718,9 +718,10 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   delete iter;
   iter = nullptr;
 
-  // Test: Read block contents randomly, using first_key.
+  // Test 2: Read block contents randomly, using first_key.
   // Expected behavior: After several Next(), ultimately the iterator should
   // point to the correct index entry.
+  printf("Test 2\n");
   iter = new PLRBlockIter(&block_contents, true, 
                           num_records, options.comparator);
   for (int i = 0; i < num_records * 2; i++) {
@@ -755,15 +756,16 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   delete iter;
   iter = nullptr;
 
-  // Test: Read block contents randomly, using query_key.
+  // Test 3: Read block contents randomly, using query_key.
   // Expected behavior: After several Next(), ultimately the iterator should
   // point to the correct index entry.
+  printf("Test 3\n");
   iter = new PLRBlockIter(&block_contents, true, 
                           num_records, options.comparator);
   for (int i = 0; i < num_records * 2; i++) {
     // find a random key in the lookaside array
     int index = rnd.Uniform(num_records);
-    Slice k(query_keys[index]);
+    Slice k(in_block_keys[index]);
 
     // search in block for this key
     iter->Seek(k);
@@ -792,9 +794,10 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   delete iter;
   iter = nullptr;
 
-  // Test: Read block contents randomly, using out_of_block_key.
+  // Test 4: Read block contents randomly, using out_of_block_key.
   // Expected behavior: After several Next(), ultimately the iterator should
   // find out no index entry matches
+  printf("Test 4\n");
   iter = new PLRBlockIter(&block_contents, true, 
                           num_records, options.comparator);
   for (int i = 0; i < num_records * 2; i++) {
