@@ -637,7 +637,7 @@ void GenerateRandomPLRIndexEntries(std::vector<std::string> *in_block_keys,
                                 std::vector<std::string> *first_keys,
                                 std::vector<std::string> *last_keys,
                                 std::vector<std::string> *out_of_block_keys,
-                                std::map<int, int> *reverse_index,
+                                std::map<int, int> &reverse_index,
                                 const int len) {
   Random rnd(42);
 
@@ -681,7 +681,7 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   int num_records = 100;
 
   GenerateRandomPLRIndexEntries(&query_keys, &block_handles, &first_keys,
-                                &last_keys, &out_of_block_keys, &reverse_index,
+                                &last_keys, &out_of_block_keys, reverse_index,
                                 num_records);
   
   Slice key(first_keys[0]);
