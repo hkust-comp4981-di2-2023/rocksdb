@@ -147,11 +147,11 @@ int main() {
       // assert(begin_num <= adjusted_pos && adjusted_pos <= end_num);
     }
 
-    std::cout << "-------------" << std::endl << std::endl;
-    
-    // never put this before decoding the encoded string to reader
-    delete builder;
+    std::cout << "-------------" << std::endl << std::endl;  
   }
+
+  // never put this before decoding the encoded string to reader
+  delete builder;
 
   return 0;
 }
