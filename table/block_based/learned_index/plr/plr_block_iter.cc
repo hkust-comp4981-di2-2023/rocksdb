@@ -285,8 +285,8 @@ Status PLRBlockHelper::DecodePLRBlock(const Slice& data) {
 Status PLRBlockHelper::PredictBlockRange(const Slice& target, 
 																					uint64_t& begin_block, 
 																					uint64_t& end_block) {
-	// Check if target has uint64_t size
-	assert(target.size() == kKeySize);
+	// Check if target is smaller than uint64_t
+	assert(target.size() <= kKeySize);
 	
 	// Cast back to uint64_t
 	std::string target_str(target.data(), target.size());
