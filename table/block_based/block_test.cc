@@ -692,8 +692,8 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   builder.Finish(&rawblock, block_handles[num_records-1]);
   BlockContents block_contents(rawblock.index_block_contents);
 
-  PLRBlockIter* iter = new PLRBlockIter(block_contents, false, 
-                                        num_records, &options.comparator);
+  PLRBlockIter* iter = new PLRBlockIter(&block_contents, false, 
+                                        num_records, options.comparator);
 
   // Test: Read block contents sequentially.
   // Note: We won't test key(), because key() is not supported.
@@ -716,8 +716,8 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   // Test: Read block contents randomly, using first_key.
   // Expected behavior: After several Next(), ultimately the iterator should
   // point to the correct index entry.
-  iter = new PLRBlockIter(block_contents, false, 
-                          num_records, &options.comparator);
+  iter = new PLRBlockIter(&block_contents, false, 
+                          num_records, options.comparator);
   for (int i = 0; i < num_records * 2; i++) {
     // find a random key in the lookaside array
     int index = rnd.Uniform(num_records);
@@ -751,8 +751,8 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   // Test: Read block contents randomly, using query_key.
   // Expected behavior: After several Next(), ultimately the iterator should
   // point to the correct index entry.
-  iter = new PLRBlockIter(block_contents, false, 
-                          num_records, &options.comparator);
+  iter = new PLRBlockIter(&block_contents, false, 
+                          num_records, options.comparator);
   for (int i = 0; i < num_records * 2; i++) {
     // find a random key in the lookaside array
     int index = rnd.Uniform(num_records);
@@ -788,7 +788,7 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   // Test: Read block contents randomly, using out_of_block_key.
   // Expected behavior: After several Next(), ultimately the iterator should
   // find out no index entry matches
-  iter = new PLRBlockIter(block_contents, false, 
+  iter = new PLRBlockIter(&block_contents, false, 
                           num_records, options.comparator);
   for (int i = 0; i < num_records * 2; i++) {
     // find a random key in the lookaside array
