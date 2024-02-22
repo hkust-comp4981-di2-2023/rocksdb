@@ -637,6 +637,7 @@ void GenerateRandomPLRIndexEntries(std::vector<std::string> *in_block_keys,
                                 std::vector<std::string> *first_keys,
                                 std::vector<std::string> *last_keys,
                                 std::vector<std::string> *out_of_block_keys,
+                                std::map<int, int> *reverse_index,
                                 const int len) {
   Random rnd(42);
 
@@ -649,6 +650,7 @@ void GenerateRandomPLRIndexEntries(std::vector<std::string> *in_block_keys,
   }
 
   uint64_t offset = 0;
+  int idx = 0;
   for (auto it = keys.begin(); it != keys.end();) {
     first_keys->emplace_back(*it++);
     in_block_keys->emplace_back(*it++);
@@ -659,6 +661,7 @@ void GenerateRandomPLRIndexEntries(std::vector<std::string> *in_block_keys,
     BlockHandle handle(offset, size);
     offset += size + kBlockTrailerSize;
     block_handles->emplace_back(handle);
+    reverse_index[handle.offset()] = idx++;
   }
 }
 
@@ -672,12 +675,14 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   std::vector<std::string> query_keys;
   std::vector<std::string> last_keys;
   std::vector<std::string> out_of_block_keys;
+  std::map<int, int> reverse_index; // use handle.offset() to look up idx number
   
   PLRIndexBuilder builder(gamma());
   int num_records = 100;
 
   GenerateRandomPLRIndexEntries(&query_keys, &block_handles, &first_keys,
-                                &last_keys, &out_of_block_keys, num_records);
+                                &last_keys, &out_of_block_keys, &reverse_index,
+                                num_records);
   
   Slice key(first_keys[0]);
   builder.OnKeyAdded(key);
@@ -692,7 +697,7 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   builder.Finish(&rawblock, block_handles[num_records-1]);
   BlockContents block_contents(rawblock.index_block_contents);
 
-  PLRBlockIter* iter = new PLRBlockIter(&block_contents, false, 
+  PLRBlockIter* iter = new PLRBlockIter(&block_contents, true, 
                                         num_records, options.comparator);
 
   // Test: Read block contents sequentially.
@@ -716,26 +721,28 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   // Test: Read block contents randomly, using first_key.
   // Expected behavior: After several Next(), ultimately the iterator should
   // point to the correct index entry.
-  iter = new PLRBlockIter(&block_contents, false, 
+  iter = new PLRBlockIter(&block_contents, true, 
                           num_records, options.comparator);
   for (int i = 0; i < num_records * 2; i++) {
     // find a random key in the lookaside array
     int index = rnd.Uniform(num_records);
     Slice k(first_keys[index]);
-    Slice data_block_last_key(last_keys[index]);
 
     // search in block for this key
     iter->Seek(k);
     IndexValue v;
     while (iter->Valid()) {
       v = iter->value();
+      int seek_result_index = reverse_index[v.handle.offset()];
       
       // check if the extracted block_handle matches the one in block_handles
-      if (block_handles[index].offset() == v.handle.offset() && 
-          block_handles[index].size() == v.handle.size()) {
+      if (seek_result_index == index) {
         break;
       } else {
-        iter->UpdateBinarySeekRange(k, k, data_block_last_key);
+        Slice seek_result_first_key(first_keys[seek_result_index]);
+        Slice seek_result_last_key(last_keys[seek_result_index]);
+        iter->UpdateBinarySeekRange(k, seek_result_first_key, 
+                                    seek_result_last_key);
         iter->Next();
       }
     }
@@ -751,28 +758,28 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   // Test: Read block contents randomly, using query_key.
   // Expected behavior: After several Next(), ultimately the iterator should
   // point to the correct index entry.
-  iter = new PLRBlockIter(&block_contents, false, 
+  iter = new PLRBlockIter(&block_contents, true, 
                           num_records, options.comparator);
   for (int i = 0; i < num_records * 2; i++) {
     // find a random key in the lookaside array
     int index = rnd.Uniform(num_records);
     Slice k(query_keys[index]);
-    Slice data_block_first_key(first_keys[index]);
-    Slice data_block_last_key(last_keys[index]);
 
     // search in block for this key
     iter->Seek(k);
     IndexValue v;
     while (iter->Valid()) {
       v = iter->value();
+      int seek_result_index = reverse_index[v.handle.offset()];
       
       // check if the extracted block_handle matches the one in block_handles
-      if (block_handles[index].offset() == v.handle.offset() && 
-          block_handles[index].size() == v.handle.size()) {
+      if (seek_result_index == index) {
         break;
       } else {
-        iter->UpdateBinarySeekRange(k, data_block_first_key, 
-                                    data_block_last_key);
+        Slice seek_result_first_key(first_keys[seek_result_index]);
+        Slice seek_result_last_key(last_keys[seek_result_index]);
+        iter->UpdateBinarySeekRange(k, seek_result_first_key, 
+                                    seek_result_last_key);
         iter->Next();
       }
     }
@@ -788,28 +795,28 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   // Test: Read block contents randomly, using out_of_block_key.
   // Expected behavior: After several Next(), ultimately the iterator should
   // find out no index entry matches
-  iter = new PLRBlockIter(&block_contents, false, 
+  iter = new PLRBlockIter(&block_contents, true, 
                           num_records, options.comparator);
   for (int i = 0; i < num_records * 2; i++) {
     // find a random key in the lookaside array
     int index = rnd.Uniform(num_records);
     Slice k(out_of_block_keys[index]);
-    Slice data_block_first_key(first_keys[index]);
-    Slice data_block_last_key(last_keys[index]);
 
     // search in block for this key
     iter->Seek(k);
     IndexValue v;
     while (iter->Valid()) {
       v = iter->value();
+      int seek_result_index = reverse_index[v.handle.offset()];
       
       // check if the extracted block_handle matches the one in block_handles
-      if (block_handles[index].offset() == v.handle.offset() && 
-          block_handles[index].size() == v.handle.size()) {
+      if (seek_result_index == index) {
         break;
       } else {
-        iter->UpdateBinarySeekRange(k, data_block_first_key, 
-                                    data_block_last_key);
+        Slice seek_result_first_key(first_keys[seek_result_index]);
+        Slice seek_result_last_key(last_keys[seek_result_index]);
+        iter->UpdateBinarySeekRange(k, seek_result_first_key, 
+                                    seek_result_last_key);
         iter->Next();
       }
     }
