@@ -141,6 +141,13 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 															const Slice& data_block_first_key,
 															const Slice& data_block_last_key);
 
+	std::string GetStateMessage() {
+		return "PLRBlockIter::GetStateMessage():\n"
+						+ "begin_block_: " + std::to_string(begin_block_) 
+						+ "; current_: " + std::to_string(current_) 
+						+ "; end_block_: " + std::to_string(end_block_)
+	}
+
  private:
 	enum class SeekMode : char {
 		kUnknown = 0x00,

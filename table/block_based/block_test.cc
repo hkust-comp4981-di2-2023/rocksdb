@@ -665,6 +665,7 @@ void GenerateRandomPLRIndexEntries(std::vector<BlockHandle> *block_handles,
   }
 }
 
+// TODO(fyp): Comment out printf messages after finish debugging
 TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   Random rnd(302);
   Options options = Options();
@@ -726,32 +727,33 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
                           num_records, options.comparator);
   for (int i = 0; i < num_records * 2; i++) {
     // find a random key in the lookaside array
-    int index = rnd.Uniform(num_records);
-    Slice k(first_keys[index]);
+    int expected_index = rnd.Uniform(num_records);
+    Slice query_key(first_keys[expected_index]);
 
     // search in block for this key
-    iter->Seek(k);
+    iter->Seek(query_key);
     IndexValue v;
     while (iter->Valid()) {
+      printf("%s\n", iter->GetStateMessage());
       v = iter->value();
       int seek_result_index = reverse_index[v.handle.offset()];
       
       // check if the extracted block_handle matches the one in block_handles
-      if (seek_result_index == index) {
+      if (seek_result_index == expected_index) {
         break;
       } else {
         Slice seek_result_first_key(first_keys[seek_result_index]);
         Slice seek_result_last_key(last_keys[seek_result_index]);
-        iter->UpdateBinarySeekRange(k, seek_result_first_key, 
+        iter->UpdateBinarySeekRange(query_key, seek_result_first_key, 
                                     seek_result_last_key);
         iter->Next();
       }
     }
     
-    // EXPECT_EQ(separators[index], iter->key().ToString());
+    // EXPECT_EQ(separators[expected_index], iter->key().ToString());
     ASSERT_TRUE(iter->Valid());
-    EXPECT_EQ(block_handles[index].offset(), v.handle.offset());
-    EXPECT_EQ(block_handles[index].size(), v.handle.size());
+    EXPECT_EQ(block_handles[expected_index].offset(), v.handle.offset());
+    EXPECT_EQ(block_handles[expected_index].size(), v.handle.size());
   }
   delete iter;
   iter = nullptr;
@@ -764,32 +766,32 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
                           num_records, options.comparator);
   for (int i = 0; i < num_records * 2; i++) {
     // find a random key in the lookaside array
-    int index = rnd.Uniform(num_records);
-    Slice k(in_block_keys[index]);
+    int expected_index = rnd.Uniform(num_records);
+    Slice query_key(in_block_keys[expected_index]);
 
     // search in block for this key
-    iter->Seek(k);
+    iter->Seek(query_key);
     IndexValue v;
     while (iter->Valid()) {
       v = iter->value();
       int seek_result_index = reverse_index[v.handle.offset()];
       
       // check if the extracted block_handle matches the one in block_handles
-      if (seek_result_index == index) {
+      if (seek_result_index == expected_index) {
         break;
       } else {
         Slice seek_result_first_key(first_keys[seek_result_index]);
         Slice seek_result_last_key(last_keys[seek_result_index]);
-        iter->UpdateBinarySeekRange(k, seek_result_first_key, 
+        iter->UpdateBinarySeekRange(query_key, seek_result_first_key, 
                                     seek_result_last_key);
         iter->Next();
       }
     }
     
-    // EXPECT_EQ(separators[index], iter->key().ToString());
+    // EXPECT_EQ(separators[expected_index], iter->key().ToString());
     ASSERT_TRUE(iter->Valid());
-    EXPECT_EQ(block_handles[index].offset(), v.handle.offset());
-    EXPECT_EQ(block_handles[index].size(), v.handle.size());
+    EXPECT_EQ(block_handles[expected_index].offset(), v.handle.offset());
+    EXPECT_EQ(block_handles[expected_index].size(), v.handle.size());
   }
   delete iter;
   iter = nullptr;
@@ -802,29 +804,29 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
                           num_records, options.comparator);
   for (int i = 0; i < num_records * 2; i++) {
     // find a random key in the lookaside array
-    int index = rnd.Uniform(num_records);
-    Slice k(out_of_block_keys[index]);
+    int expected_index = rnd.Uniform(num_records);
+    Slice query_key(out_of_block_keys[expected_index]);
 
     // search in block for this key
-    iter->Seek(k);
+    iter->Seek(query_key);
     IndexValue v;
     while (iter->Valid()) {
       v = iter->value();
       int seek_result_index = reverse_index[v.handle.offset()];
       
       // check if the extracted block_handle matches the one in block_handles
-      if (seek_result_index == index) {
+      if (seek_result_index == expected_index) {
         break;
       } else {
         Slice seek_result_first_key(first_keys[seek_result_index]);
         Slice seek_result_last_key(last_keys[seek_result_index]);
-        iter->UpdateBinarySeekRange(k, seek_result_first_key, 
+        iter->UpdateBinarySeekRange(query_key, seek_result_first_key, 
                                     seek_result_last_key);
         iter->Next();
       }
     }
     
-    // EXPECT_EQ(separators[index], iter->key().ToString());
+    // EXPECT_EQ(separators[expected_index], iter->key().ToString());
     ASSERT_TRUE(!iter->Valid());
   }
   delete iter;
