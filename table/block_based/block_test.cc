@@ -684,9 +684,16 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
                                 &last_keys, &out_of_block_keys, reverse_index,
                                 num_records);
   
+  // print training data
+  printf("Training with keys:\n");
+  for (int i = 0; i < num_records; ++i) {
+    printf("%d: %lu\n", i, stringToNumber<uint64_t>(first_keys[i]));
+  }
+  printf("Ended training.\n\n");
+
   Slice key(first_keys[0]);
   builder.OnKeyAdded(key);
-  for (int i = 1; i < num_records; i++) {
+  for (int i = 1; i < num_records; ++i) {
     key = Slice(first_keys[i]);
     builder.AddIndexEntry(nullptr, &key, block_handles[i-1]);
   }
