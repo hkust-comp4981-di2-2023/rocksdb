@@ -734,7 +734,7 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
     iter->Seek(query_key);
     IndexValue v;
     while (iter->Valid()) {
-      printf("%s\n", iter->GetStateMessage());
+      printf("%s\n", iter->GetStateMessage().c_str());
       v = iter->value();
       int seek_result_index = reverse_index[v.handle.offset()];
       
