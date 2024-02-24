@@ -817,20 +817,27 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
     // search in block for this key
     iter->Seek(query_key);
     IndexValue v;
+    const Comparator* cmp = options.comparator;
     while (iter->Valid()) {
       v = iter->value();
       int seek_result_index = reverse_index[v.handle.offset()];
       
-      // check if the extracted block_handle matches the one in block_handles
-      if (seek_result_index == expected_index) {
-        break;
-      } else {
-        Slice seek_result_first_key(first_keys[seek_result_index]);
-        Slice seek_result_last_key(last_keys[seek_result_index]);
+      Slice seek_result_first_key(first_keys[seek_result_index]);
+      Slice seek_result_last_key(last_keys[seek_result_index]);
+
+      // expectation: our query key should be outside 
+      // [seek_result_first_key, seek_result_last_key]
+      if (cmp->Compare(seek_result_first_key, seek_result_last_key) > 0) {
+        assert(!"first_key should be <= last key, something went wrong!");
+      }
+      if (cmp->Compare(query_key, seek_result_first_key) < 0
+          || cmp->Compare(seek_result_last_key, query_key) < 0) {
         iter->UpdateBinarySeekRange(query_key, seek_result_first_key, 
                                     seek_result_last_key);
         iter->Next();
+        continue;
       }
+      break;
     }
     
     // EXPECT_EQ(separators[expected_index], iter->key().ToString());
