@@ -6,6 +6,7 @@
 #include <string>
 
 #include "db/dbformat.h"
+#include "db/pinned_iterators_manager.h"
 #include "include/rocksdb/status.h"
 #include "rocksdb/comparator.h"
 #include "rocksdb/iterator.h"
@@ -16,6 +17,7 @@
 #include "table/block_based/learned_index/plr/block_handle_cal.h"
 #include "test_util/sync_point.h"
 #include "stdint.h"
+
 
 namespace ROCKSDB_NAMESPACE {
 
@@ -46,7 +48,7 @@ class PLRBlockHelper {
 												BlockHandle& block_handle) const;
 	
 	// If there's no data block, return 0
-	inline uint64_t GetMaxDataBlockNumber() const { return num_data_blocks_; }
+	inline uint64_t GetNumberOfDataBlock() const { return num_data_blocks_; }
 
  private:
 	typedef uint64_t KeyInternalRep;
@@ -70,7 +72,7 @@ class PLRBlockHelper {
 class PLRBlockIter : public InternalIteratorBase<IndexValue> {
  public:
 	PLRBlockIter(const BlockContents* contents, const bool key_includes_seq, 
-				const uint64_t num_data_blocks):
+				const uint64_t num_data_blocks, const Comparator* user_comparator):
 		InternalIteratorBase<IndexValue>(),
 		seek_mode_(SeekMode::kUnknown),
 		data_(contents->data),
@@ -79,6 +81,7 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 		end_block_(invalid_block_number_),
 		key_includes_seq_(key_includes_seq),
 		value_(),
+		user_comparator_(user_comparator),
 		status_(),
 		helper_(std::unique_ptr<PLRBlockHelper>(
 			new PLRBlockHelper(num_data_blocks, data_)))
@@ -89,7 +92,13 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 	void SeekToFirst() override;
 	void SeekToLast() override;
 	void Seek(const Slice& target) override;
-	void SeekForPrev(const Slice& target) override;
+	void SeekForPrev(const Slice&) override {
+    assert(false);
+    current_ = invalid_block_number_;
+    status_ = Status::InvalidArgument(
+        "RocksDB internal error: should never call SeekForPrev() on index "
+        "blocks");
+  }
 
 	void Next() override;
 	void Prev() override;
@@ -98,7 +107,7 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 	IndexValue value() const override;
 	Status status() const override;
 
-	// Reuse trivial implementation like IndexBlockIter?
+	// Reuse trivial implementation like IndexBlockIter.
 	// bool IsOutOfBound() override;
 	// bool MayBeOutOfLowerBound() override;
 	// bool MayBeOutOfUpperBound() override;
@@ -114,11 +123,10 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 	}
 
 	void SetPinnedItersMgr(PinnedIteratorsManager* pinned_iters_mgr) override {
-		//TODO(fyp): Red underlined for _pinned_iters_mgr
-		//_pinned_iters_mgr = pinned_iters_mgr;
+		pinned_iters_mgr_ = pinned_iters_mgr;
 	}
 
-	PinnedIteratorsManager* pinned_iters_mgr = nullptr;
+	PinnedIteratorsManager* pinned_iters_mgr_ = nullptr;
 #endif
 
 	// PLRBlockIter never owns a memory for key, so return false always
@@ -129,12 +137,15 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 	// this function should return false.
 	bool IsValuePinned() const override { return false; }
 
-	inline void SetBeginBlockAsCurrent() {
-		begin_block_ = current_ + 1;
-	}
+	void UpdateBinarySeekRange(const Slice& seek_key,
+															const Slice& data_block_first_key,
+															const Slice& data_block_last_key);
 
-	inline void SetEndBlockAsCurrent() {
-		end_block_ = current_ - 1;
+	std::string GetStateMessage() {
+		return std::string("PLRBlockIter::GetStateMessage():\n")
+						+ "begin_block_: " + std::to_string(begin_block_) 
+						+ "; current_: " + std::to_string(current_) 
+						+ "; end_block_: " + std::to_string(end_block_);
 	}
 
  private:
@@ -169,6 +180,7 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 	static constexpr const char* key_extraction_not_supported_ = 
 																											"PLR_key()_not_supported";
 	IndexValue value_;
+	const Comparator* user_comparator_;
 	Status status_;
 
 	std::unique_ptr<PLRBlockHelper> helper_;
@@ -183,6 +195,14 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 
 	inline uint64_t GetMidpointBlockNumber() const {
 		return (begin_block_ + end_block_) / 2;
+	}
+
+	inline void SetBeginBlockAsCurrent() {
+		begin_block_ = current_ + 1;
+	}
+
+	inline void SetEndBlockAsCurrent() {
+		end_block_ = current_ - 1;
 	}
 
 	void SetCurrentIndexValue();

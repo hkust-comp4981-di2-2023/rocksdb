@@ -1,5 +1,3 @@
-#pragma once
-
 #include "table/block_based/learned_index/plr/block_handle_cal.h"
 
 namespace ROCKSDB_NAMESPACE {
@@ -43,12 +41,11 @@ Status BlockHandleCalculator::Decode(const std::string& encoded_string) {
 		std::string handle_size = encoded_string.substr(start, sizeof(uint64_t));
 		current_data_block_size = DecodeFixed64(handle_size.c_str());
 		
-		BlockHandle handle;
-		handle.set_offset(current_offset);
-		handle.set_offset(current_data_block_size);
-		data_block_handles_[i] = handle;
+		data_block_handles_.emplace_back(current_offset, current_data_block_size);
 
 		current_offset += current_data_block_size + kBlockTrailerSize;
 	}
+
+	return Status::OK();
 }
 } // namespace ROCKSDB_NAMESPACE

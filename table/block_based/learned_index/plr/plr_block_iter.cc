@@ -1,16 +1,4 @@
-#pragma once
-
-#include <string>
-#include "db/dbformat.h"
-#include "rocksdb/comparator.h"
-#include "rocksdb/iterator.h"
-#include "rocksdb/status.h"
-#include "table/format.h"
-#include "table/internal_iterator.h"
 #include "table/block_based/learned_index/plr/plr_block_iter.h"
-#include "table/block_fetcher.h"
-#include <algorithm>
-#include <sstream>
 
 namespace ROCKSDB_NAMESPACE {
 
@@ -32,11 +20,12 @@ void PLRBlockIter::SeekToFirst() {
 	seek_mode_ = SeekMode::kUnknown;
 
 	begin_block_ = 0;
-	end_block_ = helper_->GetMaxDataBlockNumber();
-	if (end_block_ < 0) {
+	end_block_ = helper_->GetNumberOfDataBlock();
+	if (end_block_ == 0) {
 		current_ = invalid_block_number_;
 		return;
 	}
+	end_block_ -= 1;
 	current_ = 0;
 
 	SetCurrentIndexValue();
@@ -61,11 +50,12 @@ void PLRBlockIter::SeekToLast() {
 	seek_mode_ = SeekMode::kUnknown;
 
 	begin_block_ = 0;
-	end_block_ = helper_->GetMaxDataBlockNumber();
-	if (end_block_ < 0) {
+	end_block_ = helper_->GetNumberOfDataBlock();
+	if (end_block_ == 0) {
 		current_ = invalid_block_number_;
 		return;
 	}
+	end_block_ -= 1;
 	current_ = end_block_;
 
 	SetCurrentIndexValue();
@@ -224,11 +214,54 @@ void PLRBlockIter::SetCurrentIndexValue() {
 	// }
 }
 
+// This function should be called if the Seek key does not exist in the current_
+// data block in binary seek mode. It updates the seek range correspondingly,
+// such that the next PLRBlockIter::Next() will update current_ to a correct
+// value.
+//
+// Note: This function assumes input data_block first/last keys are the keys of
+// the current data block (as pointed by current_).
+// Note: Only accepts user keys, but not internal keys.
+//
+// REQUIRES: Valid()
+// REQUIRES: binary seek mode
+void PLRBlockIter::UpdateBinarySeekRange(const Slice& seek_key,
+																					const Slice& data_block_first_key,
+																					const Slice& data_block_last_key) {
+	assert(Valid());
+	assert(seek_mode_ == SeekMode::kBinarySeek);
+
+	assert(user_comparator_->Compare(data_block_first_key, 
+																	data_block_last_key) <= 0);
+	
+	// Case 1: Seek key > All keys in current data block.
+	if (user_comparator_->Compare(data_block_last_key, seek_key) < 0) {
+		SetBeginBlockAsCurrent();
+		return;
+	}
+
+	// Case 2: Seek key < All keys in current data block.
+	if (user_comparator_->Compare(seek_key, data_block_first_key) < 0) {
+		SetEndBlockAsCurrent();
+		return;
+	}
+
+	// Case 3: First key in data block <= Seek key <= Last key in data block.
+	// Then Seek key must lie within the current data block if it exists.
+	// However, this function is only called if the Seek key does not exist.
+	// This implies the Seek key does not exist in the SSTable.
+	//
+	// Then we can adjust the seek range such that after the next Next(),
+	// the iterator becomes !Valid().
+	begin_block_ = end_block_+1;
+	assert(IsLastBinarySeek());
+}
+
 Status PLRBlockHelper::DecodePLRBlock(const Slice& data) {
 	// Extract the substring corr. to PLR Segments and Data block sizes
 	const size_t total_length = data.size();
 
-	const size_t block_handles_length = kParamSize * num_data_blocks_;
+	const size_t block_handles_length = kParamSize * (num_data_blocks_ + 1);
 	assert(total_length > block_handles_length);
 
 	const size_t plr_segments_length = total_length - block_handles_length;
@@ -241,9 +274,9 @@ Status PLRBlockHelper::DecodePLRBlock(const Slice& data) {
 	std::string encoded_block_handles(block_handles_start, block_handles_length);
 
 	// Initialize model_ and handle_calculator_
-	model_->reset(
+	model_.reset(
 		new PLRDataRep<EncodedStrBaseType, double>(encoded_plr_segments));
-	handle_calculator_->reset(
+	handle_calculator_.reset(
 		new BlockHandleCalculator(encoded_block_handles, num_data_blocks_));
 	
 	return Status::OK();
@@ -252,8 +285,8 @@ Status PLRBlockHelper::DecodePLRBlock(const Slice& data) {
 Status PLRBlockHelper::PredictBlockRange(const Slice& target, 
 																					uint64_t& begin_block, 
 																					uint64_t& end_block) {
-	// Check if target has uint64_t size
-	assert(target.size() == kKeySize);
+	// Check if target is smaller than uint64_t
+	assert(target.size() <= kKeySize);
 	
 	// Cast back to uint64_t
 	std::string target_str(target.data(), target.size());
@@ -263,8 +296,9 @@ Status PLRBlockHelper::PredictBlockRange(const Slice& target,
 	auto range =  model_->GetValue(key);
 	assert(range.first <= range.second);
 
-	begin_block = std::max<uint64_t>(0, range.first);
-	end_block = std::min(num_data_blocks_, range.second);
+	begin_block = std::max<uint64_t>(0, 
+																	std::min(num_data_blocks_ - 1, range.first));
+	end_block = std::min(num_data_blocks_ - 1, range.second);
 	return Status::OK();
 }
 

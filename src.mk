@@ -234,6 +234,8 @@ LIB_SOURCES =                                                   \
   utilities/ttl/db_ttl_impl.cc                                  \
   utilities/write_batch_with_index/write_batch_with_index.cc    \
   utilities/write_batch_with_index/write_batch_with_index_internal.cc    \
+  table/block_based/learned_index/plr/plr_block_iter.cc         \
+  table/block_based/learned_index/plr/block_handle_cal.cc       \
 
 ifeq ($(ARMCRC_SOURCE),1)
 LIB_SOURCES +=\
