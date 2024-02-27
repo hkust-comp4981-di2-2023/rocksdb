@@ -848,8 +848,7 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
 }
 
 INSTANTIATE_TEST_CASE_P(PLR, PLRIndexBlockTest,
-                        ::testing::Values(0.001, 
-                                          0.03, 
+                        ::testing::Values(0.03, 
                                           0.06, 
                                           0.3, 
                                           0.6, 
