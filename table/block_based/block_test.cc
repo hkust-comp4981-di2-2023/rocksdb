@@ -665,7 +665,6 @@ void GenerateRandomPLRIndexEntries(std::vector<BlockHandle> *block_handles,
   }
 }
 
-// TODO(fyp): Comment out printf messages after finish debugging
 TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   Random rnd(302);
   Options options = Options();
@@ -685,11 +684,11 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
                                 num_records);
   
   // print training data
-  printf("Training with keys:\n");
-  for (int i = 0; i < num_records; ++i) {
-    printf("%d: %lu\n", i, stringToNumber<uint64_t>(first_keys[i]));
-  }
-  printf("Ended training.\n\n");
+  // printf("Training with keys:\n");
+  // for (int i = 0; i < num_records; ++i) {
+  //   printf("%d: %lu\n", i, stringToNumber<uint64_t>(first_keys[i]));
+  // }
+  // printf("Ended training.\n\n");
 
   Slice key(first_keys[0]);
   builder.OnKeyAdded(key);
@@ -709,7 +708,7 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
 
   // Test 1: Read block contents sequentially.
   // Note: We won't test key(), because key() is not supported.
-  printf("Test 1\n");
+  // printf("Test 1\n");
   iter->SeekToFirst();
   for (int index = 0; index < num_records; ++index) {
     ASSERT_TRUE(iter->Valid());
@@ -729,7 +728,7 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   // Test 2: Read block contents randomly, using first_key.
   // Expected behavior: After several Next(), ultimately the iterator should
   // point to the correct index entry.
-  printf("Test 2\n");
+  // printf("Test 2\n");
   iter = new PLRBlockIter(&block_contents, true, 
                           num_records, options.comparator);
   for (int i = 0; i < num_records * 2; i++) {
@@ -741,7 +740,7 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
     iter->Seek(query_key);
     IndexValue v;
     while (iter->Valid()) {
-      printf("%s\n", iter->GetStateMessage().c_str());
+      // printf("%s\n", iter->GetStateMessage().c_str());
       v = iter->value();
       int seek_result_index = reverse_index[v.handle.offset()];
       
@@ -768,7 +767,7 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   // Test 3: Read block contents randomly, using query_key.
   // Expected behavior: After several Next(), ultimately the iterator should
   // point to the correct index entry.
-  printf("Test 3\n");
+  // printf("Test 3\n");
   iter = new PLRBlockIter(&block_contents, true, 
                           num_records, options.comparator);
   for (int i = 0; i < num_records * 2; i++) {
@@ -806,7 +805,7 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   // Test 4: Read block contents randomly, using out_of_block_key.
   // Expected behavior: After several Next(), ultimately the iterator should
   // find out no index entry matches
-  printf("Test 4\n");
+  // printf("Test 4\n");
   iter = new PLRBlockIter(&block_contents, true, 
                           num_records, options.comparator);
   for (int i = 0; i < num_records * 2; i++) {
@@ -849,13 +848,17 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
 }
 
 INSTANTIATE_TEST_CASE_P(PLR, PLRIndexBlockTest,
-                        ::testing::Values(0.03, 
+                        ::testing::Values(0.001, 
+                                          0.03, 
                                           0.06, 
                                           0.3, 
                                           0.6, 
                                           1.0, 
                                           1.2, 
-                                          2.0));
+                                          1.5, 
+                                          2.0, 
+                                          3.0, 
+                                          4.0));
 
 }  // namespace ROCKSDB_NAMESPACE
 
