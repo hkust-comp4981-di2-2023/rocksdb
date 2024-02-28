@@ -30,6 +30,7 @@
 #include "table/block_based/block_type.h"
 #include "table/block_based/cachable_entry.h"
 #include "table/block_based/filter_block.h"
+#include "table/block_based/learned_index/plr/plr_block_iter.h"
 #include "table/block_based/uncompression_dict_reader.h"
 #include "table/format.h"
 #include "table/get_context.h"

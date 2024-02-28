@@ -80,12 +80,16 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 		begin_block_(invalid_block_number_),
 		end_block_(invalid_block_number_),
 		key_includes_seq_(key_includes_seq),
+		key_(),
+		is_key_set_(false),
 		value_(),
 		user_comparator_(user_comparator),
 		status_(),
 		helper_(std::unique_ptr<PLRBlockHelper>(
 			new PLRBlockHelper(num_data_blocks, data_)))
-		{}
+		{
+			key_.SetIsUserKey(!key_includes_seq_);
+		}
 
 	bool Valid() const override;
 
@@ -148,6 +152,42 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 						+ "; end_block_: " + std::to_string(end_block_);
 	}
 
+	// The following public functions are used by BlockBasedTableIterator.
+
+	// Usage: Set key_ as current_ data block last key.
+	// TODO(fyp): Not sure if this will cause memory leak or not.
+	void SetKey(const Slice& key) {
+		is_key_set_ = true;
+		key_.SetKey(key);
+	}
+
+	inline bool IsKeySet() const { return is_key_set_; }
+
+	Slice user_key() const override {
+    if (key_includes_seq_) {
+      return ExtractUserKey(key());
+    }
+    return key();
+  }
+
+	// Return true if the subsequent Next() will turn Valid() from true to false.
+	inline bool IsLastBinarySeek() const {
+		return begin_block_ > end_block_;
+	}
+
+	// This function is intended for switching to kLinearSeek after finding the
+	// right current_ in kBinarySeek. It is used in BBTIter::Seek(), for example.
+	inline void SwitchToLinearSeekMode() const {
+		assert(seek_mode_ == SeekMode::kBinarySeek);
+		assert(Valid());
+		
+		begin_block_ = 0;
+		// If Valid(), number of data block must be >= 1, 
+		// so won't underflow normally.
+		end_block_ = helper_->GetNumberOfDataBlock() - 1;
+		seek_mode_ = SeekMode::kLinearSeek;
+	}
+
  private:
 	enum class SeekMode : char {
 		kUnknown = 0x00,
@@ -177,17 +217,18 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 	//
 	// Note: In Seek(target), target is always an internal key.
 	bool key_includes_seq_;
+
+	// Default text if key_ is not set. Typically key is set in bbt-iterator.
 	static constexpr const char* key_extraction_not_supported_ = 
 																											"PLR_key()_not_supported";
+	IterKey key_;
+	// Return true if key_ is set and active; false otherwise. 
+	bool is_key_set_;
 	IndexValue value_;
 	const Comparator* user_comparator_;
 	Status status_;
 
 	std::unique_ptr<PLRBlockHelper> helper_;
-
-	inline bool IsLastBinarySeek() const {
-		return begin_block_ > end_block_;
-	}
 
 	inline bool IsLastLinearSeek() const {
 		return current_ == end_block_;

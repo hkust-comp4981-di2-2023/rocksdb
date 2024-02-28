@@ -2996,6 +2996,15 @@ void BlockBasedTableIterator<TBlockIter, TValue>::SeekImpl(
     return;
   }
 
+  // Note(fyp): If the underlying index iterator type is plr index,
+  // plr_index_iter will be non-nullptr. This variable will be used extensively
+  // to override original logic.
+  PLRBlockIter* plr_index_iter = nullptr;
+  if (table_->get_rep()->index_type == 
+        BlockBasedTableOptions::kLearnedIndexWithPLR) {
+    plr_index_iter = reinterpret_cast<PLRBlockIter*>(index_iter_);
+  }
+
   bool need_seek_index = true;
   if (block_iter_points_to_real_block_ && block_iter_.Valid()) {
     // Reseek.
@@ -3010,7 +3019,11 @@ void BlockBasedTableIterator<TBlockIter, TValue>::SeekImpl(
       // exclude the equality case. Considering internal keys can
       // improve for the boundary cases, but it would complicate the
       // code.
-      if (user_comparator_.Compare(ExtractUserKey(*target),
+      //
+      // Note(fyp): If index type is plr index, key_ must be set to execute
+      // the following lines. Otherwise, skip checking.
+      if ((!plr_index_iter || plr_index_iter->IsKeySet()) && 
+          user_comparator_.Compare(ExtractUserKey(*target),
                                    block_iter_.user_key()) > 0 &&
           user_comparator_.Compare(ExtractUserKey(*target),
                                    index_iter_->user_key()) < 0) {
@@ -3022,6 +3035,43 @@ void BlockBasedTableIterator<TBlockIter, TValue>::SeekImpl(
   if (need_seek_index) {
     if (target) {
       index_iter_->Seek(*target);
+
+      if (plr_index_iter) {
+        // Note(fyp): If index type is plr index, special treatment is needed.
+        //
+        // Method 1: Binary seek and materialize data blocks until either:
+        // - The current data block range covers target, or
+        // - This is the last possible binary search iteration
+        //
+        // Method 2: Linear seek, materialize and start from begin_block_.
+        //
+        // We pick method 1 for now.
+        while (plr_index_iter->Valid()) {
+          // InitDataBlock() will set block_iter_points_to_real_block_ to true
+          // and invoke plr_index_iter->SetKey().
+          InitDataBlock();
+          prev_block_offset_ = index_iter_->value().handle.offset();
+
+          block_iter_.SeekToFirst();
+          Slice data_block_first_key = block_iter_.user_key();
+          block_iter_.SeekToLast();
+          Slice data_block_last_key = block_iter_.user_key();
+
+          plr_index_iter->UpdateBinarySeekRange(ExtractUserKey(*target), 
+            data_block_first_key, data_block_last_key);
+          
+          if (plr_index_iter->IsLastBinarySeek() || (
+              user_comparator_.Compare(data_block_first_key, 
+                                        ExtractUserKey(*target)) <= 0 &&
+              user_comparator_.Compare(ExtractUserKey(*target), 
+                                        data_block_last_key) <= 0)) {
+            plr_index_iter->SwitchToLinearSeekMode();
+            break;
+          }
+          
+          plr_index_iter->Next();
+        }
+      }
     } else {
       index_iter_->SeekToFirst();
     }
@@ -3267,6 +3317,15 @@ void BlockBasedTableIterator<TBlockIter, TValue>::InitDataBlock() {
         /*for_compaction=*/lookup_context_.caller ==
             TableReaderCaller::kCompaction);
     block_iter_points_to_real_block_ = true;
+
+    // Note(fyp): Special treatment for plr index.
+    if (table_->get_rep()->index_type == 
+        BlockBasedTableOptions::kLearnedIndexWithPLR) {
+      assert(block_iter_.Valid());
+      block_iter_.SeekToLast();
+      reinterpret_cast<PLRBlockIter*>(index_iter_)->SetKey(block_iter_.key());
+    }
+
     CheckDataBlockWithinUpperBound();
   }
 }

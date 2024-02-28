@@ -18,6 +18,7 @@ void PLRBlockIter::SeekToFirst() {
 
 	status_ = Status::OK();
 	seek_mode_ = SeekMode::kUnknown;
+	is_key_set_ = false;
 
 	begin_block_ = 0;
 	end_block_ = helper_->GetNumberOfDataBlock();
@@ -48,6 +49,7 @@ void PLRBlockIter::SeekToLast() {
 
 	status_ = Status::OK();
 	seek_mode_ = SeekMode::kUnknown;
+	is_key_set_ = false;
 
 	begin_block_ = 0;
 	end_block_ = helper_->GetNumberOfDataBlock();
@@ -81,6 +83,7 @@ void PLRBlockIter::Seek(const Slice& target) {
 	assert(helper_ != nullptr);
 
 	seek_mode_ = SeekMode::kUnknown;
+	is_key_set_ = false;
 	
 	Slice seek_key = target;
 	if (!key_includes_seq_) {
@@ -126,6 +129,8 @@ void PLRBlockIter::Next() {
 	assert(Valid());
 	assert(seek_mode_ != SeekMode::kUnknown);
 
+	is_key_set_ = false;
+
 	switch(seek_mode_) {
 		case SeekMode::kBinarySeek: {
 			if (IsLastBinarySeek()) {
@@ -161,6 +166,8 @@ void PLRBlockIter::Prev() {
 	assert(Valid());
 	assert(seek_mode_ == SeekMode::kLinearSeek);
 
+	is_key_set_ = false;
+
 	if (current_ == 0) {
 		current_ = invalid_block_number_;
 		return;
@@ -177,6 +184,9 @@ void PLRBlockIter::Prev() {
 // REQUIRES: Valid()
 Slice PLRBlockIter::key() const {
 	assert(Valid());
+	if (is_key_set_) {
+		return key_.GetKey();
+	}
 	return Slice(key_extraction_not_supported_);
 }
 
