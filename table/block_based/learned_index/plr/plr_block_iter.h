@@ -177,7 +177,7 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 
 	// This function is intended for switching to kLinearSeek after finding the
 	// right current_ in kBinarySeek. It is used in BBTIter::Seek(), for example.
-	inline void SwitchToLinearSeekMode() const {
+	inline void SwitchToLinearSeekMode() {
 		assert(seek_mode_ == SeekMode::kBinarySeek);
 		assert(Valid());
 		
