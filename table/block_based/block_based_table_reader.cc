@@ -3143,6 +3143,15 @@ void BlockBasedTableIterator<TBlockIter, TValue>::SeekForPrev(
 
   SavePrevIndexValue();
 
+  // Note(fyp): If the underlying index iterator type is plr index,
+  // plr_index_iter will be non-nullptr. This variable will be used extensively
+  // to override original logic.
+  PLRBlockIter* plr_index_iter = nullptr;
+  if (table_->get_rep()->index_type == 
+        BlockBasedTableOptions::kLearnedIndexWithPLR) {
+    plr_index_iter = reinterpret_cast<PLRBlockIter*>(index_iter_);
+  }
+
   // Call Seek() rather than SeekForPrev() in the index block, because the
   // target data block will likely to contain the position for `target`, the
   // same as Seek(), rather than than before.
@@ -3157,6 +3166,36 @@ void BlockBasedTableIterator<TBlockIter, TValue>::SeekForPrev(
   // to distinguish the two unless we read the second block. In this case, we'll
   // end up with reading two blocks.
   index_iter_->Seek(target);
+
+  if (plr_index_iter) {
+    // Note(fyp): If index type is plr index, special treatment is needed.
+    // Similar to Seek().
+    while (plr_index_iter->Valid()) {
+      // InitDataBlock() will set block_iter_points_to_real_block_ to true
+      // and invoke plr_index_iter->SetKey().
+      InitDataBlock();
+      prev_block_offset_ = index_iter_->value().handle.offset();
+
+      block_iter_.SeekToFirst();
+      Slice data_block_first_key = block_iter_.user_key();
+      block_iter_.SeekToLast();
+      Slice data_block_last_key = block_iter_.user_key();
+
+      plr_index_iter->UpdateBinarySeekRange(ExtractUserKey(*target), 
+        data_block_first_key, data_block_last_key);
+      
+      if (plr_index_iter->IsLastBinarySeek() || (
+          user_comparator_.Compare(data_block_first_key, 
+                                    ExtractUserKey(*target)) <= 0 &&
+          user_comparator_.Compare(ExtractUserKey(*target), 
+                                    data_block_last_key) <= 0)) {
+        plr_index_iter->SwitchToLinearSeekMode();
+        break;
+      }
+      
+      plr_index_iter->Next();
+    }
+  }
 
   if (!index_iter_->Valid()) {
     auto seek_status = index_iter_->status();
