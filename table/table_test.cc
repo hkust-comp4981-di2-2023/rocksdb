@@ -2041,6 +2041,14 @@ TEST_P(BlockBasedTableTest, PartitionIndexTest) {
   }
 }
 
+// TODO(fyp): try with varying gamma
+TEST_P(BlockBasedTableTest, PLRIndexTest) {
+  BlockBasedTableOptions table_options = GetBlockBasedTableOptions();
+  table_options.index_type = BlockBasedTableOptions::kLearnedIndexWithPLR;
+  table_options.plr_index_block_gamma = 2;
+  IndexTest(table_options);
+}
+
 TEST_P(BlockBasedTableTest, IndexSeekOptimizationIncomplete) {
   std::unique_ptr<InternalKeyComparator> comparator(
       new InternalKeyComparator(BytewiseComparator()));
