@@ -3181,13 +3181,13 @@ void BlockBasedTableIterator<TBlockIter, TValue>::SeekForPrev(
       block_iter_.SeekToLast();
       Slice data_block_last_key = block_iter_.user_key();
 
-      plr_index_iter->UpdateBinarySeekRange(ExtractUserKey(*target), 
+      plr_index_iter->UpdateBinarySeekRange(ExtractUserKey(target), 
         data_block_first_key, data_block_last_key);
       
       if (plr_index_iter->IsLastBinarySeek() || (
           user_comparator_.Compare(data_block_first_key, 
-                                    ExtractUserKey(*target)) <= 0 &&
-          user_comparator_.Compare(ExtractUserKey(*target), 
+                                    ExtractUserKey(target)) <= 0 &&
+          user_comparator_.Compare(ExtractUserKey(target), 
                                     data_block_last_key) <= 0)) {
         plr_index_iter->SwitchToLinearSeekMode();
         break;
