@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include "db/dbformat.h"
 #include "table/format.h"
 #include "table/block_based/learned_index/plr/external/plr/library.h"
 #include "util/coding.h"
@@ -44,6 +45,12 @@ class DataBlockHandlesEncoder {
 // Format of actual index block content:
 // [Encoded string from PLRDataRep]
 // [Encoded string from DataBlockHandlesEncoder]
+//
+// TODO(fyp): We only support uint64_t <-> 8 chars. Currently, we inserted a
+// dirty hack to get rid of extra chars, inc. seq# in internal key, chars after
+// the 8th char in user key. To remove this code debt, we need to enforce option
+// to only disable include_seq# if using plr, and find some ways to ensure at
+// most 8 chars for user key.
 class PLRBuilderHelper {
  public:
   PLRBuilderHelper() = delete;
@@ -97,7 +104,13 @@ class PLRBuilderHelper {
  private:
   // TODO(fyp): reading non-active member from union is UB, although most
   // compiler defined its behavior as a non-standard extension?
+  // TODO(fyp): remove dirty hack
   double Str2Double(const char* str, size_t size) {
+    // dirty hack
+    if (size >= 8) {
+      Slice user_key = ExtractUserKey(Slice(str, size));
+      size = user_key.size() > 8 ? 8 : user_key.size();
+    }
     assert(size <= 8);
     // uint64_t int_rep = 0;
     // for (size_t i = 0; i < size; ++i) {
