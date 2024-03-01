@@ -2108,7 +2108,7 @@ void TableTest::PLRIndexTest(BlockBasedTableOptions table_options) {
 
     // seek the first element in the block
     ASSERT_EQ(lower_bound[i], index_iter->key().ToString());
-    ASSERT_EQ("v", index_iter->value().ToString());
+    ASSERT_EQ(lb_answers[i], index_iter->value().ToString());
   }
 
   // find existing keys
@@ -2130,9 +2130,12 @@ void TableTest::PLRIndexTest(BlockBasedTableOptions table_options) {
     ASSERT_EQ(item.second, index_iter->value().ToString());
   }
 
-  /*
   // find the first_keys of prefixes
-  std::vector<std::string> upper_bound = {keys[1], keys[6], keys[8], keys[9], };
+  std::vector<std::string> upper_bound = {keys[1], keys[2], keys[7], keys[9], };
+  std::vector<std::string> ub_answers = {data_block_values[1], 
+                                         data_block_values[2], 
+                                         data_block_values[7], 
+                                         data_block_values[9], };
 
   for (size_t i = 0; i < prefixes.size(); ++i) {
     // the key is greater than any existing keys.
@@ -2142,10 +2145,15 @@ void TableTest::PLRIndexTest(BlockBasedTableOptions table_options) {
     ASSERT_TRUE(index_iter->status().ok() || index_iter->status().IsNotFound());
     ASSERT_TRUE(!index_iter->status().IsNotFound() || !index_iter->Valid());
 
-    ASSERT_TRUE(index_iter->Valid());
-    // seek the first element in the block
-    ASSERT_EQ(upper_bound[i], index_iter->key().ToString());
-    ASSERT_EQ("v", index_iter->value().ToString());
+    if (i == prefixes.size() - 1) {
+      // last key
+      ASSERT_TRUE(!index_iter->Valid());
+    } else {
+      ASSERT_TRUE(index_iter->Valid());
+      // seek the first element in the block
+      ASSERT_EQ(upper_bound[i], index_iter->key().ToString());
+      ASSERT_EQ(ub_answers[i], index_iter->value().ToString());
+    }
   }
 
   // find keys with prefix that don't match any of the existing prefixes.
@@ -2176,7 +2184,6 @@ void TableTest::PLRIndexTest(BlockBasedTableOptions table_options) {
       ASSERT_TRUE(BytewiseComparator()->Compare(prefix, ukey_prefix) > 0);
     }
   }
-  */
   c.ResetTableReader();
 }
 
