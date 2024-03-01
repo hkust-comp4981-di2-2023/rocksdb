@@ -366,7 +366,8 @@ Status BlockBasedTable::IndexReaderCommon::GetOrReadIndexBlock(
 // in the cache or not.
 //
 // Difference from IndexReaderCommon: Cache BlockContents instead of Block
-class BlockBasedTable::CustomIndexReaderCommon : public BlockBasedTable::IndexReader {
+class BlockBasedTable::CustomIndexReaderCommon : 
+                                          public BlockBasedTable::IndexReader {
  public:
   CustomIndexReaderCommon(const BlockBasedTable* t,
                     CachableEntry<BlockContents>&& index_block_contents)
@@ -380,7 +381,8 @@ class BlockBasedTable::CustomIndexReaderCommon : public BlockBasedTable::IndexRe
                                const ReadOptions& read_options, bool use_cache,
                                GetContext* get_context,
                                BlockCacheLookupContext* lookup_context,
-                               CachableEntry<BlockContents>* index_block_contents);
+                               CachableEntry<BlockContents>* 
+                                index_block_contents);
 
   const BlockBasedTable* table() const { return table_; }
 
@@ -417,10 +419,12 @@ class BlockBasedTable::CustomIndexReaderCommon : public BlockBasedTable::IndexRe
 
   Status GetOrReadIndexBlock(bool no_io, GetContext* get_context,
                              BlockCacheLookupContext* lookup_context,
-                             CachableEntry<BlockContents>* index_block_contents) const;
+                             CachableEntry<BlockContents>* index_block_contents) 
+                              const;
 
   size_t ApproximateIndexBlockMemoryUsage() const {
-    assert(!index_block_contents_.GetOwnValue() || index_block_contents_.GetValue() != nullptr);
+    assert(!index_block_contents_.GetOwnValue() || 
+            index_block_contents_.GetValue() != nullptr);
     return index_block_contents_.GetOwnValue()
                ? index_block_contents_.GetValue()->ApproximateMemoryUsage()
                : 0;
@@ -447,8 +451,9 @@ Status BlockBasedTable::CustomIndexReaderCommon::ReadIndexBlock(
 
   const Status s = table->RetrieveBlock(
       prefetch_buffer, read_options, rep->footer.index_handle(),
-      UncompressionDict::GetEmptyDict(), index_block_contents, BlockType::kIndex,
-      get_context, lookup_context, /* for_compaction */ false, use_cache);
+      UncompressionDict::GetEmptyDict(), index_block_contents, 
+      BlockType::kIndex, get_context, lookup_context, 
+      /* for_compaction */ false, use_cache);
 
   return s;
 }
@@ -922,7 +927,8 @@ class PLRIndexReader: public BlockBasedTable::CustomIndexReaderCommon {
     if (prefetch || !use_cache) {
       const Status s =
           ReadIndexBlock(table, prefetch_buffer, ReadOptions(), use_cache,
-                         /*get_context=*/nullptr, lookup_context, &index_block_contents);
+                         /*get_context=*/nullptr, lookup_context, 
+                         &index_block_contents);
       if (!s.ok()) {
         return s;
       }
@@ -942,10 +948,14 @@ class PLRIndexReader: public BlockBasedTable::CustomIndexReaderCommon {
       const ReadOptions& read_options, bool /* disable_prefix_seek */,
       IndexBlockIter* iter, GetContext* get_context,
       BlockCacheLookupContext* lookup_context) override {
+    assert(!index_has_first_key());
+    assert(!index_key_includes_seq());
+
     const bool no_io = (read_options.read_tier == kBlockCacheTier);
     CachableEntry<BlockContents> index_block_contents;
     const Status s =
-        GetOrReadIndexBlock(no_io, get_context, lookup_context, &index_block_contents);
+        GetOrReadIndexBlock(no_io, get_context, lookup_context, 
+                            &index_block_contents);
     if (!s.ok()) {
       if (iter != nullptr) {
         iter->Invalidate(s);
@@ -961,10 +971,9 @@ class PLRIndexReader: public BlockBasedTable::CustomIndexReaderCommon {
     
     BlockContents* block_content = index_block_contents.GetValue();
 
-    // TODO(fyp): 99% will leak memory, need to fix, but lets see if logic is correct first
-    auto it = new PLRBlockIter(block_content, index_key_includes_seq(), 
-                                num_data_blocks_, 
-                                internal_comparator()->user_comparator());
+    // TODO(fyp): Unsure if there'll be memory leak or not
+    auto it = new PLRBlockIter(block_content, num_data_blocks_, 
+                               internal_comparator()->user_comparator());
     index_block_contents.TransferTo(it);
 
     return it;
