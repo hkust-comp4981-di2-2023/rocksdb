@@ -87,6 +87,8 @@ void PLRBlockIter::Seek(const Slice& target) {
 	Slice seek_key = target;
 	seek_key = ExtractUserKey(target);
 
+	assert(seek_key.size() <= 8);
+
 	status_ = helper_->PredictBlockRange(seek_key, begin_block_, end_block_);
 	if (!status_.ok()) {
 		return;

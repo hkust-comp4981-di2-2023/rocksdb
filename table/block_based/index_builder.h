@@ -452,7 +452,8 @@ class PartitionedIndexBuilder : public IndexBuilder {
 // 3. Encode to a string using PLRDataRep.
 // The encoded string is stored as the final block contents in IndexBlocks.
 //
-// Note: For now, we don't care about include_first_key_.
+// Note: Currently, we use assert() to ensure index key has size <= 8.
+// Other possible solutions include truncate the index key to up to 8 chars.
 class PLRIndexBuilder: public IndexBuilder {
  public:
   PLRIndexBuilder() = delete;
@@ -472,6 +473,7 @@ class PLRIndexBuilder: public IndexBuilder {
     if (first_key_in_next_block != nullptr) {
       // current AddIndexEntry() call is not processing with:
       // current_block = last data block
+      assert(first_key_in_next_block->size() <= 8);
       helper_.AddPLRTrainingPoint(*first_key_in_next_block);
     }
     helper_.AddHandle(block_handle);
@@ -482,6 +484,7 @@ class PLRIndexBuilder: public IndexBuilder {
   void OnKeyAdded(const Slice& key) override {
     if (is_first_key_in_first_block_) {
       is_first_key_in_first_block_ = false;
+      assert(key.size() <= 8);
       helper_.AddPLRTrainingPoint(key);
     }
   }

@@ -69,6 +69,9 @@ class PLRBlockHelper {
 	};
 };
 
+// Note: Currently, we use assert() to ensure index keys Seek()ed through this
+// iterator has size <= 8, after ExtractUserKey().
+// Other possible solutions include truncating the length of seek key.
 class PLRBlockIter : public InternalIteratorBase<IndexValue> {
  public:
 	PLRBlockIter(const BlockContents* contents, const uint64_t num_data_blocks, 
@@ -176,7 +179,7 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 	//
 	// Note: In Seek(target), target is always an internal key.
 	// bool key_includes_seq_ = false;
-	
+
 	static constexpr const char* key_extraction_not_supported_ = 
 																											"PLR_key()_not_supported";
 	IndexValue value_;
