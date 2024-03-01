@@ -78,6 +78,7 @@ void PLRBlockIter::SeekToLast() {
 // number to an integer.
 //
 // REQUIRES: helper_ (and thus helper_->model_) is initialized.
+// TODO(fyp): remove dirty hack
 void PLRBlockIter::Seek(const Slice& target) {
 	TEST_SYNC_POINT("PLRBlockIter::Seek:0");
 	assert(helper_ != nullptr);
@@ -88,6 +89,13 @@ void PLRBlockIter::Seek(const Slice& target) {
 	Slice seek_key = target;
 	if (!key_includes_seq_) {
 		seek_key = ExtractUserKey(target);
+	}
+
+	// dirty hack
+	if (seek_key.size() > 8) {
+		seek_key = ExtractUserKey(seek_key);
+		seek_key = 
+			Slice(seek_key.data(), seek_key.size() > 8 ? 8 : seek_key.size());
 	}
 
 	status_ = helper_->PredictBlockRange(seek_key, begin_block_, end_block_);
