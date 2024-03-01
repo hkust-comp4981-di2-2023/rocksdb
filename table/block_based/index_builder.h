@@ -498,6 +498,16 @@ class PLRIndexBuilder: public IndexBuilder {
 
   size_t IndexSize() const override { return index_size_; }
 
+  // Returning false means the key in this plr index block is always a user key
+  // without a sequence number.
+  // This makes Property meta block writes 'true' for a field named
+  // 'index_key_is_user_key'.
+  // Then when the block-based table is read, the reader will set another field
+  // named 'index_key_includes_seq' as 'false'. This will affect the behavior
+  // of index iterator the reader uses/creates. 
+  // See the impact on iterator behavior from the class PLRBlockIter.
+  virtual bool seperator_is_key_plus_seq() { return false; }
+
  private:
   PLRBuilderHelper helper_;
   // If true, OnKeyAdded() will use helper_ to add an Point for PLR training
