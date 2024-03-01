@@ -2071,8 +2071,15 @@ void TableTest::PLRIndexTest(BlockBasedTableOptions table_options) {
   auto reader = c.GetTableReader();
 
   auto props = reader->GetTableProperties();
+  // There are 5 index block entries and 5 data blocks.
+  // [DB1: 0015 - 0035]
+  // [DB2: 0054 - 0055]
+  // [DB3: 0056 - 0057]
+  // [DB4: 0058 - 0075]
+  // [DB5: 0076 - 0095]
   ASSERT_EQ(5u, props->num_data_blocks);
-  std::cout << "Number of data blocks: " << props->num_data_blocks << std::endl;
+  // std::cout << "Number of data blocks: " 
+  //           << props->num_data_blocks << std::endl;
 
   // TODO(Zhongyi): update test to use MutableCFOptions
   std::unique_ptr<InternalIterator> index_iter(reader->NewIterator(
@@ -2080,11 +2087,9 @@ void TableTest::PLRIndexTest(BlockBasedTableOptions table_options) {
       /*skip_filters=*/false, TableReaderCaller::kUncategorized));
 
   // -- Find keys do not exist, but have common prefix.
-  // Note(fyp): "001" is not valid in PLR index
-  /*
-  std::vector<std::string> prefixes = {"003", "005", "007", "009"};
-  std::vector<std::string> lower_bound = {keys[0], keys[1],
-                                          keys[6], keys[8]};
+  std::vector<std::string> prefixes = {"001", "003", "005", "007", "009"};
+  std::vector<std::string> lower_bound = {keys[0], keys[1], keys[2],
+                                          keys[7], keys[9]};
 
   // find the lower bound of the prefix
   for (size_t i = 0; i < prefixes.size(); ++i) {
@@ -2096,7 +2101,6 @@ void TableTest::PLRIndexTest(BlockBasedTableOptions table_options) {
     ASSERT_EQ(lower_bound[i], index_iter->key().ToString());
     ASSERT_EQ("v", index_iter->value().ToString());
   }
-  */
 
   // find existing keys
   for (const auto& item : kvmap) {
@@ -2105,7 +2109,7 @@ void TableTest::PLRIndexTest(BlockBasedTableOptions table_options) {
 
     // The original test case Seek() with user key, 
     // but PLR Seek() with internal key. Not sure if stress test works :(
-    index_iter->Seek(item.first.ToString());
+    index_iter->Seek(item.first);
 
     // ASSERT_OK(regular_iter->status());
     ASSERT_OK(index_iter->status());
