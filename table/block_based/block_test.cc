@@ -631,6 +631,10 @@ class PLRIndexBlockTest
   double gamma() const { return GetParam(); }
 };
 
+std::string MakeKeyLookLikeInternalKey(const std::string& key) {
+  return key + "12345678";
+}
+
 // Similar to GenerateRandomIndexEntries but for index block contents.
 void GenerateRandomPLRIndexEntries(std::vector<BlockHandle> *block_handles,
                                 std::vector<std::string> *first_keys,
@@ -652,10 +656,10 @@ void GenerateRandomPLRIndexEntries(std::vector<BlockHandle> *block_handles,
   uint64_t offset = 0;
   int idx = 0;
   for (auto it = keys.begin(); it != keys.end();) {
-    first_keys->emplace_back(*it++);
-    in_block_keys->emplace_back(*it++);
-    last_keys->emplace_back(*it++);
-    out_of_block_keys->emplace_back(*it++);
+    first_keys->emplace_back(MakeKeyLookLikeInternalKey(*it++));
+    in_block_keys->emplace_back(MakeKeyLookLikeInternalKey(*it++));
+    last_keys->emplace_back(MakeKeyLookLikeInternalKey(*it++));
+    out_of_block_keys->emplace_back(MakeKeyLookLikeInternalKey(*it++));
 
     uint64_t size = rnd.Uniform(1024 * 16);
     BlockHandle handle(offset, size);
@@ -663,11 +667,6 @@ void GenerateRandomPLRIndexEntries(std::vector<BlockHandle> *block_handles,
     block_handles->emplace_back(handle);
     reverse_index[handle.offset()] = idx++;
   }
-}
-
-Slice MakeKeyLookLikeInternalKey(const Slice& key) {
-  std::string internal_key = std::string(key.data(), key.size()) + "12345678";
-  return Slice(internal_key);
 }
 
 TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
@@ -741,7 +740,7 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
     Slice query_key(first_keys[expected_index]);
 
     // search in block for this key
-    iter->Seek(MakeKeyLookLikeInternalKey(query_key));
+    iter->Seek(query_key);
     IndexValue v;
     while (iter->Valid()) {
       // printf("%s\n", iter->GetStateMessage().c_str());
@@ -755,9 +754,9 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
         Slice seek_result_first_key(first_keys[seek_result_index]);
         Slice seek_result_last_key(last_keys[seek_result_index]);
         iter->UpdateBinarySeekRange(
-                  MakeKeyLookLikeInternalKey(query_key), 
-                  MakeKeyLookLikeInternalKey(seek_result_first_key), 
-                  MakeKeyLookLikeInternalKey(seek_result_last_key));
+                  query_key, 
+                  seek_result_first_key, 
+                  seek_result_last_key);
         iter->Next();
       }
     }
@@ -781,7 +780,7 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
     Slice query_key(in_block_keys[expected_index]);
 
     // search in block for this key
-    iter->Seek(MakeKeyLookLikeInternalKey(query_key));
+    iter->Seek(query_key);
     IndexValue v;
     while (iter->Valid()) {
       v = iter->value();
@@ -794,9 +793,9 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
         Slice seek_result_first_key(first_keys[seek_result_index]);
         Slice seek_result_last_key(last_keys[seek_result_index]);
         iter->UpdateBinarySeekRange(
-                  MakeKeyLookLikeInternalKey(query_key), 
-                  MakeKeyLookLikeInternalKey(seek_result_first_key), 
-                  MakeKeyLookLikeInternalKey(seek_result_last_key));
+                  query_key, 
+                  seek_result_first_key, 
+                  seek_result_last_key);
         iter->Next();
       }
     }
@@ -820,7 +819,7 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
     Slice query_key(out_of_block_keys[expected_index]);
 
     // search in block for this key
-    iter->Seek(MakeKeyLookLikeInternalKey(query_key));
+    iter->Seek(query_key);
     IndexValue v;
     const Comparator* cmp = options.comparator;
     while (iter->Valid()) {
@@ -838,9 +837,9 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
       if (cmp->Compare(query_key, seek_result_first_key) < 0
           || cmp->Compare(seek_result_last_key, query_key) < 0) {
         iter->UpdateBinarySeekRange(
-                  MakeKeyLookLikeInternalKey(query_key), 
-                  MakeKeyLookLikeInternalKey(seek_result_first_key), 
-                  MakeKeyLookLikeInternalKey(seek_result_last_key));
+                  query_key, 
+                  seek_result_first_key, 
+                  seek_result_last_key);
         iter->Next();
         continue;
       }
