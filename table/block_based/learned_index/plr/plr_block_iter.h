@@ -205,7 +205,17 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 	}
 
 	inline void SetEndBlockAsCurrent() {
-		end_block_ = current_ - 1;
+		if (current_ == 0) {
+			// This implies begin_block_ == 0, end_block_ == 0 or 1,
+			// but this function is called only after evaluating current_ and
+			// binary search results need to move end_block_ to the 'left'.
+			// In this case, after the subsequent Next(), iter shd becomes !Valid().
+			begin_block_ = 1;
+			end_block_ = 0;
+		}
+		else {
+			end_block_ = current_ - 1;
+		}
 	}
 
 	void SetCurrentIndexValue();
