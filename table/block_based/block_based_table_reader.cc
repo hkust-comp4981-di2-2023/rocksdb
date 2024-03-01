@@ -366,7 +366,8 @@ Status BlockBasedTable::IndexReaderCommon::GetOrReadIndexBlock(
 // in the cache or not.
 //
 // Difference from IndexReaderCommon: Cache BlockContents instead of Block
-class BlockBasedTable::CustomIndexReaderCommon : public BlockBasedTable::IndexReader {
+class BlockBasedTable::CustomIndexReaderCommon : 
+                                          public BlockBasedTable::IndexReader {
  public:
   CustomIndexReaderCommon(const BlockBasedTable* t,
                     CachableEntry<BlockContents>&& index_block_contents)
@@ -380,7 +381,8 @@ class BlockBasedTable::CustomIndexReaderCommon : public BlockBasedTable::IndexRe
                                const ReadOptions& read_options, bool use_cache,
                                GetContext* get_context,
                                BlockCacheLookupContext* lookup_context,
-                               CachableEntry<BlockContents>* index_block_contents);
+                               CachableEntry<BlockContents>* 
+                                index_block_contents);
 
   const BlockBasedTable* table() const { return table_; }
 
@@ -417,10 +419,12 @@ class BlockBasedTable::CustomIndexReaderCommon : public BlockBasedTable::IndexRe
 
   Status GetOrReadIndexBlock(bool no_io, GetContext* get_context,
                              BlockCacheLookupContext* lookup_context,
-                             CachableEntry<BlockContents>* index_block_contents) const;
+                             CachableEntry<BlockContents>* index_block_contents) 
+                              const;
 
   size_t ApproximateIndexBlockMemoryUsage() const {
-    assert(!index_block_contents_.GetOwnValue() || index_block_contents_.GetValue() != nullptr);
+    assert(!index_block_contents_.GetOwnValue() || 
+            index_block_contents_.GetValue() != nullptr);
     return index_block_contents_.GetOwnValue()
                ? index_block_contents_.GetValue()->ApproximateMemoryUsage()
                : 0;
@@ -447,8 +451,9 @@ Status BlockBasedTable::CustomIndexReaderCommon::ReadIndexBlock(
 
   const Status s = table->RetrieveBlock(
       prefetch_buffer, read_options, rep->footer.index_handle(),
-      UncompressionDict::GetEmptyDict(), index_block_contents, BlockType::kIndex,
-      get_context, lookup_context, /* for_compaction */ false, use_cache);
+      UncompressionDict::GetEmptyDict(), index_block_contents, 
+      BlockType::kIndex, get_context, lookup_context, 
+      /* for_compaction */ false, use_cache);
 
   return s;
 }
