@@ -80,7 +80,8 @@ void PLRBlockIter::SeekToLast() {
 // Note: The input param. target is an internal key.
 //
 // REQUIRES: helper_ (and thus helper_->model_) is initialized.
-// TODO(fyp): remove dirty hack
+// REQUIRES: Input param. target is an internal key.
+// REQUIRES: Input param. target has size <= 8 after ExtractUserKey().
 void PLRBlockIter::Seek(const Slice& target) {
 	TEST_SYNC_POINT("PLRBlockIter::Seek:0");
 	assert(helper_ != nullptr);
@@ -88,17 +89,9 @@ void PLRBlockIter::Seek(const Slice& target) {
 	seek_mode_ = SeekMode::kUnknown;
 	is_key_set_ = false;
 	
-	Slice seek_key = target;
-	seek_key = ExtractUserKey(target);
+	Slice seek_key = ExtractUserKey(target);
 
 	assert(seek_key.size() <= 8);
-
-	// dirty hack
-	if (seek_key.size() > 8) {
-		seek_key = ExtractUserKey(seek_key);
-		seek_key = 
-			Slice(seek_key.data(), seek_key.size() > 8 ? 8 : seek_key.size());
-	}
 
 	status_ = helper_->PredictBlockRange(seek_key, begin_block_, end_block_);
 	if (!status_.ok()) {
@@ -241,8 +234,7 @@ void PLRBlockIter::SetCurrentIndexValue() {
 //
 // Note: This function assumes input data_block first/last keys are the keys of
 // the current data block (as pointed by current_).
-// Note: Only accepts internal keys. They will be converted to user keys 
-// internally.
+// Note: Only accepts user keys, not internal keys.
 //
 // REQUIRES: Valid()
 // REQUIRES: binary seek mode
@@ -252,21 +244,21 @@ void PLRBlockIter::UpdateBinarySeekRange(const Slice& seek_key,
 	assert(Valid());
 	assert(seek_mode_ == SeekMode::kBinarySeek);
 
-	Slice first_user_key = ExtractUserKey(data_block_first_key);
-	Slice last_user_key = ExtractUserKey(data_block_last_key);
-	Slice seek_user_key = ExtractUserKey(seek_key);
+	// Slice first_user_key = ExtractUserKey(data_block_first_key);
+	// Slice last_user_key = ExtractUserKey(data_block_last_key);
+	// Slice seek_user_key = ExtractUserKey(seek_key);
 
-	assert(user_comparator_->Compare(first_user_key, 
-																	 last_user_key) <= 0);
+	assert(user_comparator_->Compare(data_block_first_key, 
+																	 data_block_last_key) <= 0);
 	
 	// Case 1: Seek key > All keys in current data block.
-	if (user_comparator_->Compare(last_user_key, seek_user_key) < 0) {
+	if (user_comparator_->Compare(data_block_last_key, seek_key) < 0) {
 		SetBeginBlockAsCurrent();
 		return;
 	}
 
 	// Case 2: Seek key < All keys in current data block.
-	if (user_comparator_->Compare(seek_user_key, first_user_key) < 0) {
+	if (user_comparator_->Compare(seek_key, data_block_first_key) < 0) {
 		SetEndBlockAsCurrent();
 		return;
 	}

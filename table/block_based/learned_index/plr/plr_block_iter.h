@@ -90,7 +90,7 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 		helper_(std::unique_ptr<PLRBlockHelper>(
 			new PLRBlockHelper(num_data_blocks, data_)))
 		{
-			key_.SetIsUserKey(!key_includes_seq_);
+			key_.SetIsUserKey(true);
 		}
 
 	bool Valid() const override;
@@ -158,7 +158,7 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 
 	// Usage: Set key_ as current_ data block last key.
 	// TODO(fyp): Not sure if this will cause memory leak or not.
-	void SetKey(const Slice& key) {
+	inline void SetKey(const Slice& key) {
 		is_key_set_ = true;
 		key_.SetKey(key);
 	}
@@ -166,9 +166,6 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 	inline bool IsKeySet() const { return is_key_set_; }
 
 	Slice user_key() const override {
-    if (key_includes_seq_) {
-      return ExtractUserKey(key());
-    }
     return key();
   }
 
