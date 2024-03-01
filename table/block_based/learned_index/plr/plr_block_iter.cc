@@ -236,7 +236,7 @@ void PLRBlockIter::UpdateBinarySeekRange(const Slice& seek_key,
 
 	Slice first_user_key = ExtractUserKey(data_block_first_key);
 	Slice last_user_key = ExtractUserKey(data_block_last_key);
-	Slice seek_user_key = ExtractUserKey(user_key);
+	Slice seek_user_key = ExtractUserKey(seek_key);
 
 	assert(user_comparator_->Compare(first_user_key, 
 																	 last_user_key) <= 0);
