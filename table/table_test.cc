@@ -2038,8 +2038,7 @@ void AddInternalKeyForPLR(TableConstructor* c, const std::string& prefix,
 // TODO(fyp): After fyp, may consider training with last key.
 void TableTest::PLRIndexTest(BlockBasedTableOptions table_options) {
   TableConstructor c(BytewiseComparator());
-  std::vector<std::string> data_block_values;
-  data_block_values.reserve(10);
+  std::vector<std::string> data_block_values(10, "");
 
   // keys with prefix length 3, make sure the key/value is big enough to fill
   // one block
