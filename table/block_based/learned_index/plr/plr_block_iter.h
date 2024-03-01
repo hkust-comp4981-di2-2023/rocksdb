@@ -71,15 +71,14 @@ class PLRBlockHelper {
 
 class PLRBlockIter : public InternalIteratorBase<IndexValue> {
  public:
-	PLRBlockIter(const BlockContents* contents, const bool key_includes_seq, 
-				const uint64_t num_data_blocks, const Comparator* user_comparator):
+	PLRBlockIter(const BlockContents* contents, const uint64_t num_data_blocks, 
+							const Comparator* user_comparator) :
 		InternalIteratorBase<IndexValue>(),
 		seek_mode_(SeekMode::kUnknown),
 		data_(contents->data),
 		current_(invalid_block_number_),
 		begin_block_(invalid_block_number_),
 		end_block_(invalid_block_number_),
-		key_includes_seq_(key_includes_seq),
 		value_(),
 		user_comparator_(user_comparator),
 		status_(),
@@ -176,7 +175,8 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 	// key portion from it.
 	//
 	// Note: In Seek(target), target is always an internal key.
-	bool key_includes_seq_;
+	// bool key_includes_seq_ = false;
+	
 	static constexpr const char* key_extraction_not_supported_ = 
 																											"PLR_key()_not_supported";
 	IndexValue value_;
