@@ -2094,6 +2094,11 @@ void TableTest::PLRIndexTest(BlockBasedTableOptions table_options) {
   std::vector<std::string> prefixes = {"001", "003", "005", "007", "009"};
   std::vector<std::string> lower_bound = {keys[0], keys[1], keys[2],
                                           keys[7], keys[9]};
+  std::vector<std::string> lb_answers = {data_block_values[0], 
+                                         data_block_values[1], 
+                                         data_block_values[2],
+                                         data_block_values[7], 
+                                         data_block_values[9]};
 
   // find the lower bound of the prefix
   for (size_t i = 0; i < prefixes.size(); ++i) {
