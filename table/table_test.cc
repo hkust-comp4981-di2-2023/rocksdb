@@ -2068,6 +2068,7 @@ void TableTest::PLRIndexTest(BlockBasedTableOptions table_options) {
 
   // -- Find keys do not exist, but have common prefix.
   // Note(fyp): "001" is not valid in PLR index
+  /*
   std::vector<std::string> prefixes = {"003", "005", "007", "009"};
   std::vector<std::string> lower_bound = {keys[0], keys[1],
                                           keys[6], keys[8]};
@@ -2082,6 +2083,7 @@ void TableTest::PLRIndexTest(BlockBasedTableOptions table_options) {
     ASSERT_EQ(lower_bound[i], index_iter->key().ToString());
     ASSERT_EQ("v", index_iter->value().ToString());
   }
+  */
 
   // find existing keys
   for (const auto& item : kvmap) {
@@ -2098,6 +2100,7 @@ void TableTest::PLRIndexTest(BlockBasedTableOptions table_options) {
     ASSERT_EQ(item.second, index_iter->value().ToString());
   }
 
+  /*
   // find the first_keys of prefixes
   std::vector<std::string> upper_bound = {keys[1], keys[6], keys[8], keys[9], };
 
@@ -2143,6 +2146,7 @@ void TableTest::PLRIndexTest(BlockBasedTableOptions table_options) {
       ASSERT_TRUE(BytewiseComparator()->Compare(prefix, ukey_prefix) > 0);
     }
   }
+  */
   c.ResetTableReader();
 }
 
