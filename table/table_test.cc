@@ -2018,8 +2018,20 @@ void TableTest::IndexTest(BlockBasedTableOptions table_options) {
   c.ResetTableReader();
 }
 
+// Generate and add key-value record with key.size() == 8 and large value size.
+void AddInternalKeyForPLR(TableConstructor* c, const std::string& prefix,
+                          std::string value = "v", int /*suffix_len*/ = 800) {
+  static Random rnd(1023);
+  assert(prefix.size() <= 8);
+  int suffix_len = 8 - prefix.size();
+  InternalKey k(prefix + RandomString(&rnd, suffix_len), 0, kTypeValue);
+  c->Add(k.Encode().ToString(), value+RandomString(&rnd, 800-suffix_len));
+}
+
 // PLR index adopts a different semantics: we pass the first key of each data
 // block instead of upper bound.
+//
+// Note: User key has a size of 8.
 // TODO(fyp): update comments within PLRIndexTest() regarding test case
 // TODO(fyp): After fyp, may consider training with last key.
 void TableTest::PLRIndexTest(BlockBasedTableOptions table_options) {
@@ -2027,20 +2039,20 @@ void TableTest::PLRIndexTest(BlockBasedTableOptions table_options) {
 
   // keys with prefix length 3, make sure the key/value is big enough to fill
   // one block
-  AddInternalKey(&c, "0015");
-  AddInternalKey(&c, "0035");
+  AddInternalKeyForPLR(&c, "0015");
+  AddInternalKeyForPLR(&c, "0035");
 
-  AddInternalKey(&c, "0054");
-  AddInternalKey(&c, "0055");
+  AddInternalKeyForPLR(&c, "0054");
+  AddInternalKeyForPLR(&c, "0055");
 
-  AddInternalKey(&c, "0056");
-  AddInternalKey(&c, "0057");
+  AddInternalKeyForPLR(&c, "0056");
+  AddInternalKeyForPLR(&c, "0057");
 
-  AddInternalKey(&c, "0058");
-  AddInternalKey(&c, "0075");
+  AddInternalKeyForPLR(&c, "0058");
+  AddInternalKeyForPLR(&c, "0075");
 
-  AddInternalKey(&c, "0076");
-  AddInternalKey(&c, "0095");
+  AddInternalKeyForPLR(&c, "0076");
+  AddInternalKeyForPLR(&c, "0095");
 
   std::vector<std::string> keys;
   stl_wrappers::KVMap kvmap;
@@ -2060,6 +2072,7 @@ void TableTest::PLRIndexTest(BlockBasedTableOptions table_options) {
 
   auto props = reader->GetTableProperties();
   ASSERT_EQ(5u, props->num_data_blocks);
+  std::cout << "Number of data blocks: " << props->num_data_blocks << std::endl;
 
   // TODO(Zhongyi): update test to use MutableCFOptions
   std::unique_ptr<InternalIterator> index_iter(reader->NewIterator(
@@ -2087,8 +2100,12 @@ void TableTest::PLRIndexTest(BlockBasedTableOptions table_options) {
 
   // find existing keys
   for (const auto& item : kvmap) {
-    auto ukey = ExtractUserKey(item.first).ToString();
-    index_iter->Seek(ukey);
+    // auto ukey = ExtractUserKey(item.first).ToString();
+    // index_iter->Seek(ukey);
+
+    // The original test case Seek() with user key, 
+    // but PLR Seek() with internal key. Not sure if stress test works :(
+    index_iter->Seek(item.first.ToString());
 
     // ASSERT_OK(regular_iter->status());
     ASSERT_OK(index_iter->status());
