@@ -467,25 +467,31 @@ class PLRIndexBuilder: public IndexBuilder {
   // store block_handle of i-th block in helper_. For the last function call, do
   // not add a new Point, as first_key_in_next_block is nullptr, meaning there
   // is no next block.
+  //
+  // Note: It seems that both input keys are internal keys, so we need to
+  // ExtractUserKey() before storing.
+
   void AddIndexEntry(std::string* /*last_key_in_current_block*/,
                     const Slice* first_key_in_next_block,
                     const BlockHandle& block_handle) override {
     if (first_key_in_next_block != nullptr) {
       // current AddIndexEntry() call is not processing with:
       // current_block = last data block
-      assert(first_key_in_next_block->size() <= 8);
-      helper_.AddPLRTrainingPoint(*first_key_in_next_block);
+      assert(ExtractUserKey(*first_key_in_next_block).size() <= 8);
+      helper_.AddPLRTrainingPoint(ExtractUserKey(*first_key_in_next_block));
     }
     helper_.AddHandle(block_handle);
   }
   
   // If it is the first every key from the first data block, use helper_ to add
   // a new Point for PLR training. Do nothing otherwise.
+  //
+  // Note: It seems input key is an internal key, so we need ExtractUserKey().
   void OnKeyAdded(const Slice& key) override {
     if (is_first_key_in_first_block_) {
       is_first_key_in_first_block_ = false;
-      assert(key.size() <= 8);
-      helper_.AddPLRTrainingPoint(key);
+      assert(ExtractUserKey(key).size() <= 8);
+      helper_.AddPLRTrainingPoint(ExtractUserKey(key));
     }
   }
 
