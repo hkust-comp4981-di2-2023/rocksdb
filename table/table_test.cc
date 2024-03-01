@@ -2018,6 +2018,10 @@ void TableTest::IndexTest(BlockBasedTableOptions table_options) {
   c.ResetTableReader();
 }
 
+class BlockBasedTableWithPLRIndexTest
+  : public BlockBasedTableTest,
+    public ::testing::WithParamInterface<double> {};
+
 // Generate and add key-value record with key.size() == 8 and large value size.
 void AddInternalKeyForPLR(TableConstructor* c, const std::string& prefix,
                           std::string& value_output,
@@ -2211,12 +2215,37 @@ TEST_P(BlockBasedTableTest, PartitionIndexTest) {
 }
 
 // TODO(fyp): try with varying gamma
-TEST_P(BlockBasedTableTest, PLRIndexTest) {
+TEST_P(BlockBasedTableWithPLRIndexTest, PLRIndexTest) {
   BlockBasedTableOptions table_options = GetBlockBasedTableOptions();
   table_options.index_type = BlockBasedTableOptions::kLearnedIndexWithPLR;
   table_options.plr_index_block_gamma = 2;
   PLRIndexTest(table_options);
 }
+
+INSTANTIATE_TEST_CASE_P(FormatDefPLR, BlockBasedTableWithPLRIndexTest,
+                        testing::Combine(
+                          testing::Values(
+                            test::kDefaultFormatVersion,
+                            test::kDefaultFormatVersion,
+                            test::kDefaultFormatVersion,
+                            test::kDefaultFormatVersion,
+                            test::kDefaultFormatVersion,
+                            test::kDefaultFormatVersion
+                          ),
+                          testing::Values(0.06, 0.3, 0.6, 1.0, 1.5, 2.0)
+                        ));
+INSTANTIATE_TEST_CASE_P(FormatLatestPLR, BlockBasedTableWithPLRIndexTest,
+                        testing::Combine(
+                          testing::Values(
+                            test::kLatestFormatVersion,
+                            test::kLatestFormatVersion,
+                            test::kLatestFormatVersion,
+                            test::kLatestFormatVersion,
+                            test::kLatestFormatVersion,
+                            test::kLatestFormatVersion
+                          ),
+                          testing::Values(0.06, 0.3, 0.6, 1.0, 1.5, 2.0)
+                        ));
 
 TEST_P(BlockBasedTableTest, IndexSeekOptimizationIncomplete) {
   std::unique_ptr<InternalKeyComparator> comparator(
