@@ -69,17 +69,19 @@ class PLRBlockHelper {
 	};
 };
 
+// Note: Currently, we use assert() to ensure index keys Seek()ed through this
+// iterator has size <= 8, after ExtractUserKey().
+// Other possible solutions include truncating the length of seek key.
 class PLRBlockIter : public InternalIteratorBase<IndexValue> {
  public:
-	PLRBlockIter(const BlockContents* contents, const bool key_includes_seq, 
-				const uint64_t num_data_blocks, const Comparator* user_comparator):
+	PLRBlockIter(const BlockContents* contents, const uint64_t num_data_blocks, 
+							const Comparator* user_comparator) :
 		InternalIteratorBase<IndexValue>(),
 		seek_mode_(SeekMode::kUnknown),
 		data_(contents->data),
 		current_(invalid_block_number_),
 		begin_block_(invalid_block_number_),
 		end_block_(invalid_block_number_),
-		key_includes_seq_(key_includes_seq),
 		key_(),
 		is_key_set_(false),
 		value_(),
@@ -216,7 +218,7 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 	// key portion from it.
 	//
 	// Note: In Seek(target), target is always an internal key.
-	bool key_includes_seq_;
+  // bool key_includes_seq_ = false;
 
 	// Default text if key_ is not set. Typically key is set in bbt-iterator.
 	static constexpr const char* key_extraction_not_supported_ = 
@@ -243,7 +245,17 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 	}
 
 	inline void SetEndBlockAsCurrent() {
-		end_block_ = current_ - 1;
+		if (current_ == 0) {
+			// This implies begin_block_ == 0, end_block_ == 0 or 1,
+			// but this function is called only after evaluating current_ and
+			// binary search results need to move end_block_ to the 'left'.
+			// In this case, after the subsequent Next(), iter shd becomes !Valid().
+			begin_block_ = 1;
+			end_block_ = 0;
+		}
+		else {
+			end_block_ = current_ - 1;
+		}
 	}
 
 	void SetCurrentIndexValue();
