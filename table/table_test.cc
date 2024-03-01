@@ -2018,10 +2018,6 @@ void TableTest::IndexTest(BlockBasedTableOptions table_options) {
   c.ResetTableReader();
 }
 
-class BlockBasedTableWithPLRIndexTest
-  : public BlockBasedTableTest,
-    public ::testing::WithParamInterface<double> {};
-
 // Generate and add key-value record with key.size() == 8 and large value size.
 void AddInternalKeyForPLR(TableConstructor* c, const std::string& prefix,
                           std::string& value_output,
@@ -2040,7 +2036,8 @@ void AddInternalKeyForPLR(TableConstructor* c, const std::string& prefix,
 // Note: User key has a size of 8.
 // TODO(fyp): update comments within PLRIndexTest() regarding test case
 // TODO(fyp): After fyp, may consider training with last key.
-void TableTest::PLRIndexTest(BlockBasedTableOptions table_options) {
+void TableTest::PLRIndexTest(BlockBasedTableOptions table_options,
+                             double gamma) {
   TableConstructor c(BytewiseComparator());
   std::vector<std::string> data_block_values(10, "");
 
@@ -2067,6 +2064,7 @@ void TableTest::PLRIndexTest(BlockBasedTableOptions table_options) {
   options.prefix_extractor.reset(NewFixedPrefixTransform(3));
   table_options.block_size = 1700;
   table_options.block_cache = NewLRUCache(1024, 4);
+  table_options.plr_index_block_gamma = gamma;
   options.table_factory.reset(NewBlockBasedTableFactory(table_options));
 
   std::unique_ptr<InternalKeyComparator> comparator(
@@ -2214,38 +2212,14 @@ TEST_P(BlockBasedTableTest, PartitionIndexTest) {
   }
 }
 
-// TODO(fyp): try with varying gamma
-TEST_P(BlockBasedTableWithPLRIndexTest, PLRIndexTest) {
+TEST_P(BlockBasedTableTest, PLRIndexTest) {
   BlockBasedTableOptions table_options = GetBlockBasedTableOptions();
   table_options.index_type = BlockBasedTableOptions::kLearnedIndexWithPLR;
-  table_options.plr_index_block_gamma = 2;
-  PLRIndexTest(table_options);
+  double gammas[6] = {0.06, 0.3, 0.6, 1.0, 1.5, 2.0};
+  for (auto& gamma: gammas) {
+    PLRIndexTest(table_options, gamma);
+  }
 }
-
-INSTANTIATE_TEST_CASE_P(FormatDefPLR, BlockBasedTableWithPLRIndexTest,
-                        testing::Combine(
-                          testing::Values(
-                            test::kDefaultFormatVersion,
-                            test::kDefaultFormatVersion,
-                            test::kDefaultFormatVersion,
-                            test::kDefaultFormatVersion,
-                            test::kDefaultFormatVersion,
-                            test::kDefaultFormatVersion
-                          ),
-                          testing::Values(0.06, 0.3, 0.6, 1.0, 1.5, 2.0)
-                        ));
-INSTANTIATE_TEST_CASE_P(FormatLatestPLR, BlockBasedTableWithPLRIndexTest,
-                        testing::Combine(
-                          testing::Values(
-                            test::kLatestFormatVersion,
-                            test::kLatestFormatVersion,
-                            test::kLatestFormatVersion,
-                            test::kLatestFormatVersion,
-                            test::kLatestFormatVersion,
-                            test::kLatestFormatVersion
-                          ),
-                          testing::Values(0.06, 0.3, 0.6, 1.0, 1.5, 2.0)
-                        ));
 
 TEST_P(BlockBasedTableTest, IndexSeekOptimizationIncomplete) {
   std::unique_ptr<InternalKeyComparator> comparator(
