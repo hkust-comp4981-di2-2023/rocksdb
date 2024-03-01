@@ -75,6 +75,8 @@ void PLRBlockIter::SeekToLast() {
 // gamma error bound, helper_ uses a function pointer to convert the block 
 // number to an integer.
 //
+// Note: The input param. target is an internal key.
+//
 // REQUIRES: helper_ (and thus helper_->model_) is initialized.
 void PLRBlockIter::Seek(const Slice& target) {
 	TEST_SYNC_POINT("PLRBlockIter::Seek:0");
@@ -83,9 +85,7 @@ void PLRBlockIter::Seek(const Slice& target) {
 	seek_mode_ = SeekMode::kUnknown;
 	
 	Slice seek_key = target;
-	if (!key_includes_seq_) {
-		seek_key = ExtractUserKey(target);
-	}
+	seek_key = ExtractUserKey(target);
 
 	status_ = helper_->PredictBlockRange(seek_key, begin_block_, end_block_);
 	if (!status_.ok()) {
