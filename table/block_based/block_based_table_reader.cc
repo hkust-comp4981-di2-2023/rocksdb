@@ -3360,8 +3360,8 @@ void BlockBasedTableIterator<TBlockIter, TValue>::InitDataBlock() {
     // Note(fyp): Special treatment for plr index.
     if (table_->get_rep()->index_type == 
         BlockBasedTableOptions::kLearnedIndexWithPLR) {
-      assert(block_iter_.Valid());
       block_iter_.SeekToLast();
+      assert(block_iter_.Valid());
       reinterpret_cast<PLRBlockIter*>(index_iter_)->SetKey(block_iter_.key());
     }
 

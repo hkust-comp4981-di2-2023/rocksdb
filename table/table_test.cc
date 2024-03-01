@@ -1063,6 +1063,7 @@ class TableTest : public testing::Test {
     return *plain_internal_comparator;
   }
   void IndexTest(BlockBasedTableOptions table_options);
+  void PLRIndexTest(BlockBasedTableOptions table_options);
 
  private:
   std::unique_ptr<InternalKeyComparator> plain_internal_comparator;
