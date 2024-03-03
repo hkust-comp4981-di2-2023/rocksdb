@@ -2331,7 +2331,7 @@ void TableTest::PLRIndexTestMoreEntries(BlockBasedTableOptions table_options,
                                           keys[19], keys[20],
                                           keys[21], keys[22], keys[27], 
                                           keys[29], std::string(""),
-                                          keys[8], keys[18], keys[28],};
+                                          keys[9], keys[19], keys[29],};
   std::vector<std::string> ub_answers = {data_block_values[1], 
                                          data_block_values[2], 
                                          data_block_values[7], 
@@ -2347,9 +2347,9 @@ void TableTest::PLRIndexTestMoreEntries(BlockBasedTableOptions table_options,
                                          data_block_values[27], 
                                          data_block_values[29], 
                                          std::string(""),
-                                         data_block_values[8], 
+                                         data_block_values[9], 
                                          data_block_values[18], 
-                                         data_block_values[28],};
+                                         data_block_values[29],};
 
   for (size_t i = 0; i < prefixes.size(); ++i) {
     // the key is greater than any existing keys.
