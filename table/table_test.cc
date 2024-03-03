@@ -2348,7 +2348,7 @@ void TableTest::PLRIndexTestMoreEntries(BlockBasedTableOptions table_options,
                                          data_block_values[29], 
                                          std::string(""),
                                          data_block_values[9], 
-                                         data_block_values[18], 
+                                         data_block_values[19], 
                                          data_block_values[29],};
 
   for (size_t i = 0; i < prefixes.size(); ++i) {
