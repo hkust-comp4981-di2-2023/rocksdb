@@ -1064,6 +1064,8 @@ class TableTest : public testing::Test {
   }
   void IndexTest(BlockBasedTableOptions table_options);
   void PLRIndexTest(BlockBasedTableOptions table_options, double gamma);
+  void PLRIndexTestMoreEntries(BlockBasedTableOptions table_options, 
+                               double gamma);
 
  private:
   std::unique_ptr<InternalKeyComparator> plain_internal_comparator;
@@ -2252,7 +2254,7 @@ void TableTest::PLRIndexTestMoreEntries(BlockBasedTableOptions table_options,
   // [DB4: 0058 - 0075]
   // [DB5: 0076 - 0095]
   // [DB6..15]
-  ASSERT_EQ(5u, props->num_data_blocks);
+  ASSERT_EQ(15u, props->num_data_blocks);
   // std::cout << "Number of data blocks: " 
   //           << props->num_data_blocks << std::endl;
 
@@ -2328,23 +2330,23 @@ void TableTest::PLRIndexTestMoreEntries(BlockBasedTableOptions table_options,
                                           keys[11], keys[12], keys[17], 
                                           keys[19], keys[20],
                                           keys[21], keys[22], keys[27], 
-                                          keys[29], "",
+                                          keys[29], std::string(""),
                                           keys[8], keys[18], keys[28],};
   std::vector<std::string> ub_answers = {data_block_values[1], 
                                          data_block_values[2], 
                                          data_block_values[7], 
                                          data_block_values[9], 
                                          data_block_values[10],
+                                         data_block_values[11], 
+                                         data_block_values[12], 
+                                         data_block_values[17], 
+                                         data_block_values[19], 
+                                         data_block_values[10],
                                          data_block_values[21], 
                                          data_block_values[22], 
                                          data_block_values[27], 
                                          data_block_values[29], 
-                                         data_block_values[20],
-                                         data_block_values[31], 
-                                         data_block_values[32], 
-                                         data_block_values[37], 
-                                         data_block_values[39], 
-                                         "",
+                                         std::string(""),
                                          data_block_values[8], 
                                          data_block_values[18], 
                                          data_block_values[28],};
