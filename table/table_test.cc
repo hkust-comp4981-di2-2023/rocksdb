@@ -1063,7 +1063,7 @@ class TableTest : public testing::Test {
     return *plain_internal_comparator;
   }
   void IndexTest(BlockBasedTableOptions table_options);
-  void PLRIndexTest(BlockBasedTableOptions table_options);
+  void PLRIndexTest(BlockBasedTableOptions table_options, double gamma);
 
  private:
   std::unique_ptr<InternalKeyComparator> plain_internal_comparator;
@@ -2217,6 +2217,7 @@ TEST_P(BlockBasedTableTest, PLRIndexTest) {
   table_options.index_type = BlockBasedTableOptions::kLearnedIndexWithPLR;
   double gammas[6] = {0.06, 0.3, 0.6, 1.0, 1.5, 2.0};
   for (auto& gamma: gammas) {
+    std::cout << "testing with gamma=" << gamma << std::endl;
     PLRIndexTest(table_options, gamma);
   }
 }

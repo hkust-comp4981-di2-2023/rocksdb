@@ -176,6 +176,8 @@ void PLRBlockIter::Prev() {
 		return;
 	}
 	--current_;
+	
+	SetCurrentIndexValue();
 }
 
 // Return an internal key that can be parsed by ExtractUserKey().
