@@ -3791,6 +3791,7 @@ void BlockBasedTable::MultiGet(const ReadOptions& read_options,
 
       for (auto miter = data_block_range.begin();
            miter != data_block_range.end(); ++miter) {
+        // TODO(fyp): Alter the logic of Index Iterator for PLR
         const Slice& key = miter->ikey;
         iiter->Seek(miter->ikey);
 
@@ -4057,7 +4058,7 @@ Status BlockBasedTable::Prefetch(const Slice* const begin,
 
   // indicates if we are on the last page that need to be pre-fetched
   bool prefetching_boundary_page = false;
-
+  // TODO(fyp): Change logic for PLRIndex
   for (begin ? iiter->Seek(*begin) : iiter->SeekToFirst(); iiter->Valid();
        iiter->Next()) {
     BlockHandle block_handle = iiter->value().handle;
@@ -4428,7 +4429,7 @@ Status BlockBasedTable::GetKVPairsFromDataBlocks(
     // Cannot read Index Block
     return s;
   }
-
+  // TODO(fyp): Check whether we need to change this
   for (blockhandles_iter->SeekToFirst(); blockhandles_iter->Valid();
        blockhandles_iter->Next()) {
     s = blockhandles_iter->status();

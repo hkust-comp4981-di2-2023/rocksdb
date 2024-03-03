@@ -466,6 +466,7 @@ class PLRIndexBuilder: public IndexBuilder {
   // store block_handle of i-th block in helper_. For the last function call, do
   // not add a new Point, as first_key_in_next_block is nullptr, meaning there
   // is no next block.
+  // TODO(fyp): Confirm whether it will start at 0-th block
   void AddIndexEntry(std::string* /*last_key_in_current_block*/,
                     const Slice* first_key_in_next_block,
                     const BlockHandle& block_handle) override {
