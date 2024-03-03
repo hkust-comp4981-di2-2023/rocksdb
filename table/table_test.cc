@@ -2034,7 +2034,6 @@ void AddInternalKeyForPLR(TableConstructor* c, const std::string& prefix,
 // block instead of upper bound.
 //
 // Note: User key has a size of 8.
-// TODO(fyp): update comments within PLRIndexTest() regarding test case
 // TODO(fyp): After fyp, may consider training with last key.
 void TableTest::PLRIndexTest(BlockBasedTableOptions table_options,
                              double gamma) {
@@ -2188,6 +2187,221 @@ void TableTest::PLRIndexTest(BlockBasedTableOptions table_options,
   c.ResetTableReader();
 }
 
+void TableTest::PLRIndexTestMoreEntries(BlockBasedTableOptions table_options,
+                             double gamma) {
+  TableConstructor c(BytewiseComparator());
+  std::vector<std::string> data_block_values(30, "");
+
+  // keys with prefix length 2/3, make sure the key/value is big enough to fill
+  // one block
+  AddInternalKeyForPLR(&c, "0015", data_block_values[0]);
+  AddInternalKeyForPLR(&c, "0035", data_block_values[1]);
+  AddInternalKeyForPLR(&c, "0054", data_block_values[2]);
+  AddInternalKeyForPLR(&c, "0055", data_block_values[3]);
+  AddInternalKeyForPLR(&c, "0056", data_block_values[4]);
+  AddInternalKeyForPLR(&c, "0057", data_block_values[5]);
+  AddInternalKeyForPLR(&c, "0058", data_block_values[6]);
+  AddInternalKeyForPLR(&c, "0075", data_block_values[7]);
+  AddInternalKeyForPLR(&c, "0076", data_block_values[8]);
+  AddInternalKeyForPLR(&c, "0095", data_block_values[9]);
+
+  AddInternalKeyForPLR(&c, "0115", data_block_values[10]);
+  AddInternalKeyForPLR(&c, "0135", data_block_values[11]);
+  AddInternalKeyForPLR(&c, "0154", data_block_values[12]);
+  AddInternalKeyForPLR(&c, "0155", data_block_values[13]);
+  AddInternalKeyForPLR(&c, "0156", data_block_values[14]);
+  AddInternalKeyForPLR(&c, "0157", data_block_values[15]);
+  AddInternalKeyForPLR(&c, "0158", data_block_values[16]);
+  AddInternalKeyForPLR(&c, "0175", data_block_values[17]);
+  AddInternalKeyForPLR(&c, "0176", data_block_values[18]);
+  AddInternalKeyForPLR(&c, "0195", data_block_values[19]);
+
+  AddInternalKeyForPLR(&c, "0215", data_block_values[20]);
+  AddInternalKeyForPLR(&c, "0235", data_block_values[21]);
+  AddInternalKeyForPLR(&c, "0254", data_block_values[22]);
+  AddInternalKeyForPLR(&c, "0255", data_block_values[23]);
+  AddInternalKeyForPLR(&c, "0256", data_block_values[24]);
+  AddInternalKeyForPLR(&c, "0257", data_block_values[25]);
+  AddInternalKeyForPLR(&c, "0258", data_block_values[26]);
+  AddInternalKeyForPLR(&c, "0275", data_block_values[27]);
+  AddInternalKeyForPLR(&c, "0276", data_block_values[28]);
+  AddInternalKeyForPLR(&c, "0295", data_block_values[29]);
+
+  std::vector<std::string> keys;
+  stl_wrappers::KVMap kvmap;
+  Options options;
+  options.prefix_extractor.reset(NewFixedPrefixTransform(3));
+  table_options.block_size = 1700;
+  table_options.block_cache = NewLRUCache(1024, 4);
+  table_options.plr_index_block_gamma = gamma;
+  options.table_factory.reset(NewBlockBasedTableFactory(table_options));
+
+  std::unique_ptr<InternalKeyComparator> comparator(
+      new InternalKeyComparator(BytewiseComparator()));
+  const ImmutableCFOptions ioptions(options);
+  const MutableCFOptions moptions(options);
+  c.Finish(options, ioptions, moptions, table_options, *comparator, &keys,
+           &kvmap);
+  auto reader = c.GetTableReader();
+
+  auto props = reader->GetTableProperties();
+  // There are 15 index block entries and 15 data blocks.
+  // [DB1: 0015 - 0035]
+  // [DB2: 0054 - 0055]
+  // [DB3: 0056 - 0057]
+  // [DB4: 0058 - 0075]
+  // [DB5: 0076 - 0095]
+  // [DB6..15]
+  ASSERT_EQ(5u, props->num_data_blocks);
+  // std::cout << "Number of data blocks: " 
+  //           << props->num_data_blocks << std::endl;
+
+  // TODO(Zhongyi): update test to use MutableCFOptions
+  std::unique_ptr<InternalIterator> index_iter(reader->NewIterator(
+      ReadOptions(), moptions.prefix_extractor.get(), /*arena=*/nullptr,
+      /*skip_filters=*/false, TableReaderCaller::kUncategorized));
+
+  // -- Find keys do not exist, but have common prefix.
+  std::vector<std::string> prefixes = {"001", "003", "005", "007", "009",
+                                       "011", "013", "015", "017", "019",
+                                       "021", "023", "025", "027", "029",
+                                       "00", "01", "02"};
+  std::vector<std::string> lower_bound = {keys[0], keys[1], keys[2],
+                                          keys[7], keys[9],
+                                          keys[10], keys[11], keys[12],
+                                          keys[17], keys[19],
+                                          keys[20], keys[21], keys[22],
+                                          keys[27], keys[29],
+                                          keys[0], keys[10], keys[20]};
+  std::vector<std::string> lb_answers = {data_block_values[0], 
+                                         data_block_values[1], 
+                                         data_block_values[2],
+                                         data_block_values[7], 
+                                         data_block_values[9],
+                                         data_block_values[10], 
+                                         data_block_values[11], 
+                                         data_block_values[12],
+                                         data_block_values[17], 
+                                         data_block_values[19],
+                                         data_block_values[20], 
+                                         data_block_values[21], 
+                                         data_block_values[22],
+                                         data_block_values[27], 
+                                         data_block_values[29],
+                                         data_block_values[0],
+                                         data_block_values[10],
+                                         data_block_values[20]};
+
+  // find the lower bound of the prefix
+  for (size_t i = 0; i < prefixes.size(); ++i) {
+    index_iter->Seek(InternalKey(prefixes[i], 0, kTypeValue).Encode());
+    ASSERT_OK(index_iter->status());
+    ASSERT_TRUE(index_iter->Valid());
+
+    // seek the first element in the block
+    ASSERT_EQ(lower_bound[i], index_iter->key().ToString());
+    ASSERT_EQ(lb_answers[i], index_iter->value().ToString());
+  }
+
+  // find existing keys
+  for (const auto& item : kvmap) {
+    // auto ukey = ExtractUserKey(item.first).ToString();
+    // index_iter->Seek(ukey);
+
+    // The original test case Seek() with user key, 
+    // but PLR Seek() with internal key. Not sure if stress test works :(
+    index_iter->Seek(item.first);
+
+    // ASSERT_OK(regular_iter->status());
+    ASSERT_OK(index_iter->status());
+
+    // ASSERT_TRUE(regular_iter->Valid());
+    ASSERT_TRUE(index_iter->Valid());
+
+    ASSERT_EQ(item.first, index_iter->key().ToString());
+    ASSERT_EQ(item.second, index_iter->value().ToString());
+  }
+
+  // find the first_keys of prefixes
+  std::vector<std::string> upper_bound = {keys[1], keys[2], keys[7], 
+                                          keys[9], keys[10],
+                                          keys[11], keys[12], keys[17], 
+                                          keys[19], keys[20],
+                                          keys[21], keys[22], keys[27], 
+                                          keys[29], "",
+                                          keys[8], keys[18], keys[28],};
+  std::vector<std::string> ub_answers = {data_block_values[1], 
+                                         data_block_values[2], 
+                                         data_block_values[7], 
+                                         data_block_values[9], 
+                                         data_block_values[10],
+                                         data_block_values[21], 
+                                         data_block_values[22], 
+                                         data_block_values[27], 
+                                         data_block_values[29], 
+                                         data_block_values[20],
+                                         data_block_values[31], 
+                                         data_block_values[32], 
+                                         data_block_values[37], 
+                                         data_block_values[39], 
+                                         "",
+                                         data_block_values[8], 
+                                         data_block_values[18], 
+                                         data_block_values[28],};
+
+  for (size_t i = 0; i < prefixes.size(); ++i) {
+    // the key is greater than any existing keys.
+    auto key = prefixes[i] + "9";
+    index_iter->Seek(InternalKey(key, 0, kTypeValue).Encode());
+
+    ASSERT_TRUE(index_iter->status().ok() || index_iter->status().IsNotFound());
+    ASSERT_TRUE(!index_iter->status().IsNotFound() || !index_iter->Valid());
+
+    if (i == 14) {
+      // last key
+      ASSERT_TRUE(!index_iter->Valid());
+    } else {
+      ASSERT_TRUE(index_iter->Valid());
+      // seek the first element in the block
+      ASSERT_EQ(upper_bound[i], index_iter->key().ToString());
+      ASSERT_EQ(ub_answers[i], index_iter->value().ToString());
+    }
+  }
+
+  // find keys with prefix that don't match any of the existing prefixes.
+  std::vector<std::string> non_exist_prefixes = {"002", "004", "006", "008",
+                                                 "012", "014", "016", "018",
+                                                 "022", "024", "026", "028",
+                                                 "03", "04", "05", "06",};
+  for (const auto& prefix : non_exist_prefixes) {
+    index_iter->Seek(InternalKey(prefix, 0, kTypeValue).Encode());
+    // regular_iter->Seek(prefix);
+
+    ASSERT_OK(index_iter->status());
+    // Seek to non-existing prefixes should yield either invalid, or a
+    // key with prefix *smaller* than the target.
+    if (index_iter->Valid()) {
+      Slice ukey = ExtractUserKey(index_iter->key());
+      Slice ukey_prefix = options.prefix_extractor->Transform(ukey);
+      ASSERT_TRUE(BytewiseComparator()->Compare(prefix, ukey_prefix) < 0);
+    }
+  }
+  for (const auto& prefix : non_exist_prefixes) {
+    index_iter->SeekForPrev(InternalKey(prefix, 0, kTypeValue).Encode());
+    // regular_iter->Seek(prefix);
+
+    ASSERT_OK(index_iter->status());
+    // Seek to non-existing prefixes should yield either invalid, or a
+    // key with prefix *smaller* than the target.
+    if (index_iter->Valid()) {
+      Slice ukey = ExtractUserKey(index_iter->key());
+      Slice ukey_prefix = options.prefix_extractor->Transform(ukey);
+      ASSERT_TRUE(BytewiseComparator()->Compare(prefix, ukey_prefix) > 0);
+    }
+  }
+  c.ResetTableReader();
+}
+
 TEST_P(BlockBasedTableTest, BinaryIndexTest) {
   BlockBasedTableOptions table_options = GetBlockBasedTableOptions();
   table_options.index_type = BlockBasedTableOptions::kBinarySearch;
@@ -2217,8 +2431,18 @@ TEST_P(BlockBasedTableTest, PLRIndexTest) {
   table_options.index_type = BlockBasedTableOptions::kLearnedIndexWithPLR;
   double gammas[6] = {0.06, 0.3, 0.6, 1.0, 1.5, 2.0};
   for (auto& gamma: gammas) {
-    std::cout << "testing with gamma=" << gamma << std::endl;
+    // std::cout << "testing with gamma=" << gamma << std::endl;
     PLRIndexTest(table_options, gamma);
+  }
+}
+
+TEST_P(BlockBasedTableTest, PLRIndexTestWithMoreEntries) {
+  BlockBasedTableOptions table_options = GetBlockBasedTableOptions();
+  table_options.index_type = BlockBasedTableOptions::kLearnedIndexWithPLR;
+  double gammas[6] = {0.06, 0.3, 0.6, 1.0, 1.5, 2.0};
+  for (auto& gamma: gammas) {
+    // std::cout << "testing with gamma=" << gamma << std::endl;
+    PLRIndexTestMoreEntries(table_options, gamma);
   }
 }
 
