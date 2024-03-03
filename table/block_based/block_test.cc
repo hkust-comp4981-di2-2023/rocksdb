@@ -753,10 +753,9 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
       } else {
         Slice seek_result_first_key(first_keys[seek_result_index]);
         Slice seek_result_last_key(last_keys[seek_result_index]);
-        iter->UpdateBinarySeekRange(
-                  query_key, 
-                  seek_result_first_key, 
-                  seek_result_last_key);
+        iter->UpdateBinarySeekRange(ExtractUserKey(query_key), 
+                                    ExtractUserKey(seek_result_first_key), 
+                                    ExtractUserKey(seek_result_last_key));
         iter->Next();
       }
     }
@@ -792,10 +791,9 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
       } else {
         Slice seek_result_first_key(first_keys[seek_result_index]);
         Slice seek_result_last_key(last_keys[seek_result_index]);
-        iter->UpdateBinarySeekRange(
-                  query_key, 
-                  seek_result_first_key, 
-                  seek_result_last_key);
+        iter->UpdateBinarySeekRange(ExtractUserKey(query_key), 
+                                    ExtractUserKey(seek_result_first_key), 
+                                    ExtractUserKey(seek_result_last_key));
         iter->Next();
       }
     }
@@ -836,10 +834,9 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
       }
       if (cmp->Compare(query_key, seek_result_first_key) < 0
           || cmp->Compare(seek_result_last_key, query_key) < 0) {
-        iter->UpdateBinarySeekRange(
-                  query_key, 
-                  seek_result_first_key, 
-                  seek_result_last_key);
+        iter->UpdateBinarySeekRange(ExtractUserKey(query_key), 
+                                    ExtractUserKey(seek_result_first_key), 
+                                    ExtractUserKey(seek_result_last_key));
         iter->Next();
         continue;
       }
