@@ -971,6 +971,7 @@ class PLRIndexReader: public BlockBasedTable::CustomIndexReaderCommon {
     
     BlockContents* block_content = index_block_contents.GetValue();
 
+
     // TODO(fyp): Unsure if there'll be memory leak or not
     auto it = new PLRBlockIter(block_content, num_data_blocks_, 
                                internal_comparator()->user_comparator());
@@ -3898,6 +3899,7 @@ void BlockBasedTable::MultiGet(const ReadOptions& read_options,
 
       for (auto miter = data_block_range.begin();
            miter != data_block_range.end(); ++miter) {
+        // TODO(fyp): Alter the logic of Index Iterator for PLR
         const Slice& key = miter->ikey;
         iiter->Seek(miter->ikey);
 
@@ -4164,7 +4166,7 @@ Status BlockBasedTable::Prefetch(const Slice* const begin,
 
   // indicates if we are on the last page that need to be pre-fetched
   bool prefetching_boundary_page = false;
-
+  // TODO(fyp): Change logic for PLRIndex
   for (begin ? iiter->Seek(*begin) : iiter->SeekToFirst(); iiter->Valid();
        iiter->Next()) {
     BlockHandle block_handle = iiter->value().handle;
@@ -4249,6 +4251,7 @@ Status BlockBasedTable::VerifyChecksumInBlocks(
       readahead_size /* max_readahead_size */,
       !rep_->ioptions.allow_mmap_reads /* enable */);
 
+  // TODO(fyp): Maybe we need to alter this
   for (index_iter->SeekToFirst(); index_iter->Valid(); index_iter->Next()) {
     s = index_iter->status();
     if (!s.ok()) {
@@ -4535,7 +4538,7 @@ Status BlockBasedTable::GetKVPairsFromDataBlocks(
     // Cannot read Index Block
     return s;
   }
-
+  // TODO(fyp): Check whether we need to change this
   for (blockhandles_iter->SeekToFirst(); blockhandles_iter->Valid();
        blockhandles_iter->Next()) {
     s = blockhandles_iter->status();
