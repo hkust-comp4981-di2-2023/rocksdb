@@ -1703,7 +1703,7 @@ TEST_P(BlockBasedTableTest, PrefetchTest) {
 
 TEST_P(BlockBasedTableTest, TotalOrderSeekOnHashIndex) {
   BlockBasedTableOptions table_options = GetBlockBasedTableOptions();
-  for (int i = 0; i <= 5; ++i) {
+  for (int i = 0; i <= 9; ++i) {
     Options options;
     // Make each key/value an individual block
     table_options.block_size = 64;
@@ -1742,6 +1742,14 @@ TEST_P(BlockBasedTableTest, TotalOrderSeekOnHashIndex) {
       // Binary search with first key
       table_options.index_type =
           BlockBasedTableOptions::kBinarySearchWithFirstKey;
+      options.table_factory.reset(new BlockBasedTableFactory(table_options));
+      break;
+    case 6, 7, 8, 9:
+      // PLR Learned Index
+      double gammas[3] = {0.06, 0.6, 1, 2}
+      table_options.index_type =
+          BlockBasedTableOptions::kLearnedIndexWithPLR;
+      table_options.plr_index_block_gamma = 0.06;
       options.table_factory.reset(new BlockBasedTableFactory(table_options));
       break;
     }
