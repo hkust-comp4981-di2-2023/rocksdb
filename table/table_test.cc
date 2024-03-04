@@ -1744,12 +1744,15 @@ TEST_P(BlockBasedTableTest, TotalOrderSeekOnHashIndex) {
           BlockBasedTableOptions::kBinarySearchWithFirstKey;
       options.table_factory.reset(new BlockBasedTableFactory(table_options));
       break;
-    case 6, 7, 8, 9:
+    case 6:
+    case 7:
+    case 8:
+    case 9:
       // PLR Learned Index
-      double gammas[3] = {0.06, 0.6, 1, 2}
+      double gammas[4] = {0.06, 0.6, 1, 2};
       table_options.index_type =
           BlockBasedTableOptions::kLearnedIndexWithPLR;
-      table_options.plr_index_block_gamma = 0.06;
+      table_options.plr_index_block_gamma = gammas[i-6];
       options.table_factory.reset(new BlockBasedTableFactory(table_options));
       break;
     }
