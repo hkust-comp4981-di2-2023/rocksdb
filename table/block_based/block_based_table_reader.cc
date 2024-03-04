@@ -4143,6 +4143,7 @@ Status BlockBasedTable::VerifyChecksumInBlocks(
       readahead_size /* max_readahead_size */,
       !rep_->ioptions.allow_mmap_reads /* enable */);
 
+  // TODO(fyp): Maybe we need to alter this
   for (index_iter->SeekToFirst(); index_iter->Valid(); index_iter->Next()) {
     s = index_iter->status();
     if (!s.ok()) {
