@@ -146,6 +146,7 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 	void UpdateBinarySeekRange(const Slice& seek_key,
 															const Slice& data_block_first_key,
 															const Slice& data_block_last_key);
+
 	std::string GetStateMessage() {
 		return std::string("PLRBlockIter::GetStateMessage():\n")
 						+ "begin_block_: " + std::to_string(begin_block_) 
