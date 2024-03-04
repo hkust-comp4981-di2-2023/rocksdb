@@ -292,7 +292,6 @@ Status BlockBasedTableFactory::SanitizeOptions(
   if (table_options_.index_type == 
           BlockBasedTableOptions::kLearnedIndexWithPLR) {
     // TODO(fyp): Add sanitization-related logic for PLR index type, if any
-    // TODO(fyp): Gamma sanitization logic should add here
     if (table_options_.index_block_restart_interval != 1) {
       return Status::InvalidArgument(
         "index_block_restart_interval is not configurable for "
