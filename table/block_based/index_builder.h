@@ -452,7 +452,8 @@ class PartitionedIndexBuilder : public IndexBuilder {
 // 3. Encode to a string using PLRDataRep.
 // The encoded string is stored as the final block contents in IndexBlocks.
 //
-// Note: For now, we don't care about include_first_key_.
+// Note: Currently, we use assert() to ensure index key has size <= 8.
+// Other possible solutions include truncate the index key to up to 8 chars.
 class PLRIndexBuilder: public IndexBuilder {
  public:
   PLRIndexBuilder() = delete;
@@ -466,24 +467,30 @@ class PLRIndexBuilder: public IndexBuilder {
   // store block_handle of i-th block in helper_. For the last function call, do
   // not add a new Point, as first_key_in_next_block is nullptr, meaning there
   // is no next block.
-  // TODO(fyp): Confirm whether it will start at 0-th block
+  //
+  // Note: It seems that both input keys are internal keys, so we need to
+  // ExtractUserKey() before storing.
   void AddIndexEntry(std::string* /*last_key_in_current_block*/,
                     const Slice* first_key_in_next_block,
                     const BlockHandle& block_handle) override {
     if (first_key_in_next_block != nullptr) {
       // current AddIndexEntry() call is not processing with:
       // current_block = last data block
-      helper_.AddPLRTrainingPoint(*first_key_in_next_block);
+      assert(ExtractUserKey(*first_key_in_next_block).size() <= 8);
+      helper_.AddPLRTrainingPoint(ExtractUserKey(*first_key_in_next_block));
     }
     helper_.AddHandle(block_handle);
   }
   
   // If it is the first every key from the first data block, use helper_ to add
   // a new Point for PLR training. Do nothing otherwise.
+  //
+  // Note: It seems input key is an internal key, so we need ExtractUserKey().
   void OnKeyAdded(const Slice& key) override {
     if (is_first_key_in_first_block_) {
       is_first_key_in_first_block_ = false;
-      helper_.AddPLRTrainingPoint(key);
+      assert(ExtractUserKey(key).size() <= 8);
+      helper_.AddPLRTrainingPoint(ExtractUserKey(key));
     }
   }
 
@@ -498,6 +505,16 @@ class PLRIndexBuilder: public IndexBuilder {
   }
 
   size_t IndexSize() const override { return index_size_; }
+
+  // Returning false means the key in this plr index block is always a user key
+  // without a sequence number.
+  // This makes Property meta block writes 'true' for a field named
+  // 'index_key_is_user_key'.
+  // Then when the block-based table is read, the reader will set another field
+  // named 'index_key_includes_seq' as 'false'. This will affect the behavior
+  // of index iterator the reader uses/creates. 
+  // See the impact on iterator behavior from the class PLRBlockIter.
+  virtual bool seperator_is_key_plus_seq() { return false; }
 
  private:
   PLRBuilderHelper helper_;

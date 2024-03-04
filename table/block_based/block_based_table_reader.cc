@@ -366,7 +366,8 @@ Status BlockBasedTable::IndexReaderCommon::GetOrReadIndexBlock(
 // in the cache or not.
 //
 // Difference from IndexReaderCommon: Cache BlockContents instead of Block
-class BlockBasedTable::CustomIndexReaderCommon : public BlockBasedTable::IndexReader {
+class BlockBasedTable::CustomIndexReaderCommon : 
+                                          public BlockBasedTable::IndexReader {
  public:
   CustomIndexReaderCommon(const BlockBasedTable* t,
                     CachableEntry<BlockContents>&& index_block_contents)
@@ -380,7 +381,8 @@ class BlockBasedTable::CustomIndexReaderCommon : public BlockBasedTable::IndexRe
                                const ReadOptions& read_options, bool use_cache,
                                GetContext* get_context,
                                BlockCacheLookupContext* lookup_context,
-                               CachableEntry<BlockContents>* index_block_contents);
+                               CachableEntry<BlockContents>* 
+                                index_block_contents);
 
   const BlockBasedTable* table() const { return table_; }
 
@@ -417,10 +419,12 @@ class BlockBasedTable::CustomIndexReaderCommon : public BlockBasedTable::IndexRe
 
   Status GetOrReadIndexBlock(bool no_io, GetContext* get_context,
                              BlockCacheLookupContext* lookup_context,
-                             CachableEntry<BlockContents>* index_block_contents) const;
+                             CachableEntry<BlockContents>* index_block_contents) 
+                              const;
 
   size_t ApproximateIndexBlockMemoryUsage() const {
-    assert(!index_block_contents_.GetOwnValue() || index_block_contents_.GetValue() != nullptr);
+    assert(!index_block_contents_.GetOwnValue() || 
+            index_block_contents_.GetValue() != nullptr);
     return index_block_contents_.GetOwnValue()
                ? index_block_contents_.GetValue()->ApproximateMemoryUsage()
                : 0;
@@ -447,8 +451,9 @@ Status BlockBasedTable::CustomIndexReaderCommon::ReadIndexBlock(
 
   const Status s = table->RetrieveBlock(
       prefetch_buffer, read_options, rep->footer.index_handle(),
-      UncompressionDict::GetEmptyDict(), index_block_contents, BlockType::kIndex,
-      get_context, lookup_context, /* for_compaction */ false, use_cache);
+      UncompressionDict::GetEmptyDict(), index_block_contents, 
+      BlockType::kIndex, get_context, lookup_context, 
+      /* for_compaction */ false, use_cache);
 
   return s;
 }
@@ -922,7 +927,8 @@ class PLRIndexReader: public BlockBasedTable::CustomIndexReaderCommon {
     if (prefetch || !use_cache) {
       const Status s =
           ReadIndexBlock(table, prefetch_buffer, ReadOptions(), use_cache,
-                         /*get_context=*/nullptr, lookup_context, &index_block_contents);
+                         /*get_context=*/nullptr, lookup_context, 
+                         &index_block_contents);
       if (!s.ok()) {
         return s;
       }
@@ -942,10 +948,14 @@ class PLRIndexReader: public BlockBasedTable::CustomIndexReaderCommon {
       const ReadOptions& read_options, bool /* disable_prefix_seek */,
       IndexBlockIter* iter, GetContext* get_context,
       BlockCacheLookupContext* lookup_context) override {
+    assert(!index_has_first_key());
+    assert(!index_key_includes_seq());
+
     const bool no_io = (read_options.read_tier == kBlockCacheTier);
     CachableEntry<BlockContents> index_block_contents;
     const Status s =
-        GetOrReadIndexBlock(no_io, get_context, lookup_context, &index_block_contents);
+        GetOrReadIndexBlock(no_io, get_context, lookup_context, 
+                            &index_block_contents);
     if (!s.ok()) {
       if (iter != nullptr) {
         iter->Invalidate(s);
@@ -961,10 +971,10 @@ class PLRIndexReader: public BlockBasedTable::CustomIndexReaderCommon {
     
     BlockContents* block_content = index_block_contents.GetValue();
 
-    // TODO(fyp): 99% will leak memory, need to fix, but lets see if logic is correct first
-    auto it = new PLRBlockIter(block_content, index_key_includes_seq(), 
-                                num_data_blocks_, 
-                                internal_comparator()->user_comparator());
+
+    // TODO(fyp): Unsure if there'll be memory leak or not
+    auto it = new PLRBlockIter(block_content, num_data_blocks_, 
+                               internal_comparator()->user_comparator());
     index_block_contents.TransferTo(it);
 
     return it;
@@ -2996,6 +3006,15 @@ void BlockBasedTableIterator<TBlockIter, TValue>::SeekImpl(
     return;
   }
 
+  // Note(fyp): If the underlying index iterator type is plr index,
+  // plr_index_iter will be non-nullptr. This variable will be used extensively
+  // to override original logic.
+  PLRBlockIter* plr_index_iter = nullptr;
+  if (table_->get_rep()->index_type == 
+        BlockBasedTableOptions::kLearnedIndexWithPLR) {
+    plr_index_iter = reinterpret_cast<PLRBlockIter*>(index_iter_);
+  }
+
   bool need_seek_index = true;
   if (block_iter_points_to_real_block_ && block_iter_.Valid()) {
     // Reseek.
@@ -3010,7 +3029,11 @@ void BlockBasedTableIterator<TBlockIter, TValue>::SeekImpl(
       // exclude the equality case. Considering internal keys can
       // improve for the boundary cases, but it would complicate the
       // code.
-      if (user_comparator_.Compare(ExtractUserKey(*target),
+      //
+      // Note(fyp): If index type is plr index, key_ must be set to execute
+      // the following lines. Otherwise, skip checking.
+      if ((!plr_index_iter || plr_index_iter->IsKeySet()) && 
+          user_comparator_.Compare(ExtractUserKey(*target),
                                    block_iter_.user_key()) > 0 &&
           user_comparator_.Compare(ExtractUserKey(*target),
                                    index_iter_->user_key()) < 0) {
@@ -3022,6 +3045,43 @@ void BlockBasedTableIterator<TBlockIter, TValue>::SeekImpl(
   if (need_seek_index) {
     if (target) {
       index_iter_->Seek(*target);
+
+      if (plr_index_iter) {
+        // Note(fyp): If index type is plr index, special treatment is needed.
+        //
+        // Method 1: Binary seek and materialize data blocks until either:
+        // - The current data block range covers target, or
+        // - This is the last possible binary search iteration
+        //
+        // Method 2: Linear seek, materialize and start from begin_block_.
+        //
+        // We pick method 1 for now.
+        while (plr_index_iter->Valid()) {
+          // InitDataBlock() will set block_iter_points_to_real_block_ to true
+          // and invoke plr_index_iter->SetKey().
+          InitDataBlock();
+          prev_block_offset_ = index_iter_->value().handle.offset();
+
+          block_iter_.SeekToFirst();
+          Slice data_block_first_key = block_iter_.user_key();
+          block_iter_.SeekToLast();
+          Slice data_block_last_key = block_iter_.user_key();
+
+          plr_index_iter->UpdateBinarySeekRange(ExtractUserKey(*target), 
+            data_block_first_key, data_block_last_key);
+          
+          if (plr_index_iter->IsLastBinarySeek() || (
+              user_comparator_.Compare(data_block_first_key, 
+                                        ExtractUserKey(*target)) <= 0 &&
+              user_comparator_.Compare(ExtractUserKey(*target), 
+                                        data_block_last_key) <= 0)) {
+            plr_index_iter->SwitchToLinearSeekMode();
+            break;
+          }
+          
+          plr_index_iter->Next();
+        }
+      }
     } else {
       index_iter_->SeekToFirst();
     }
@@ -3093,6 +3153,15 @@ void BlockBasedTableIterator<TBlockIter, TValue>::SeekForPrev(
 
   SavePrevIndexValue();
 
+  // Note(fyp): If the underlying index iterator type is plr index,
+  // plr_index_iter will be non-nullptr. This variable will be used extensively
+  // to override original logic.
+  PLRBlockIter* plr_index_iter = nullptr;
+  if (table_->get_rep()->index_type == 
+        BlockBasedTableOptions::kLearnedIndexWithPLR) {
+    plr_index_iter = reinterpret_cast<PLRBlockIter*>(index_iter_);
+  }
+
   // Call Seek() rather than SeekForPrev() in the index block, because the
   // target data block will likely to contain the position for `target`, the
   // same as Seek(), rather than than before.
@@ -3107,6 +3176,36 @@ void BlockBasedTableIterator<TBlockIter, TValue>::SeekForPrev(
   // to distinguish the two unless we read the second block. In this case, we'll
   // end up with reading two blocks.
   index_iter_->Seek(target);
+
+  if (plr_index_iter) {
+    // Note(fyp): If index type is plr index, special treatment is needed.
+    // Similar to Seek().
+    while (plr_index_iter->Valid()) {
+      // InitDataBlock() will set block_iter_points_to_real_block_ to true
+      // and invoke plr_index_iter->SetKey().
+      InitDataBlock();
+      prev_block_offset_ = index_iter_->value().handle.offset();
+
+      block_iter_.SeekToFirst();
+      Slice data_block_first_key = block_iter_.user_key();
+      block_iter_.SeekToLast();
+      Slice data_block_last_key = block_iter_.user_key();
+
+      plr_index_iter->UpdateBinarySeekRange(ExtractUserKey(target), 
+        data_block_first_key, data_block_last_key);
+      
+      if (plr_index_iter->IsLastBinarySeek() || (
+          user_comparator_.Compare(data_block_first_key, 
+                                    ExtractUserKey(target)) <= 0 &&
+          user_comparator_.Compare(ExtractUserKey(target), 
+                                    data_block_last_key) <= 0)) {
+        plr_index_iter->SwitchToLinearSeekMode();
+        break;
+      }
+      
+      plr_index_iter->Next();
+    }
+  }
 
   if (!index_iter_->Valid()) {
     auto seek_status = index_iter_->status();
@@ -3267,6 +3366,15 @@ void BlockBasedTableIterator<TBlockIter, TValue>::InitDataBlock() {
         /*for_compaction=*/lookup_context_.caller ==
             TableReaderCaller::kCompaction);
     block_iter_points_to_real_block_ = true;
+
+    // Note(fyp): Special treatment for plr index.
+    if (table_->get_rep()->index_type == 
+        BlockBasedTableOptions::kLearnedIndexWithPLR) {
+      block_iter_.SeekToLast();
+      assert(block_iter_.Valid());
+      reinterpret_cast<PLRBlockIter*>(index_iter_)->SetKey(block_iter_.key());
+    }
+
     CheckDataBlockWithinUpperBound();
   }
 }

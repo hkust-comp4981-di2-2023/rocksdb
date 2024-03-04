@@ -18,6 +18,7 @@ void PLRBlockIter::SeekToFirst() {
 
 	status_ = Status::OK();
 	seek_mode_ = SeekMode::kUnknown;
+	is_key_set_ = false;
 
 	begin_block_ = 0;
 	end_block_ = helper_->GetNumberOfDataBlock();
@@ -48,6 +49,7 @@ void PLRBlockIter::SeekToLast() {
 
 	status_ = Status::OK();
 	seek_mode_ = SeekMode::kUnknown;
+	is_key_set_ = false;
 
 	begin_block_ = 0;
 	end_block_ = helper_->GetNumberOfDataBlock();
@@ -75,17 +77,21 @@ void PLRBlockIter::SeekToLast() {
 // gamma error bound, helper_ uses a function pointer to convert the block 
 // number to an integer.
 //
+// Note: The input param. target is an internal key.
+//
 // REQUIRES: helper_ (and thus helper_->model_) is initialized.
+// REQUIRES: Input param. target is an internal key.
+// REQUIRES: Input param. target has size <= 8 after ExtractUserKey().
 void PLRBlockIter::Seek(const Slice& target) {
 	TEST_SYNC_POINT("PLRBlockIter::Seek:0");
 	assert(helper_ != nullptr);
 
 	seek_mode_ = SeekMode::kUnknown;
+	is_key_set_ = false;
 	
-	Slice seek_key = target;
-	if (!key_includes_seq_) {
-		seek_key = ExtractUserKey(target);
-	}
+	Slice seek_key = ExtractUserKey(target);
+
+	assert(seek_key.size() <= 8);
 
 	status_ = helper_->PredictBlockRange(seek_key, begin_block_, end_block_);
 	if (!status_.ok()) {
@@ -126,6 +132,8 @@ void PLRBlockIter::Next() {
 	assert(Valid());
 	assert(seek_mode_ != SeekMode::kUnknown);
 
+	is_key_set_ = false;
+
 	switch(seek_mode_) {
 		case SeekMode::kBinarySeek: {
 			if (IsLastBinarySeek()) {
@@ -161,11 +169,15 @@ void PLRBlockIter::Prev() {
 	assert(Valid());
 	assert(seek_mode_ == SeekMode::kLinearSeek);
 
+	is_key_set_ = false;
+
 	if (current_ == 0) {
 		current_ = invalid_block_number_;
 		return;
 	}
 	--current_;
+	
+	SetCurrentIndexValue();
 }
 
 // Return an internal key that can be parsed by ExtractUserKey().
@@ -177,6 +189,9 @@ void PLRBlockIter::Prev() {
 // REQUIRES: Valid()
 Slice PLRBlockIter::key() const {
 	assert(Valid());
+	if (is_key_set_) {
+		return key_.GetKey();
+	}
 	return Slice(key_extraction_not_supported_);
 }
 
@@ -221,7 +236,7 @@ void PLRBlockIter::SetCurrentIndexValue() {
 //
 // Note: This function assumes input data_block first/last keys are the keys of
 // the current data block (as pointed by current_).
-// Note: Only accepts user keys, but not internal keys.
+// Note: Only accepts user keys, not internal keys.
 //
 // REQUIRES: Valid()
 // REQUIRES: binary seek mode
@@ -230,9 +245,12 @@ void PLRBlockIter::UpdateBinarySeekRange(const Slice& seek_key,
 																					const Slice& data_block_last_key) {
 	assert(Valid());
 	assert(seek_mode_ == SeekMode::kBinarySeek);
+	// Slice first_user_key = ExtractUserKey(data_block_first_key);
+	// Slice last_user_key = ExtractUserKey(data_block_last_key);
+	// Slice seek_user_key = ExtractUserKey(seek_key);
 
 	assert(user_comparator_->Compare(data_block_first_key, 
-																	data_block_last_key) <= 0);
+																	 data_block_last_key) <= 0);
 	
 	// Case 1: Seek key > All keys in current data block.
 	if (user_comparator_->Compare(data_block_last_key, seek_key) < 0) {

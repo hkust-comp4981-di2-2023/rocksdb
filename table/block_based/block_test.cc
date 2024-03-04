@@ -631,6 +631,10 @@ class PLRIndexBlockTest
   double gamma() const { return GetParam(); }
 };
 
+
+std::string MakeKeyLookLikeInternalKey(const std::string& key) {
+  return key + "12345678";
+}
 // Similar to GenerateRandomIndexEntries but for index block contents.
 void GenerateRandomPLRIndexEntries(std::vector<BlockHandle> *block_handles,
                                 std::vector<std::string> *first_keys,
@@ -652,10 +656,12 @@ void GenerateRandomPLRIndexEntries(std::vector<BlockHandle> *block_handles,
   uint64_t offset = 0;
   int idx = 0;
   for (auto it = keys.begin(); it != keys.end();) {
-    first_keys->emplace_back(*it++);
-    in_block_keys->emplace_back(*it++);
-    last_keys->emplace_back(*it++);
-    out_of_block_keys->emplace_back(*it++);
+
+    first_keys->emplace_back(MakeKeyLookLikeInternalKey(*it++));
+    in_block_keys->emplace_back(MakeKeyLookLikeInternalKey(*it++));
+    last_keys->emplace_back(MakeKeyLookLikeInternalKey(*it++));
+    out_of_block_keys->emplace_back(MakeKeyLookLikeInternalKey(*it++));
+
 
     uint64_t size = rnd.Uniform(1024 * 16);
     BlockHandle handle(offset, size);
@@ -703,8 +709,10 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   builder.Finish(&rawblock, block_handles[num_records-1]);
   BlockContents block_contents(rawblock.index_block_contents);
 
-  PLRBlockIter* iter = new PLRBlockIter(&block_contents, true, 
-                                        num_records, options.comparator);
+
+  PLRBlockIter* iter = new PLRBlockIter(&block_contents, num_records, 
+                                        options.comparator);
+
 
   // Test 1: Read block contents sequentially.
   // Note: We won't test key(), because key() is not supported.
@@ -729,8 +737,7 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   // Expected behavior: After several Next(), ultimately the iterator should
   // point to the correct index entry.
   // printf("Test 2\n");
-  iter = new PLRBlockIter(&block_contents, true, 
-                          num_records, options.comparator);
+  iter = new PLRBlockIter(&block_contents, num_records, options.comparator);
   for (int i = 0; i < num_records * 2; i++) {
     // find a random key in the lookaside array
     int expected_index = rnd.Uniform(num_records);
@@ -750,8 +757,9 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
       } else {
         Slice seek_result_first_key(first_keys[seek_result_index]);
         Slice seek_result_last_key(last_keys[seek_result_index]);
-        iter->UpdateBinarySeekRange(query_key, seek_result_first_key, 
-                                    seek_result_last_key);
+        iter->UpdateBinarySeekRange(ExtractUserKey(query_key), 
+                                    ExtractUserKey(seek_result_first_key), 
+                                    ExtractUserKey(seek_result_last_key));
         iter->Next();
       }
     }
@@ -768,8 +776,7 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   // Expected behavior: After several Next(), ultimately the iterator should
   // point to the correct index entry.
   // printf("Test 3\n");
-  iter = new PLRBlockIter(&block_contents, true, 
-                          num_records, options.comparator);
+  iter = new PLRBlockIter(&block_contents, num_records, options.comparator);
   for (int i = 0; i < num_records * 2; i++) {
     // find a random key in the lookaside array
     int expected_index = rnd.Uniform(num_records);
@@ -788,8 +795,9 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
       } else {
         Slice seek_result_first_key(first_keys[seek_result_index]);
         Slice seek_result_last_key(last_keys[seek_result_index]);
-        iter->UpdateBinarySeekRange(query_key, seek_result_first_key, 
-                                    seek_result_last_key);
+        iter->UpdateBinarySeekRange(ExtractUserKey(query_key), 
+                                    ExtractUserKey(seek_result_first_key), 
+                                    ExtractUserKey(seek_result_last_key));
         iter->Next();
       }
     }
@@ -806,8 +814,7 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   // Expected behavior: After several Next(), ultimately the iterator should
   // find out no index entry matches
   // printf("Test 4\n");
-  iter = new PLRBlockIter(&block_contents, true, 
-                          num_records, options.comparator);
+  iter = new PLRBlockIter(&block_contents, num_records, options.comparator);
   for (int i = 0; i < num_records * 2; i++) {
     // find a random key in the lookaside array
     int expected_index = rnd.Uniform(num_records);
@@ -831,8 +838,9 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
       }
       if (cmp->Compare(query_key, seek_result_first_key) < 0
           || cmp->Compare(seek_result_last_key, query_key) < 0) {
-        iter->UpdateBinarySeekRange(query_key, seek_result_first_key, 
-                                    seek_result_last_key);
+        iter->UpdateBinarySeekRange(ExtractUserKey(query_key), 
+                                    ExtractUserKey(seek_result_first_key), 
+                                    ExtractUserKey(seek_result_last_key));
         iter->Next();
         continue;
       }
