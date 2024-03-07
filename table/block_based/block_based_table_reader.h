@@ -470,6 +470,47 @@ class BlockBasedTable : public TableReader {
   friend class PartitionedFilterBlockReader;
   friend class PartitionedFilterBlockTest;
   friend class DBBasicTest_MultiGetIOBufferOverrun_Test;
+
+  // Note(fyp): Common subroutines used specifically for PLR index.
+
+  // REQUIRES: iiter is of type PLRBlockIter.
+  // REQUIRES: Call iiter->Seek() before invoking this function.
+  // REQUIRES: key must be internal key.
+  // Note: plr index iterator switches to kLinearSeek mode after this function.
+  void SetUpPLRBlockIterAfterInitialSeek(const Slice* const key,
+      InternalIteratorBase<IndexValue>* iiter, const ReadOptions& read_options, 
+      BlockCacheLookupContext lookup_context, GetContext* get_context) {
+    if (rep_->index_type == BlockBasedTableOptions::kLearnedIndexWithPLR) {
+      // We call Next() and UpdateBinarySeekRange() until the correct block 
+      // is found.
+      PLRBlockIter* plr_block_iter = reinterpret_cast<PLRBlockIter*>(iiter);
+      while (plr_block_iter->Valid()) {
+        IndexValue v = plr_block_iter->value();
+        DataBlockIter biter;
+        NewDataBlockIterator<DataBlockIter>(
+            read_options, v.handle, &biter, BlockType::kData, get_context,
+            &lookup_context, Status(), nullptr);
+        biter.SeekToFirst();
+        auto first_key = biter.value();
+        biter.SeekToLast();
+        auto last_key = biter.value();
+        plr_block_iter->UpdateBinarySeekRange(ExtractUserKey(key), first_key,
+                                              last_key);
+
+        auto user_comparator = UserComparatorWrapper(
+            rep_->internal_comparator.user_comparator());
+        if (plr_block_iter->IsLastBinarySeek() ||
+            (user_comparator.Compare(first_key, ExtractUserKey(key)) <= 0 &&
+              user_comparator.Compare(ExtractUserKey(key), last_key) <= 0)) {
+          plr_block_iter->SwitchToLinearSeekMode();
+          break;
+        }
+        plr_block_iter->Next();
+      }
+      assert(plr_block_iter->Valid());
+    }
+    assert(!"Input index iterator iiter must be PLRBlockIter");
+  }
 };
 
 // Maitaning state of a two-level iteration on a partitioned index structure.

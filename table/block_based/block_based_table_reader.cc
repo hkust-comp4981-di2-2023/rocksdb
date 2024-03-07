@@ -3656,15 +3656,13 @@ Status BlockBasedTable::Get(const ReadOptions& read_options, const Slice& key,
     bool matched = false;  // if such user key mathced a key in SST
     bool done = false;
 
-    // TODO(fyp): Integration to block based table - leave for another pr
-    // TODO(fyp): Update first key and last key
     for (iiter->Seek(key); iiter->Valid() && !done; iiter->Next()) {
       IndexValue v = iiter->value();
 
       // TODO(fyp): Add our index related logic here
       if (rep_->index_type == BlockBasedTableOptions::kLearnedIndexWithPLR) {
         PLRBlockIter* plr_block_iter = reinterpret_cast<PLRBlockIter*>(iiter);
-        // While loop
+
         while (plr_block_iter->Valid()) {
           v = plr_block_iter->value();
           DataBlockIter b;
@@ -4159,12 +4157,37 @@ Status BlockBasedTable::Prefetch(const Slice* const begin,
 
   // indicates if we are on the last page that need to be pre-fetched
   bool prefetching_boundary_page = false;
-  // TODO(fyp): Change logic for PLRIndex
-  for (begin ? iiter->Seek(*begin) : iiter->SeekToFirst(); iiter->Valid();
-       iiter->Next()) {
+
+  // Note(fyp): When using plr index, we have two methods:
+  //
+  // 1. If begin, we can first Seek() and Next() until the correct begin is 
+  // found, then we Next() until end is reached if available.
+  // 2. If begin, we can first Seek() and change current_ to begin_block_, then
+  // Next() until end is reached if available.
+  //
+  // We choose method 1 for now.
+  //
+  // Note(fyp): When using plr index, in order to use iiter->key() correctly,
+  // we must load data iterator and thus fetch data block first.
+  if (begin) {
+    iiter->Seek(*begin);
+
+    if (rep_->index_type == BlockBasedTableOptions::kLearnedIndexWithPLR) {
+      SetUpPLRBlockIterAfterInitialSeek(
+        begin, iiter, ReadOptions(), lookup_context, /*get_context=*/nullptr);
+    }
+  } else {
+    iiter->SeekToFirst();
+  }
+
+  for (; iiter->Valid(); iiter->Next()) {
     BlockHandle block_handle = iiter->value().handle;
     const bool is_user_key = !rep_->index_key_includes_seq;
+    
+    // Note(fyp): We must fetch data block first if using plr index.
+    // We will do this again specifically for plr index at the end of the loop.
     if (end &&
+        rep_->index_type != BlockBasedTableOptions::kLearnedIndexWithPLR &&
         ((!is_user_key && comparator.Compare(iiter->key(), *end) >= 0) ||
          (is_user_key &&
           user_comparator.Compare(iiter->key(), ExtractUserKey(*end)) >= 0))) {
@@ -4188,6 +4211,17 @@ Status BlockBasedTable::Prefetch(const Slice* const begin,
     if (!biter.status().ok()) {
       // there was an unexpected error while pre-fetching
       return biter.status();
+    }
+
+    // Note(fyp): Boundary check for plr index only.
+    if (end &&
+        rep_->index_type == BlockBasedTableOptions::kLearnedIndexWithPLR &&
+        ((!is_user_key && comparator.Compare(iiter->key(), *end) >= 0) ||
+         (is_user_key &&
+          user_comparator.Compare(iiter->key(), ExtractUserKey(*end)) >= 0))) {
+      // The index entry represents the last key in the data block.
+      // We should load this page into memory as well, but no more
+      break;
     }
   }
 
@@ -4244,7 +4278,6 @@ Status BlockBasedTable::VerifyChecksumInBlocks(
       readahead_size /* max_readahead_size */,
       !rep_->ioptions.allow_mmap_reads /* enable */);
 
-  // TODO(fyp): Maybe we need to alter this
   for (index_iter->SeekToFirst(); index_iter->Valid(); index_iter->Next()) {
     s = index_iter->status();
     if (!s.ok()) {
@@ -4354,6 +4387,7 @@ bool BlockBasedTable::TEST_BlockInCache(const BlockHandle& handle) const {
   return true;
 }
 
+// TODO(fyp): may need to change seeking logic
 bool BlockBasedTable::TEST_KeyInCache(const ReadOptions& options,
                                       const Slice& key) {
   std::unique_ptr<InternalIteratorBase<IndexValue>> iiter(NewIndexIterator(
@@ -4531,7 +4565,6 @@ Status BlockBasedTable::GetKVPairsFromDataBlocks(
     // Cannot read Index Block
     return s;
   }
-  // TODO(fyp): Check whether we need to change this
   for (blockhandles_iter->SeekToFirst(); blockhandles_iter->Valid();
        blockhandles_iter->Next()) {
     s = blockhandles_iter->status();
