@@ -2879,6 +2879,11 @@ bool BlockBasedTable::PrefixMayMatch(
     return true;
   }
 
+  if (rep_->index_type == 
+      BlockBasedTableOptions::IndexType::kLearnedIndexWithPLR) {
+    return true;
+  }
+
   const SliceTransform* prefix_extractor;
 
   if (rep_->table_prefix_extractor == nullptr) {
@@ -4909,7 +4914,8 @@ void BlockBasedTable::DumpKeyValue(const Slice& key, const Slice& value,
 void BlockBasedTable::SetUpPLRBlockIterAfterInitialSeek(const Slice& key,
       InternalIteratorBase<IndexValue>* iiter, const ReadOptions& read_options, 
       BlockCacheLookupContext lookup_context, GetContext* get_context) {
-  if (rep_->index_type == BlockBasedTableOptions::kLearnedIndexWithPLR) {
+  if (rep_->index_type == 
+      BlockBasedTableOptions::IndexType::kLearnedIndexWithPLR) {
     // We call Next() and UpdateBinarySeekRange() until the correct block 
     // is found.
     PLRBlockIter* plr_block_iter = reinterpret_cast<PLRBlockIter*>(iiter);
