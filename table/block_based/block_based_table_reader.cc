@@ -4937,6 +4937,7 @@ void BlockBasedTable::SetUpPLRBlockIterAfterInitialSeek(const Slice& key,
       plr_block_iter->Next();
     }
     assert(plr_block_iter->Valid());
+    return;
   }
   assert(!"Input index iterator iiter must be PLRBlockIter");
 }
