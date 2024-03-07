@@ -4174,7 +4174,7 @@ Status BlockBasedTable::Prefetch(const Slice* const begin,
 
     if (rep_->index_type == BlockBasedTableOptions::kLearnedIndexWithPLR) {
       SetUpPLRBlockIterAfterInitialSeek(
-        begin, iiter, ReadOptions(), lookup_context, /*get_context=*/nullptr);
+        *begin, iiter, ReadOptions(), lookup_context, /*get_context=*/nullptr);
     }
   } else {
     iiter->SeekToFirst();
@@ -4904,6 +4904,41 @@ void BlockBasedTable::DumpKeyValue(const Slice& key, const Slice& value,
   out_file->Append(": ");
   out_file->Append(res_value.c_str());
   out_file->Append("\n  ------\n");
+}
+
+void BlockBasedTable::SetUpPLRBlockIterAfterInitialSeek(const Slice& key,
+      InternalIteratorBase<IndexValue>* iiter, const ReadOptions& read_options, 
+      BlockCacheLookupContext lookup_context, GetContext* get_context) {
+  if (rep_->index_type == BlockBasedTableOptions::kLearnedIndexWithPLR) {
+    // We call Next() and UpdateBinarySeekRange() until the correct block 
+    // is found.
+    PLRBlockIter* plr_block_iter = reinterpret_cast<PLRBlockIter*>(iiter);
+    while (plr_block_iter->Valid()) {
+      IndexValue v = plr_block_iter->value();
+      DataBlockIter biter;
+      NewDataBlockIterator<DataBlockIter>(
+          read_options, v.handle, &biter, BlockType::kData, get_context,
+          &lookup_context, Status(), nullptr);
+      biter.SeekToFirst();
+      auto first_key = biter.value();
+      biter.SeekToLast();
+      auto last_key = biter.value();
+      plr_block_iter->UpdateBinarySeekRange(ExtractUserKey(key), first_key,
+                                            last_key);
+
+      auto user_comparator = UserComparatorWrapper(
+          rep_->internal_comparator.user_comparator());
+      if (plr_block_iter->IsLastBinarySeek() ||
+          (user_comparator.Compare(first_key, ExtractUserKey(key)) <= 0 &&
+            user_comparator.Compare(ExtractUserKey(key), last_key) <= 0)) {
+        plr_block_iter->SwitchToLinearSeekMode();
+        break;
+      }
+      plr_block_iter->Next();
+    }
+    assert(plr_block_iter->Valid());
+  }
+  assert(!"Input index iterator iiter must be PLRBlockIter");
 }
 
 }  // namespace ROCKSDB_NAMESPACE
