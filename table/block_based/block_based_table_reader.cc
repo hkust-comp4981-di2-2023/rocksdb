@@ -3666,38 +3666,9 @@ Status BlockBasedTable::Get(const ReadOptions& read_options, const Slice& key,
 
       // TODO(fyp): Add our index related logic here
       if (rep_->index_type == BlockBasedTableOptions::kLearnedIndexWithPLR) {
-        PLRBlockIter* plr_block_iter = reinterpret_cast<PLRBlockIter*>(iiter);
-
-        while (plr_block_iter->Valid()) {
-          v = plr_block_iter->value();
-          DataBlockIter b;
-          BlockCacheLookupContext lookup_data_block_context{
-              TableReaderCaller::kUserGet, tracing_get_id,
-              /*get_from_user_specified_snapshot=*/read_options.snapshot !=
-                  nullptr};
-          NewDataBlockIterator<DataBlockIter>(
-              read_options, v.handle, &b, BlockType::kData, get_context,
-              &lookup_context, Status(), nullptr);
-          b.SeekToFirst();
-          auto first_key = b.value();
-          b.SeekToLast();
-          auto last_key = b.value();
-          // TODO(fyp): Need to check whether it is an internal or user key
-          plr_block_iter->UpdateBinarySeekRange(ExtractUserKey(key), first_key,
-                                                last_key);
-
-          auto user_comparator = UserComparatorWrapper(
-              rep_->internal_comparator.user_comparator());
-          if (plr_block_iter->IsLastBinarySeek() ||
-              (user_comparator.Compare(first_key, ExtractUserKey(key)) <= 0 &&
-               user_comparator.Compare(ExtractUserKey(key), last_key) <= 0)) {
-            // TODO(fyp): Confirm whether this line is needed
-            //            plr_block_iter->SwitchToLinearSeekMode();
-            break;
-          }
-          plr_block_iter->Next();
-        }
-        assert(plr_block_iter->Valid());
+        SetUpPLRBlockIterAfterInitialSeek(key, iiter, 
+            read_options, lookup_context, get_context);
+        v = iiter->value();
       }
 
       bool not_exist_in_filter =
@@ -4950,9 +4921,9 @@ void BlockBasedTable::SetUpPLRBlockIterAfterInitialSeek(const Slice& key,
           read_options, v.handle, &biter, BlockType::kData, get_context,
           &lookup_context, Status(), nullptr);
       biter.SeekToFirst();
-      auto first_key = biter.value();
+      auto first_key = biter.user_key();
       biter.SeekToLast();
-      auto last_key = biter.value();
+      auto last_key = biter.user_key();
       plr_block_iter->UpdateBinarySeekRange(ExtractUserKey(key), first_key,
                                             last_key);
 
