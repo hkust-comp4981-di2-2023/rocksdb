@@ -3661,14 +3661,17 @@ Status BlockBasedTable::Get(const ReadOptions& read_options, const Slice& key,
     bool matched = false;  // if such user key mathced a key in SST
     bool done = false;
 
+    bool plr_first_iter = true;
+
     for (iiter->Seek(key); iiter->Valid() && !done; iiter->Next()) {
       IndexValue v = iiter->value();
 
-      // TODO(fyp): Add our index related logic here
-      if (rep_->index_type == BlockBasedTableOptions::kLearnedIndexWithPLR) {
+      if (rep_->index_type == BlockBasedTableOptions::kLearnedIndexWithPLR && 
+          plr_first_iter) {
         SetUpPLRBlockIterAfterInitialSeek(key, iiter, 
             read_options, lookup_context, get_context);
         v = iiter->value();
+        plr_first_iter = false;
       }
 
       bool not_exist_in_filter =
