@@ -3982,6 +3982,11 @@ void BlockBasedTable::MultiGet(const ReadOptions& read_options,
 
     DataBlockIter first_biter;
     DataBlockIter next_biter;
+    // Note(fyp): When using plr index, if first_biter fails, we try to reuse 
+    // the last next_biter from previous iterations which points to 
+    // the 'correct' data block after a sequence of Seek() and Next()s 
+    // if it exists.
+    bool is_last_plr_biter_set = false;
     size_t idx_in_batch = 0;
     for (auto miter = sst_file_range.begin(); miter != sst_file_range.end();
          ++miter) {
@@ -4011,6 +4016,11 @@ void BlockBasedTable::MultiGet(const ReadOptions& read_options,
           }
           biter = &first_biter;
           idx_in_batch++;
+        } else if (rep_->index_type == 
+                      BlockBasedTableOptions::IndexType::kLearnedIndexWithPLR &&
+                   is_last_plr_biter_set) {
+          biter = &next_biter;
+          is_last_plr_biter_set = false;
         } else {
           IndexValue v = iiter->value();
           if (!v.first_internal_key.empty() && !skip_filters &&
@@ -4122,7 +4132,21 @@ void BlockBasedTable::MultiGet(const ReadOptions& read_options,
         }
         first_block = false;
         iiter->Next();
+        if (rep_->index_type == 
+                BlockBasedTableOptions::IndexType::kLearnedIndexWithPLR && 
+            !is_last_plr_biter_set && iiter->Valid()) {
+          // We will update is_last_plr_biter_set to true 
+          // after initializing biter.
+          SetUpPLRBlockIterAfterInitialSeek(key, iiter, read_options, 
+                                            lookup_context, get_context);
+        }
       } while (iiter->Valid());
+
+      if (!first_block) {
+        // Note(fyp): If we reused or initialized next_biter in this iteration,
+        // we will try to reuse next_biter in the next iterations if needed.
+        is_last_plr_biter_set = true;
+      }
 
       if (matched && filter != nullptr && !filter->IsBlockBased()) {
         RecordTick(rep_->ioptions.statistics, BLOOM_FILTER_FULL_TRUE_POSITIVE);
@@ -4911,8 +4935,8 @@ void BlockBasedTable::DumpKeyValue(const Slice& key, const Slice& value,
   out_file->Append("\n  ------\n");
 }
 
-void BlockBasedTable::SetUpPLRBlockIterAfterInitialSeek(const Slice& key,
       InternalIteratorBase<IndexValue>* iiter, const ReadOptions& read_options, 
+void BlockBasedTable::SetUpPLRBlockIterAfterInitialSeek(const Slice& key,
       BlockCacheLookupContext lookup_context, GetContext* get_context) {
   if (rep_->index_type == 
       BlockBasedTableOptions::IndexType::kLearnedIndexWithPLR) {

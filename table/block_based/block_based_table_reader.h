@@ -473,6 +473,9 @@ class BlockBasedTable : public TableReader {
 
   // Note(fyp): Common subroutines used specifically for PLR index.
 
+  // TODO(fyp): Do we need to care about BlockCacheTraceRecord in this function?
+  // TODO(fyp): Consider adding an input param. for biter to avoid init twice.
+  //
   // REQUIRES: iiter is of type PLRBlockIter.
   // REQUIRES: Call iiter->Seek() before invoking this function.
   // REQUIRES: key must be internal key.
@@ -812,7 +815,6 @@ class BlockBasedTableIterator : public InternalIteratorBase<TValue> {
   // we need to check and update data_block_within_upper_bound_ accordingly.
   void CheckDataBlockWithinUpperBound();
 
-  // TODO(fyp): may consider skipping PrefixMayMatch() iiter part
   bool CheckPrefixMayMatch(const Slice& ikey, IterDirection direction) {
     if (need_upper_bound_check_ && direction == IterDirection::kBackward) {
       // Upper bound check isn't sufficnet for backward direction to
