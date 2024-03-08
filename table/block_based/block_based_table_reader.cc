@@ -4935,8 +4935,8 @@ void BlockBasedTable::DumpKeyValue(const Slice& key, const Slice& value,
   out_file->Append("\n  ------\n");
 }
 
-      InternalIteratorBase<IndexValue>* iiter, const ReadOptions& read_options, 
 void BlockBasedTable::SetUpPLRBlockIterAfterInitialSeek(const Slice& key,
+      InternalIteratorBase<IndexValue>* iiter, const ReadOptions& read_options, 
       BlockCacheLookupContext lookup_context, GetContext* get_context) {
   if (rep_->index_type == 
       BlockBasedTableOptions::IndexType::kLearnedIndexWithPLR) {
