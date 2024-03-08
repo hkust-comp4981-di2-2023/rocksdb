@@ -144,6 +144,7 @@ DECLARE_double(bloom_bits);
 DECLARE_bool(use_block_based_filter);
 DECLARE_bool(partition_filters);
 DECLARE_int32(index_type);
+DECLARE_double(plr_index_block_gamma);
 DECLARE_string(db);
 DECLARE_string(secondaries_base);
 DECLARE_bool(test_secondary);

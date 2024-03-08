@@ -1734,6 +1734,8 @@ void StressTest::Open() {
     block_based_options.partition_filters = FLAGS_partition_filters;
     block_based_options.index_type =
         static_cast<BlockBasedTableOptions::IndexType>(FLAGS_index_type);
+    block_based_options.plr_index_block_gamma =
+        static_cast<double>(FLAGS_plr_index_block_gamma);
     options_.table_factory.reset(
         NewBlockBasedTableFactory(block_based_options));
     options_.db_write_buffer_size = FLAGS_db_write_buffer_size;
