@@ -63,6 +63,7 @@ default_params = {
     "open_files": lambda : random.choice([-1, 500000]),
     "partition_filters": lambda: random.randint(0, 1),
     "pause_background_one_in": 1000000,
+    "plr_index_block_gamma": 1.0,
     "prefixpercent": 5,
     "progress_reports": 0,
     "readpercent": 45,
