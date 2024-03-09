@@ -186,9 +186,9 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 		seek_mode_ = SeekMode::kLinearSeek;
 	}
 
-	inline void SeekBeginBlock();
+	void SeekBeginBlock();
 
-	inline void SeekEndBlock();
+	void SeekEndBlock();
 
  private:
 	enum class SeekMode : char {
