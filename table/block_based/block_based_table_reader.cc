@@ -3262,7 +3262,6 @@ void BlockBasedTableIterator<TBlockIter, TValue>::Next() {
   block_iter_.Next();
   FindKeyForward();
   CheckOutOfBound();
-  std::cout << "BBTIter::Next(): " << (Valid() ? user_key().ToString() : std::string("invalid")) << std::endl;
 }
 
 template <class TBlockIter, typename TValue>
@@ -3295,7 +3294,6 @@ void BlockBasedTableIterator<TBlockIter, TValue>::Prev() {
   }
 
   FindKeyBackward();
-  std::cout << "BBTIter::Prev()" << (Valid() ? user_key().ToString() : std::string("invalid")) << std::endl;
 }
 
 template <class TBlockIter, typename TValue>
