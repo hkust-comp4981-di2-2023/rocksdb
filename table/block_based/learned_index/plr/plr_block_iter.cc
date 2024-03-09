@@ -275,6 +275,20 @@ void PLRBlockIter::UpdateBinarySeekRange(const Slice& seek_key,
 	assert(IsLastBinarySeek());
 }
 
+void PLRBlockIter::SeekBeginBlock() {
+	assert(seek_mode_ == SeekMode::kBinarySeek);
+	assert(!IsLastBinarySeek());
+	current_ = begin_block_;
+	SetCurrentIndexValue();
+}
+
+void PLRBlockIter::SeekEndBlock() {
+	assert(seek_mode_ == SeekMode::kBinarySeek);
+	assert(!IsLastBinarySeek());
+	current_ = end_block_;
+	SetCurrentIndexValue();
+}
+
 Status PLRBlockHelper::DecodePLRBlock(const Slice& data) {
 	// Extract the substring corr. to PLR Segments and Data block sizes
 	const size_t total_length = data.size();
