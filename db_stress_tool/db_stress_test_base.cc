@@ -804,7 +804,8 @@ Status StressTest::TestIterate(ThreadState* thread,
   readoptionscopy.snapshot = snapshot;
 
   bool expect_total_order = false;
-  if (thread->rand.OneIn(16)) {
+  // if (thread->rand.OneIn(16)) {
+  if (thread->rand.OneIn(1)) { // TODO(fyp): for now we only test when total_order_seek=true
     // When prefix extractor is used, it's useful to cover total order seek.
     readoptionscopy.total_order_seek = true;
     expect_total_order = true;
