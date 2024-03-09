@@ -400,6 +400,7 @@ extern inline std::string Key(int64_t val) {
     uint64_t mult = static_cast<uint64_t>(val) / window;
     uint64_t pfx = mult * weight + (offset >= weight ? weight - 1 : offset);
     key.append(GetStringFromInt(pfx));
+    /* Note(fyp): Disabled to ensure key length <= 8
     if (offset < weight) {
       // Use the bottom 3 bits of offset as the number of trailing 'x's in the
       // key. If the next key is going to be of the next level, then skip the
@@ -411,6 +412,7 @@ extern inline std::string Key(int64_t val) {
       }
       break;
     }
+    */
     val = offset - weight;
     window -= weight;
   }
