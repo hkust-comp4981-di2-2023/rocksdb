@@ -4537,9 +4537,21 @@ uint64_t BlockBasedTable::ApproximateSize(const Slice& start, const Slice& end,
     iiter_unique_ptr.reset(index_iter);
   }
 
+  PLRBlockIter* plr_block_iter = nullptr;
+  if (rep_->index_type == BlockBasedTableOptions::kLearnedIndexWithPLR) {
+    plr_block_iter = reinterpret_cast<PLRBlockIter*>(iiter);
+  }
+
   index_iter->Seek(start);
+  if (plr_block_iter) {
+    plr_block_iter->SeekBeginBlock();
+  }
   uint64_t start_offset = ApproximateOffsetOf(*index_iter);
+  
   index_iter->Seek(end);
+  if (plr_block_iter) {
+    plr_block_iter->SeekEndBlock();
+  }
   uint64_t end_offset = ApproximateOffsetOf(*index_iter);
 
   assert(end_offset >= start_offset);
