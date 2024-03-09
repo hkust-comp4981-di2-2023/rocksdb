@@ -4539,7 +4539,7 @@ uint64_t BlockBasedTable::ApproximateSize(const Slice& start, const Slice& end,
 
   PLRBlockIter* plr_block_iter = nullptr;
   if (rep_->index_type == BlockBasedTableOptions::kLearnedIndexWithPLR) {
-    plr_block_iter = reinterpret_cast<PLRBlockIter*>(iiter);
+    plr_block_iter = reinterpret_cast<PLRBlockIter*>(index_iter);
   }
 
   index_iter->Seek(start);
