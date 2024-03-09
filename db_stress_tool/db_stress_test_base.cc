@@ -940,16 +940,20 @@ Status StressTest::TestIterate(ThreadState* thread,
         (FLAGS_memtablerep == "prefix_hash" && !expect_total_order);
     for (uint64_t i = 0; i < FLAGS_num_iterations && iter->Valid(); i++) {
       if (no_reverse || thread->rand.OneIn(2)) {
+        std::cout << std::endl << "iter->Next():" << std::endl;
         iter->Next();
         if (!diverged) {
           assert(cmp_iter->Valid());
+          std::cout << std::endl << "cmp_iter->Next():" << std::endl;
           cmp_iter->Next();
         }
         op_logs += "N";
       } else {
+        std::cout << std::endl << "iter->Prev():" << std::endl;
         iter->Prev();
         if (!diverged) {
           assert(cmp_iter->Valid());
+          std::cout << std::endl << "cmp_iter->Prev():" << std::endl;
           cmp_iter->Prev();
         }
         op_logs += "P";

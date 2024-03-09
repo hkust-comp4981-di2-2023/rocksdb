@@ -3077,6 +3077,7 @@ void BlockBasedTableIterator<TBlockIter, TValue>::SeekImpl(
 
           plr_index_iter->Next();
         }
+        block_iter_.SeekToFirst();
       }
     } else {
       index_iter_->SeekToFirst();
@@ -3254,6 +3255,7 @@ void BlockBasedTableIterator<TBlockIter, TValue>::SeekToLast() {
 
 template <class TBlockIter, typename TValue>
 void BlockBasedTableIterator<TBlockIter, TValue>::Next() {
+  std::cout << "BBTIter::Next()" << std::endl;
   if (is_at_first_key_from_index_ && !MaterializeCurrentBlock()) {
     return;
   }
@@ -3277,6 +3279,7 @@ bool BlockBasedTableIterator<TBlockIter, TValue>::NextAndGetResult(
 
 template <class TBlockIter, typename TValue>
 void BlockBasedTableIterator<TBlockIter, TValue>::Prev() {
+  std::cout << "BBTIter::Prev()" << std::endl;
   if (is_at_first_key_from_index_) {
     is_at_first_key_from_index_ = false;
 
