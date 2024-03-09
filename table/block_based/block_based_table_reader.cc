@@ -3255,7 +3255,6 @@ void BlockBasedTableIterator<TBlockIter, TValue>::SeekToLast() {
 
 template <class TBlockIter, typename TValue>
 void BlockBasedTableIterator<TBlockIter, TValue>::Next() {
-  std::cout << "BBTIter::Next()" << std::endl;
   if (is_at_first_key_from_index_ && !MaterializeCurrentBlock()) {
     return;
   }
@@ -3263,6 +3262,7 @@ void BlockBasedTableIterator<TBlockIter, TValue>::Next() {
   block_iter_.Next();
   FindKeyForward();
   CheckOutOfBound();
+  std::cout << "BBTIter::Next(): " << Valid() ? user_key().ToString() : "invalid" << std::endl;
 }
 
 template <class TBlockIter, typename TValue>
@@ -3279,7 +3279,6 @@ bool BlockBasedTableIterator<TBlockIter, TValue>::NextAndGetResult(
 
 template <class TBlockIter, typename TValue>
 void BlockBasedTableIterator<TBlockIter, TValue>::Prev() {
-  std::cout << "BBTIter::Prev()" << std::endl;
   if (is_at_first_key_from_index_) {
     is_at_first_key_from_index_ = false;
 
@@ -3296,6 +3295,7 @@ void BlockBasedTableIterator<TBlockIter, TValue>::Prev() {
   }
 
   FindKeyBackward();
+  std::cout << "BBTIter::Prev()" << Valid() ? user_key().ToString() : "invalid" << std::endl;
 }
 
 template <class TBlockIter, typename TValue>
