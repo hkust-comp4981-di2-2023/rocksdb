@@ -3662,17 +3662,18 @@ Status BlockBasedTable::Get(const ReadOptions& read_options, const Slice& key,
     bool matched = false;  // if such user key mathced a key in SST
     bool done = false;
 
-    bool plr_first_iter = true;
+    // Note(fyp): A flag aiming to prevent calling SetUpPLR...() twice.
+    bool plr_iter_first_seek = true;
 
     for (iiter->Seek(key); iiter->Valid() && !done; iiter->Next()) {
       IndexValue v = iiter->value();
 
       if (rep_->index_type == BlockBasedTableOptions::kLearnedIndexWithPLR && 
-          plr_first_iter) {
+          plr_iter_first_seek) {
         SetUpPLRBlockIterAfterInitialSeek(key, iiter, 
             read_options, lookup_context, get_context);
         v = iiter->value();
-        plr_first_iter = false;
+        plr_iter_first_seek = false;
       }
 
       bool not_exist_in_filter =
@@ -3971,6 +3972,9 @@ void BlockBasedTable::MultiGet(const ReadOptions& read_options,
       bool matched = false;  // if such user key matched a key in SST
       bool done = false;
       bool first_block = true;
+
+      // Note(fyp): A flag aiming to prevent calling SetUpPLR...() twice.
+      bool plr_iter_first_seek = true;
       do {
         DataBlockIter* biter = nullptr;
         bool reusing_block = true;
@@ -4109,11 +4113,12 @@ void BlockBasedTable::MultiGet(const ReadOptions& read_options,
         iiter->Next();
         if (rep_->index_type == 
                 BlockBasedTableOptions::IndexType::kLearnedIndexWithPLR && 
-            !is_last_plr_biter_set && iiter->Valid()) {
+            !is_last_plr_biter_set && iiter->Valid() && plr_iter_first_seek) {
           // We will update is_last_plr_biter_set to true 
           // after initializing biter.
           SetUpPLRBlockIterAfterInitialSeek(key, iiter, read_options, 
                                             lookup_context, get_context);
+          plr_iter_first_seek = false;
         }
       } while (iiter->Valid());
 
