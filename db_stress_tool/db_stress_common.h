@@ -417,6 +417,14 @@ extern inline std::string Key(int64_t val) {
     window -= weight;
   }
 
+  // Note(fyp): Further enforce key to have size <= 8.
+  // Note(fyp): In batched_ops_stress, they put an additional 1-byte before key,
+  // so in-place remedy is added in that class
+  if (key.size() > 8) {
+    fprintf(stdout, "Key() [%s] has size < 8, now truncated\n", key.c_str());
+    key = key.substr(0, 8);
+  }
+
   return key;
 }
 

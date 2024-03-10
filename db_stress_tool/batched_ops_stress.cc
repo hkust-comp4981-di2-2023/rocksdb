@@ -35,6 +35,8 @@ class BatchedOpsStressTest : public StressTest {
     Status s;
     auto cfh = column_families_[rand_column_families[0]];
     std::string key_str = Key(rand_keys[0]);
+    // Note(fyp): Truncate key_str to size <= 7
+    key_str = key_str.size() >= 8 ? key_str.substr(0, 7) : key_str;
     for (int i = 0; i < 10; i++) {
       keys[i] += key_str;
       values[i] += v.ToString();
@@ -123,6 +125,8 @@ class BatchedOpsStressTest : public StressTest {
     ReadOptions readoptionscopy = readoptions;
     readoptionscopy.snapshot = db_->GetSnapshot();
     std::string key_str = Key(rand_keys[0]);
+    // Note(fyp): Truncate key_str to size <= 7
+    key_str = key_str.size() >= 8 ? key_str.substr(0, 7) : key_str;
     Slice key = key_str;
     auto cfh = column_families_[rand_column_families[0]];
     std::string from_db;
@@ -191,7 +195,11 @@ class BatchedOpsStressTest : public StressTest {
       ColumnFamilyHandle* cfh = column_families_[rand_column_families[0]];
 
       for (size_t key = 0; key < num_prefixes; ++key) {
-        key_str.emplace_back(keys[key] + Key(rand_keys[rand_key]));
+        // key_str.emplace_back(keys[key] + Key(rand_keys[rand_key]));
+        // Note(fyp): Truncate tmp to size <= 8
+        std::string tmp = keys[key] + Key(rand_keys[rand_key]);
+        tmp = tmp.size() > 8 ? tmp.substr(0, 8) : tmp;
+        key_str.emplace_back(tmp);
         key_slices.emplace_back(key_str.back());
       }
       db_->MultiGet(readoptionscopy, cfh, num_prefixes, key_slices.data(),
