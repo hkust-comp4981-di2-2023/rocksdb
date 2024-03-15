@@ -472,7 +472,7 @@ class PLRIndexBuilder: public IndexBuilder {
   // Note: It seems that both input keys are internal keys, so we need to
   // ExtractUserKey() before storing.
   void AddIndexEntry(std::string* /*last_key_in_current_block*/,
-                    const Slice* /*first_key_in_next_block*/,
+                    const Slice* first_key_in_next_block,
                     const BlockHandle& block_handle) override {
     /* TODO(fyp): remove this:
     if (first_key_in_next_block != nullptr) {
@@ -500,7 +500,7 @@ class PLRIndexBuilder: public IndexBuilder {
       return;
     }
     if (is_non_first_key_) {
-      helper_.AddPLRIntermediateTrainingPoint(ExtractUserKey(key));
+      helper.AddPLRIntermediateTrainingPoint(ExtractUserKey(key));
     }
     else {
       helper_.AddPLRTrainingPoint(ExtractUserKey(key));
