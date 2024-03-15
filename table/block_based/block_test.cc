@@ -699,10 +699,14 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   Slice key(first_keys[0]);
   builder.OnKeyAdded(key);
   for (int i = 1; i < num_records; ++i) {
-    key = Slice(first_keys[i]);
-    builder.AddIndexEntry(nullptr, &key, block_handles[i-1]);
-    builder.OnKeyAdded(key);
+    Slice first_key = Slice(first_keys[i]);
+    Slice last_key = Slice(last_keys[i-1]);
+    builder.OnKeyAdded(last_key);
+    builder.AddIndexEntry(nullptr, &first_key, block_handles[i-1]);
+    builder.OnKeyAdded(first_key);
   }
+  key = Slice(last_keys[num_records-1]);
+  builder.OnKeyAdded(key);
   builder.AddIndexEntry(nullptr, nullptr, block_handles[num_records-1]);
 
   // read serialized contents of the block
