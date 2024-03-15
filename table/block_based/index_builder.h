@@ -461,8 +461,7 @@ class PLRIndexBuilder: public IndexBuilder {
   PLRIndexBuilder(double gamma): 
     IndexBuilder(nullptr),
     helper_(gamma),
-    is_first_key_in_first_block_(true),
-    is_non_first_key_(false) {}
+    is_first_key_in_first_block_(true) {}
 
   // Use helper_ to add a new Point for PLR training of (i+1)-th block. Also,
   // store block_handle of i-th block in helper_. For the last function call, do
@@ -474,16 +473,13 @@ class PLRIndexBuilder: public IndexBuilder {
   void AddIndexEntry(std::string* /*last_key_in_current_block*/,
                     const Slice* first_key_in_next_block,
                     const BlockHandle& block_handle) override {
-    /* TODO(fyp): remove this:
     if (first_key_in_next_block != nullptr) {
       // current AddIndexEntry() call is not processing with:
       // current_block = last data block
       assert(ExtractUserKey(*first_key_in_next_block).size() <= 8);
       helper_.AddPLRTrainingPoint(ExtractUserKey(*first_key_in_next_block));
     }
-    */
     helper_.AddHandle(block_handle);
-    is_non_first_key_ = false;
   }
   
   // If it is the first every key from the first data block, use helper_ to add
@@ -492,19 +488,9 @@ class PLRIndexBuilder: public IndexBuilder {
   // Note: It seems input key is an internal key, so we need ExtractUserKey().
   void OnKeyAdded(const Slice& key) override {
     if (is_first_key_in_first_block_) {
-      assert(!is_non_first_key_);
       is_first_key_in_first_block_ = false;
       assert(ExtractUserKey(key).size() <= 8);
       helper_.AddPLRTrainingPoint(ExtractUserKey(key));
-      is_non_first_key_ = true;
-      return;
-    }
-    if (is_non_first_key_) {
-      helper.AddPLRIntermediateTrainingPoint(ExtractUserKey(key));
-    }
-    else {
-      helper_.AddPLRTrainingPoint(ExtractUserKey(key));
-      is_non_first_key_ = true;
     }
   }
 
@@ -535,6 +521,5 @@ class PLRIndexBuilder: public IndexBuilder {
   // If true, OnKeyAdded() will use helper_ to add an Point for PLR training
   // then set this flag to false.
   bool is_first_key_in_first_block_;
-  bool is_non_first_key_;
 };
 }  // namespace ROCKSDB_NAMESPACE
