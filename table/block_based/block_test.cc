@@ -748,12 +748,9 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
     iter->Seek(query_key);
     IndexValue v;
     while (iter->Valid()) {
-      printf("%s\n", iter->GetStateMessage().c_str());
+      // printf("%s\n", iter->GetStateMessage().c_str());
       v = iter->value();
       int seek_result_index = reverse_index[v.handle.offset()];
-      printf("Seek Key: %s\t DataBlk First Key: %s\t DataBlk Last Key: %s\n\n",
-        query_key.ToString().c_str(), first_keys[seek_result_index].c_str(),
-        last_keys[seek_result_index].c_str());
       
       // check if the extracted block_handle matches the one in block_handles
       if (seek_result_index == expected_index) {
