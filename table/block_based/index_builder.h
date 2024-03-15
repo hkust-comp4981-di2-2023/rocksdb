@@ -461,7 +461,8 @@ class PLRIndexBuilder: public IndexBuilder {
   PLRIndexBuilder(double gamma): 
     IndexBuilder(nullptr),
     helper_(gamma),
-    is_first_key_in_first_block_(true) {}
+    is_first_key_in_first_block_(true),
+    last_key_added_() {}
 
   // Use helper_ to add a new Point for PLR training of (i+1)-th block. Also,
   // store block_handle of i-th block in helper_. For the last function call, do
@@ -492,11 +493,16 @@ class PLRIndexBuilder: public IndexBuilder {
       assert(ExtractUserKey(key).size() <= 8);
       helper_.AddPLRTrainingPoint(ExtractUserKey(key));
     }
+    last_key_added_ = key.ToString();
   }
 
   Status Finish(IndexBlocks* index_blocks,
                 const BlockHandle& /*last_partition_block_handle*/) override {
     assert(index_blocks != nullptr);
+    assert(!last_key_added_.empty());
+
+    Slice last_key(last_key_added_);
+    helper_.AddPLRLastTrainingPoint(last_key);
 
     index_blocks->index_block_contents = helper_.Finish();
     index_size_ = index_blocks->index_block_contents.size();
@@ -521,5 +527,6 @@ class PLRIndexBuilder: public IndexBuilder {
   // If true, OnKeyAdded() will use helper_ to add an Point for PLR training
   // then set this flag to false.
   bool is_first_key_in_first_block_;
+  std::string last_key_added_;
 };
 }  // namespace ROCKSDB_NAMESPACE
