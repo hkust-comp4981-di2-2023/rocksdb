@@ -70,6 +70,14 @@ class PLRBuilderHelper {
     trainer_.process(p);
   }
 
+  void AddPLRIntermediateTrainingPoint(const Slice& non_first_key) {
+    assert(!finished_);
+
+    double key_floating_rep = Str2Double(
+      non_first_key.data(), non_first_key.size());
+    trainer_.AddNonFirstKeyPoint(key_floating_rep);
+  }
+
   // Add the current data block handle's size() to encoder
   void AddHandle(const BlockHandle& block_handle) {
     if (!added_first_data_block_offset_) {
