@@ -701,7 +701,6 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   for (int i = 1; i < num_records; ++i) {
     key = Slice(first_keys[i]);
     builder.AddIndexEntry(nullptr, &key, block_handles[i-1]);
-    builder.OnKeyAdded(key);
   }
   builder.AddIndexEntry(nullptr, nullptr, block_handles[num_records-1]);
 
