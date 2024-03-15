@@ -502,7 +502,8 @@ class PLRIndexBuilder: public IndexBuilder {
     assert(!last_key_added_.empty());
 
     Slice last_key(last_key_added_);
-    helper_.AddPLRLastTrainingPoint(last_key);
+    assert(ExtractUserKey(last_key).size() <= 8);
+    helper_.AddPLRLastTrainingPoint(ExtractUserKey(last_key));
 
     index_blocks->index_block_contents = helper_.Finish();
     index_size_ = index_blocks->index_block_contents.size();
