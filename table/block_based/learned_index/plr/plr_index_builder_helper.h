@@ -75,7 +75,7 @@ class PLRBuilderHelper {
 
     double key_floating_rep = Str2Double(
       non_first_key.data(), non_first_key.size());
-    trainer_.AddNonFirstKeyPoint(key_floating_rep);
+    trainer_.AddNonFirstKey(key_floating_rep);
   }
 
   // Add the current data block handle's size() to encoder
