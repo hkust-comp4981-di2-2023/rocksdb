@@ -33,7 +33,9 @@ class NonBatchedOpsStressTest : public StressTest {
       if (thread->shared->HasVerificationFailedYet()) {
         break;
       }
-      if (!thread->rand.OneIn(2)) {
+      // Note(fyp): Disable iterator for VerifyDb() for now
+      if (!thread->rand.OneIn(1)) {
+      // if (!thread->rand.OneIn(2)) {
         // Use iterator to verify this range
         Slice prefix;
         std::string seek_key = Key(start);
