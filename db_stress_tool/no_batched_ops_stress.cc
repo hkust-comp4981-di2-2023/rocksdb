@@ -602,26 +602,39 @@ class NonBatchedOpsStressTest : public StressTest {
     }
 
     if (s.ok()) {
-      std::cerr << "The verification failed as the values from the record does "
-                   "NOT match the expected record"
-                << std::endl;
-      std::cerr << "Expected: " << value << "\t Actual: " << value_from_db << std::endl;
+
       if (value_base == SharedState::DELETION_SENTINEL) {
+        std::cerr << "The verification failed as the values from the record does "
+                     "NOT match the expected record"
+                  << std::endl;
+        std::cerr << "Expected: <" << key << ", " << value <<">" << "\t Actual: <" << key << ", " << value_from_db << ">" << std::endl;
         VerificationAbort(shared, "Unexpected value found", cf, key);
         return false;
       }
       size_t sz = GenerateValue(value_base, value, sizeof(value));
       if (value_from_db.length() != sz) {
+        std::cerr << "The verification failed as the values from the record does "
+                     "NOT match the expected record"
+                  << std::endl;
+        std::cerr << "Expected: <" << key << ", " << value <<">" << "\t Actual: <" << key << ", " << value_from_db << ">" << std::endl;
         VerificationAbort(shared, "Length of value read is not equal", cf, key);
         return false;
       }
       if (memcmp(value_from_db.data(), value, sz) != 0) {
+        std::cerr << "The verification failed as the values from the record does "
+                     "NOT match the expected record"
+                  << std::endl;
+        std::cerr << "Expected: <" << key << ", " << value <<">" << "\t Actual: <" << key << ", " << value_from_db << ">" << std::endl;
         VerificationAbort(shared, "Contents of value read don't match", cf,
                           key);
         return false;
       }
     } else {
       if (value_base != SharedState::DELETION_SENTINEL) {
+        std::cerr << "The verification failed as the values from the record does "
+                     "NOT match the expected record"
+                  << std::endl;
+        std::cerr << "Expected: <" << key << ", " << value <<">" << "\t Actual: <" << key << ", " << value_from_db << ">" << std::endl;
         VerificationAbort(shared, "Value not found: " + s.ToString(), cf, key);
         return false;
       }
