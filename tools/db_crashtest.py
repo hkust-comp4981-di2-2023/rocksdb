@@ -27,7 +27,7 @@ import uuid
 filename = str(uuid.uuid4())
 
 expected_values_file = "./" + filename
-f = file(expected_values_file, "r+")
+f = file(expected_values_file, "w+")
 f.close()
 
 default_params = {
