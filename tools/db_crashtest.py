@@ -55,7 +55,7 @@ default_params = {
     "delrangepercent": 1,
     "destroy_db_initially": 0,
     "enable_pipelined_write": lambda: random.randint(0, 1),
-    "expected_values_path": expected_values_file.name,
+    "expected_values_path": expected_values_file,
     "flush_one_in": 1000000,
     "get_live_files_and_wal_files_one_in": 1000000,
     # Temporarily disable hash index
