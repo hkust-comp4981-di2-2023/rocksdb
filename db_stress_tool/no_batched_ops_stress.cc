@@ -8,8 +8,9 @@
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
 #ifdef GFLAGS
-#include "db_stress_tool/db_stress_common.h"
+#include <iostream>
 
+#include "db_stress_tool/db_stress_common.h"
 namespace ROCKSDB_NAMESPACE {
 class NonBatchedOpsStressTest : public StressTest {
  public:
@@ -35,7 +36,7 @@ class NonBatchedOpsStressTest : public StressTest {
       }
       // Note(fyp): Disable iterator for VerifyDb() for now
       if (!thread->rand.OneIn(1)) {
-      // if (!thread->rand.OneIn(2)) {
+        // if (!thread->rand.OneIn(2)) {
         // Use iterator to verify this range
         Slice prefix;
         std::string seek_key = Key(start);
@@ -601,6 +602,10 @@ class NonBatchedOpsStressTest : public StressTest {
     }
 
     if (s.ok()) {
+      std::cerr << "The verification failed as the values from the record does "
+                   "NOT match the expected record"
+                << std::endl;
+      std::cerr << "Expected: " << value << "\t Actual: " << value_from_db << std::endl;
       if (value_base == SharedState::DELETION_SENTINEL) {
         VerificationAbort(shared, "Unexpected value found", cf, key);
         return false;

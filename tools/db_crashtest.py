@@ -8,6 +8,8 @@ import tempfile
 import subprocess
 import shutil
 import argparse
+import uuid
+
 
 # params overwrite priority:
 #   for default:
@@ -22,7 +24,11 @@ import argparse
 #   for txn:
 #       default_params < {blackbox,whitebox}_default_params < txn_params < args
 
-expected_values_file = tempfile.NamedTemporaryFile()
+filename = str(uuid.uuid4())
+
+expected_values_file = "./" + filename
+f = file(expected_values_file, "r+")
+f.close()
 
 default_params = {
     "acquire_snapshot_one_in": 10000,
