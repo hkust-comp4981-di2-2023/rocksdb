@@ -635,8 +635,8 @@ class PLRIndexBlockTest
 std::string MakeKeyLookLikeInternalKey(const std::string& key) {
   return key + "12345678";
 }
-string uint2str(uint64_t x) {
-    string s = "";
+std::string uint2str(uint64_t x) {
+    std::string s = "";
     for (int i = 7; i >= 0; --i) {
         uint64_t mask = 0xFFULL << (8 * i);
         unsigned char t = (mask & x) >> (8 * i);
