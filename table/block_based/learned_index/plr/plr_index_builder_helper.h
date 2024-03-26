@@ -64,16 +64,16 @@ class PLRBuilderHelper {
   void AddPLRTrainingPoint(const Slice& first_key_in_data_block) {
     assert(!finished_);
     
-    double first_key_floating_rep = Str2Double(
+    long double first_key_floating_rep = Str2Double(
       first_key_in_data_block.data(), first_key_in_data_block.size());
-    Point<double> p(first_key_floating_rep, num_data_blocks_++);
+    Point<long double> p(first_key_floating_rep, num_data_blocks_++);
     trainer_.process(p);
   }
 
   void AddPLRIntermediateTrainingPoint(const Slice& non_first_key) {
     assert(!finished_);
 
-    double key_floating_rep = Str2Double(
+    long double key_floating_rep = Str2Double(
       non_first_key.data(), non_first_key.size());
     trainer_.AddNonFirstKey(key_floating_rep);
   }
@@ -93,8 +93,8 @@ class PLRBuilderHelper {
   Slice Finish() {
     assert(!finished_);
 
-    std::vector<Segment<uint64_t, double>> segments = trainer_.finish();
-    auto plr_param_encoder = PLRDataRep<uint64_t, double>(gamma_, segments);
+    std::vector<Segment<long double, long double>> segments = trainer_.finish();
+    auto plr_param_encoder = PLRDataRep<long double, long double>(gamma_, segments);
 
     buffer_ = plr_param_encoder.Encode();
     data_block_handles_encoder_.Encode(&buffer_);
@@ -105,8 +105,8 @@ class PLRBuilderHelper {
  private:
   // TODO(fyp): reading non-active member from union is UB, although most
   // compiler defined its behavior as a non-standard extension?
-  double Str2Double(const char* str, size_t size) {
-    assert(size <= 8);
+  long double Str2Double(const char* str, size_t size) {
+    // assert(size <= 8);
     // uint64_t int_rep = 0;
     // for (size_t i = 0; i < size; ++i) {
     //   int_rep <<= 8;
@@ -116,10 +116,11 @@ class PLRBuilderHelper {
     std::string s(str, size);
 
     uint64_t int_rep = stringToNumber<uint64_t>(s);
-    return (double) int_rep;
+    return (long double) int_rep;
   }
 
-  GreedyPLR<uint64_t, double> trainer_;
+  // GreedyPLR<uint64_t, double> trainer_;
+  GreedyPLR<long double, long double> trainer_;
   DataBlockHandlesEncoder data_block_handles_encoder_;
   uint32_t num_data_blocks_;
   double gamma_;

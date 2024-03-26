@@ -293,7 +293,7 @@ Status PLRBlockHelper::DecodePLRBlock(const Slice& data) {
 	// Extract the substring corr. to PLR Segments and Data block sizes
 	const size_t total_length = data.size();
 
-	const size_t block_handles_length = kParamSize * (num_data_blocks_ + 1);
+	const size_t block_handles_length = sizeof(uint64_t) * (num_data_blocks_ + 1);
 	assert(total_length > block_handles_length);
 
 	const size_t plr_segments_length = total_length - block_handles_length;
@@ -307,7 +307,7 @@ Status PLRBlockHelper::DecodePLRBlock(const Slice& data) {
 
 	// Initialize model_ and handle_calculator_
 	model_.reset(
-		new PLRDataRep<EncodedStrBaseType, double>(encoded_plr_segments));
+		new PLRDataRep<EncodedStrBaseType, long double>(encoded_plr_segments));
 	handle_calculator_.reset(
 		new BlockHandleCalculator(encoded_block_handles, num_data_blocks_));
 	
@@ -325,7 +325,7 @@ Status PLRBlockHelper::PredictBlockRange(const Slice& target,
 	KeyInternalRep key = stringToNumber<KeyInternalRep>(target_str);
 
 	// Get range, check for invalid range
-	auto range =  model_->GetValue(key);
+	auto range =  model_->GetValue((EncodedStrBaseType) key);
 	assert(range.first <= range.second);
 
 	begin_block = std::max<uint64_t>(0, 

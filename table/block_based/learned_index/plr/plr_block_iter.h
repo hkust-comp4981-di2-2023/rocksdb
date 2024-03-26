@@ -52,12 +52,12 @@ class PLRBlockHelper {
 
  private:
 	typedef uint64_t KeyInternalRep;
-	typedef uint64_t EncodedStrBaseType;
+	typedef long double EncodedStrBaseType;
 	static const size_t kKeySize = sizeof(KeyInternalRep);
 	static const size_t kParamSize = sizeof(EncodedStrBaseType);
 
 	// TODO(fyp): Verify member types
-	std::unique_ptr<PLRDataRep<EncodedStrBaseType, double>> model_;
+	std::unique_ptr<PLRDataRep<EncodedStrBaseType, long double>> model_;
 	std::unique_ptr<BlockHandleCalculator> handle_calculator_;
 	const uint64_t num_data_blocks_;
 
