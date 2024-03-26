@@ -635,6 +635,16 @@ class PLRIndexBlockTest
 std::string MakeKeyLookLikeInternalKey(const std::string& key) {
   return key + "12345678";
 }
+string uint2str(uint64_t x) {
+    string s = "";
+    for (int i = 7; i >= 0; --i) {
+        uint64_t mask = 0xFFULL << (8 * i);
+        unsigned char t = (mask & x) >> (8 * i);
+        // cout << mask << endl << (char) t << endl << (unsigned int) t << endl;
+        s += (char) t;
+    }
+    return s;
+}
 // Similar to GenerateRandomIndexEntries but for index block contents.
 void GenerateRandomPLRIndexEntries(std::vector<BlockHandle> *block_handles,
                                 std::vector<std::string> *first_keys,
@@ -644,14 +654,20 @@ void GenerateRandomPLRIndexEntries(std::vector<BlockHandle> *block_handles,
                                 std::map<int, int> &reverse_index,
                                 const int len) {
   Random rnd(42);
+  assert(len > 0);
 
   // For each of `len` blocks, we need to generate a first and last key.
   // Let's generate n*4 random keys, sort them, group into consecutive pairs.
   std::set<std::string> keys;
-  while ((int)keys.size() < len * 4) {
+  while ((int)keys.size() < (len-1) * 4) {
     // PLR index only support key of length 8
     keys.insert(test::RandomKey(&rnd, 8));
   }
+
+  keys.insert(uint2str(18446744073709551612));
+  keys.insert(uint2str(18446744073709551613));
+  keys.insert(uint2str(18446744073709551614));
+  keys.insert(uint2str(18446744073709551615));
 
   uint64_t offset = 0;
   int idx = 0;
