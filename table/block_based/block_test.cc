@@ -664,10 +664,10 @@ void GenerateRandomPLRIndexEntries(std::vector<BlockHandle> *block_handles,
     keys.insert(test::RandomKey(&rnd, 8));
   }
 
-  keys.insert(uint2str(18446744073709551612));
-  keys.insert(uint2str(18446744073709551613));
-  keys.insert(uint2str(18446744073709551614));
-  keys.insert(uint2str(18446744073709551615));
+  keys.insert(uint2str(18446744073709551612ULL));
+  keys.insert(uint2str(18446744073709551613ULL));
+  keys.insert(uint2str(18446744073709551614ULL));
+  keys.insert(uint2str(18446744073709551615ULL));
 
   uint64_t offset = 0;
   int idx = 0;
