@@ -116,7 +116,7 @@ class PLRBuilderHelper {
     std::string s(str, size);
 
     uint64_t int_rep = stringToNumber<uint64_t>(s);
-    return (long double) int_rep;
+    return static_cast<long double>(int_rep);
   }
 
   // GreedyPLR<uint64_t, double> trainer_;

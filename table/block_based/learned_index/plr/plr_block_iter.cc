@@ -325,7 +325,7 @@ Status PLRBlockHelper::PredictBlockRange(const Slice& target,
 	KeyInternalRep key = stringToNumber<KeyInternalRep>(target_str);
 
 	// Get range, check for invalid range
-	auto range =  model_->GetValue((EncodedStrBaseType) key);
+	auto range =  model_->GetValue(static_cast<EncodedStrBaseType>(key));
 	assert(range.first <= range.second);
 
 	begin_block = std::max<uint64_t>(0, 
