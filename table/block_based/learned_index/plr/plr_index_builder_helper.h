@@ -93,12 +93,12 @@ class PLRBuilderHelper {
     // TODO(fyp): remove after debugging
     if (exist_keys_.count(key_floating_rep) > 0) {
       duplicated_keys_.insert(key_floating_rep);
-      exist_keys_[key_floating_rep].emplace_back(first_key_in_data_block.ToString());
+      exist_keys_[key_floating_rep].emplace_back(non_first_key.ToString());
       return;
     }
     else {
       exist_keys_[key_floating_rep] = std::vector<std::string>();
-      exist_keys_[key_floating_rep].emplace_back(first_key_in_data_block.ToString());
+      exist_keys_[key_floating_rep].emplace_back(non_first_key.ToString());
     }
 
     trainer_.AddNonFirstKey(key_floating_rep);
