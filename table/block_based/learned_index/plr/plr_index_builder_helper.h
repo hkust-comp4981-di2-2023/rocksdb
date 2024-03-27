@@ -4,6 +4,7 @@
 // TODO(fyp): remove after dubugging
 #include <utility>
 #include <set>
+#include <unordered_map>
 #include <iostream>
 
 #include "table/format.h"
@@ -60,8 +61,8 @@ class PLRBuilderHelper {
     buffer_(),
     added_first_data_block_offset_(false),
     finished_(false),
-    exist_keys_(),
-    duplicated_keys_() {}
+    duplicated_keys_(),
+    exist_keys_() {}
 
   // Add a new point to trainer_. Increment num_data_blocks by 1.
   // This assumes AddPLRTrainingPoint() is called in the sorted order of
@@ -75,10 +76,13 @@ class PLRBuilderHelper {
     Point<long double> p(first_key_floating_rep, num_data_blocks_++);
     trainer_.process(p);
     // TODO(fyp): remove after debugging
-    if (exist_keys_.find(first_key_floating_rep) != exist_keys_.end()) {
-      duplicated_keys_.emplace_back(first_key_in_data_block.ToString(), first_key_floating_rep);
+    if (exist_keys_.count(first_key_floating_rep) > 0) {
+      duplicated_keys_.insert(first_key_floating_rep);
     }
-    exist_keys_.insert(first_key_floating_rep);
+    else {
+      exist_keys_[first_key_floating_rep] = std::vector<std::string>();
+    }
+    exist_keys_[first_key_floating_rep].emplace_back(first_key_in_data_block.ToString());
   }
 
   void AddPLRIntermediateTrainingPoint(const Slice& non_first_key) {
@@ -87,11 +91,16 @@ class PLRBuilderHelper {
     long double key_floating_rep = Str2Double(
       non_first_key.data(), non_first_key.size());
     // TODO(fyp): remove after debugging
-    if (exist_keys_.find(key_floating_rep) != exist_keys_.end()) {
-      duplicated_keys_.emplace_back(non_first_key.ToString(), key_floating_rep);
-      exist_keys_.insert(key_floating_rep);
+    if (exist_keys_.count(key_floating_rep) > 0) {
+      duplicated_keys_.insert(key_floating_rep);
+      exist_keys_[key_floating_rep].emplace_back(first_key_in_data_block.ToString());
       return;
     }
+    else {
+      exist_keys_[key_floating_rep] = std::vector<std::string>();
+      exist_keys_[key_floating_rep].emplace_back(first_key_in_data_block.ToString());
+    }
+
     trainer_.AddNonFirstKey(key_floating_rep);
   }
 
@@ -120,8 +129,16 @@ class PLRBuilderHelper {
     // TODO(fyp): remove after debugging
     if (!duplicated_keys_.empty()) {
       std::cout << "Following keys are duplicated:" << std::endl;
-      for (const auto& p: duplicated_keys_) {
-        std::cout << "Key: " << p.first << "; Double rep: " << p.second << std::endl;
+      for (const auto& k: duplicated_keys_) {
+        std::cout << "Key double representation: " << k << std::endl;
+        for (const auto& key_string: exist_keys_[k]) {
+          std::cout << "string representation: " << key_string << std::endl;
+          std::cout << "byte representation: ";
+          for (size_t i = 0; i < key_string.size(); ++i) {
+            std::cout << (unsigned int) ((unsigned char) key_string[i]) << ";";
+          }
+          std::cout << std::endl;
+        }
       }
     }
 
@@ -157,7 +174,7 @@ class PLRBuilderHelper {
   bool added_first_data_block_offset_;
   bool finished_;
   // TODO(fyp): remove these after debugging
-  std::set<long double> exist_keys_;
-  std::vector<std::pair<std::string, long double>> duplicated_keys_;
+  std::set<long double> duplicated_keys_;
+  std::unordered_map<long double, std::vector<std::string>> exist_keys_;
 };
 }
