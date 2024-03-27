@@ -127,8 +127,9 @@ class PLRBuilderHelper {
     finished_ = true;
 
     // TODO(fyp): remove after debugging
+    /*
     if (!duplicated_keys_.empty()) {
-      std::cout << "Following keys are duplicated:" << std::endl;
+      std::cout << "PLRBuilderHelper: Following keys are duplicated:" << std::endl;
       for (const auto& k: duplicated_keys_) {
         std::cout << "Key double representation: " << k << std::endl;
         for (const auto& key_string: exist_keys_[k]) {
@@ -141,6 +142,7 @@ class PLRBuilderHelper {
         }
       }
     }
+    */
 
     return Slice(buffer_);
   }
