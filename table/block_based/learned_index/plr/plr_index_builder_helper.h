@@ -1,6 +1,10 @@
 #pragma once
 
 #include <vector>
+// TODO(fyp): remove after dubugging
+#include <pair>
+#include <set>
+#include <iostream>
 
 #include "table/format.h"
 #include "table/block_based/learned_index/plr/external/plr/library.h"
@@ -55,7 +59,9 @@ class PLRBuilderHelper {
     gamma_(gamma),
     buffer_(),
     added_first_data_block_offset_(false),
-    finished_(false) {}
+    finished_(false),
+    exist_keys_(),
+    duplicated_keys_() {}
 
   // Add a new point to trainer_. Increment num_data_blocks by 1.
   // This assumes AddPLRTrainingPoint() is called in the sorted order of
@@ -68,6 +74,11 @@ class PLRBuilderHelper {
       first_key_in_data_block.data(), first_key_in_data_block.size());
     Point<long double> p(first_key_floating_rep, num_data_blocks_++);
     trainer_.process(p);
+    // TODO(fyp): remove after debugging
+    if (exist_keys_.find(first_key_floating_rep) != exist_keys_.end()) {
+      duplicated_keys_.emplace_back(first_key_in_data_block.ToString(), first_key_floating_rep);
+    }
+    exist_keys_.insert(first_key_floating_rep);
   }
 
   void AddPLRIntermediateTrainingPoint(const Slice& non_first_key) {
@@ -75,6 +86,12 @@ class PLRBuilderHelper {
 
     long double key_floating_rep = Str2Double(
       non_first_key.data(), non_first_key.size());
+    // TODO(fyp): remove after debugging
+    if (exist_keys_.find(key_floating_rep) != exist_keys_.end()) {
+      duplicated_keys_.emplace_back(non_first_key.ToString(), key_floating_rep);
+      exist_keys_.insert(key_floating_rep);
+      return;
+    }
     trainer_.AddNonFirstKey(key_floating_rep);
   }
 
@@ -99,6 +116,15 @@ class PLRBuilderHelper {
     buffer_ = plr_param_encoder.Encode();
     data_block_handles_encoder_.Encode(&buffer_);
     finished_ = true;
+
+    // TODO(fyp): remove after debugging
+    if (!duplicated_keys_.empty()) {
+      std::cout << "Following keys are duplicated:" << std::endl;
+      for (const auto& p: duplicated_keys_) {
+        std::cout << "Key: " << p.first << "; Double rep: " << p.second << std::endl;
+      }
+    }
+
     return Slice(buffer_);
   }
 
@@ -130,5 +156,8 @@ class PLRBuilderHelper {
   std::string buffer_;
   bool added_first_data_block_offset_;
   bool finished_;
+  // TODO(fyp): remove these after debugging
+  std::set<long double> exist_keys_;
+  std::vector<std::pair<std::string, long double>> duplicated_keys_;
 };
 }
