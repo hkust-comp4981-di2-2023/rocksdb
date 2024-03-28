@@ -2,10 +2,12 @@
 
 #include <vector>
 // TODO(fyp): remove after dubugging
+/*
 #include <utility>
 #include <set>
 #include <unordered_map>
 #include <iostream>
+*/
 
 #include "table/format.h"
 #include "table/block_based/learned_index/plr/external/plr/library.h"
@@ -60,9 +62,7 @@ class PLRBuilderHelper {
     gamma_(gamma),
     buffer_(),
     added_first_data_block_offset_(false),
-    finished_(false),
-    duplicated_keys_(),
-    exist_keys_() {}
+    finished_(false) {}
 
   // Add a new point to trainer_. Increment num_data_blocks by 1.
   // This assumes AddPLRTrainingPoint() is called in the sorted order of
@@ -76,6 +76,7 @@ class PLRBuilderHelper {
     Point<long double> p(first_key_floating_rep, num_data_blocks_++);
     trainer_.process(p);
     // TODO(fyp): remove after debugging
+    /*
     if (exist_keys_.count(first_key_floating_rep) > 0) {
       duplicated_keys_.insert(first_key_floating_rep);
     }
@@ -83,6 +84,7 @@ class PLRBuilderHelper {
       exist_keys_[first_key_floating_rep] = std::vector<std::string>();
     }
     exist_keys_[first_key_floating_rep].emplace_back(first_key_in_data_block.ToString());
+    */
   }
 
   void AddPLRIntermediateTrainingPoint(const Slice& non_first_key) {
@@ -91,6 +93,7 @@ class PLRBuilderHelper {
     long double key_floating_rep = Str2Double(
       non_first_key.data(), non_first_key.size());
     // TODO(fyp): remove after debugging
+    /*
     if (exist_keys_.count(key_floating_rep) > 0) {
       duplicated_keys_.insert(key_floating_rep);
       exist_keys_[key_floating_rep].emplace_back(non_first_key.ToString());
@@ -100,6 +103,7 @@ class PLRBuilderHelper {
       exist_keys_[key_floating_rep] = std::vector<std::string>();
       exist_keys_[key_floating_rep].emplace_back(non_first_key.ToString());
     }
+    */
 
     trainer_.AddNonFirstKey(key_floating_rep);
   }
@@ -176,7 +180,7 @@ class PLRBuilderHelper {
   bool added_first_data_block_offset_;
   bool finished_;
   // TODO(fyp): remove these after debugging
-  std::set<long double> duplicated_keys_;
-  std::unordered_map<long double, std::vector<std::string>> exist_keys_;
+  // std::set<long double> duplicated_keys_;
+  // std::unordered_map<long double, std::vector<std::string>> exist_keys_;
 };
 }

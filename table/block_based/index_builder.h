@@ -462,9 +462,7 @@ class PLRIndexBuilder: public IndexBuilder {
     IndexBuilder(nullptr),
     helper_(gamma),
     is_first_key_in_first_block_(true),
-    is_non_first_key_(false),
-    duplicated_keys_(),
-    exist_keys_() {}
+    is_non_first_key_(false) {}
 
   // Use helper_ to add a new Point for PLR training of (i+1)-th block. Also,
   // store block_handle of i-th block in helper_. For the last function call, do
@@ -496,6 +494,7 @@ class PLRIndexBuilder: public IndexBuilder {
     Slice user_key = ExtractUserKey(key);
 
     // TODO(fyp): remove after debugging
+    /*
     std::string user_key_str = user_key.ToString();
     if (exist_keys_.count(user_key_str) > 0) {
       duplicated_keys_.insert(user_key_str);
@@ -504,6 +503,7 @@ class PLRIndexBuilder: public IndexBuilder {
       exist_keys_[user_key_str] = std::vector<std::string>();
     }
     exist_keys_[user_key_str].emplace_back(key.ToString());
+    */
 
     if (is_first_key_in_first_block_) {
       assert(!is_non_first_key_);
@@ -530,6 +530,7 @@ class PLRIndexBuilder: public IndexBuilder {
     index_size_ = index_blocks->index_block_contents.size();
 
     // TODO(fyp): remove after debugging
+    /*
     if (!duplicated_keys_.empty()) {
       std::cout << "PLRIndexBuilder: Following user keys are duplicated:" << std::endl;
       for (const auto& k: duplicated_keys_) {
@@ -544,6 +545,7 @@ class PLRIndexBuilder: public IndexBuilder {
         }
       }
     }
+    */
 
     return Status::OK();
   }
@@ -568,7 +570,7 @@ class PLRIndexBuilder: public IndexBuilder {
   bool is_non_first_key_;
 
   // TODO(fyp): remove these after debugging
-  std::set<std::string> duplicated_keys_;
-  std::unordered_map<std::string, std::vector<std::string>> exist_keys_;
+  // std::set<std::string> duplicated_keys_;
+  // std::unordered_map<std::string, std::vector<std::string>> exist_keys_;
 };
 }  // namespace ROCKSDB_NAMESPACE
