@@ -964,7 +964,7 @@ class PLRIndexReader : public BlockBasedTable::CustomIndexReaderCommon {
 
     // TODO(fyp): Unsure if there'll be memory leak or not
     auto it = new PLRBlockIter(block_content, num_data_blocks_,
-                               internal_comparator()->user_comparator());
+                               internal_comparator());
     index_block_contents.TransferTo(it);
 
     return it;
@@ -3058,24 +3058,42 @@ void BlockBasedTableIterator<TBlockIter, TValue>::SeekImpl(
           prev_block_offset_ = index_iter_->value().handle.offset();
 
           block_iter_.SeekToFirst();
-          Slice data_block_first_key = block_iter_.user_key();
+          Slice data_block_first_key = block_iter_.key();
           block_iter_.SeekToLast();
-          Slice data_block_last_key = block_iter_.user_key();
+          Slice data_block_last_key = block_iter_.key();
 
-          plr_index_iter->UpdateBinarySeekRange(ExtractUserKey(*target),
+          plr_index_iter->UpdateBinarySeekRange(*target,
                                                 data_block_first_key,
                                                 data_block_last_key);
 
-          if (plr_index_iter->IsLastBinarySeek() ||
-              (user_comparator_.Compare(data_block_first_key,
-                                        ExtractUserKey(*target)) <= 0 &&
-               user_comparator_.Compare(ExtractUserKey(*target),
-                                        data_block_last_key) <= 0)) {
+          if (plr_index_iter->IsLastBinarySeek()) {
             plr_index_iter->SwitchToLinearSeekMode();
             break;
           }
 
           plr_index_iter->Next();
+        }
+        // Since different subsequent internal keys can have same user key,
+        // we need to scan until we found the first internal key with seqno >=
+        // target seqno.
+        while (plr_index_iter->Valid()) {
+          block_iter_.SeekToFirst();
+          Slice data_block_first_key = block_iter_.key();
+          block_iter_.SeekToLast();
+          Slice data_block_last_key = block_iter_.key();
+
+          if (icomp_.Compare(*target, data_block_first_key) <= 0) {
+            break;
+          }
+          // Internal key comparison: target > data_block_first_key
+          if (icomp_.Compare(*target, data_block_last_key) <= 0) {
+            break;
+          }
+
+          // Internal key comparison: target > data_block_last_key
+          plr_index_iter.Next();
+          InitDataBlock();
+          prev_block_offset_ = index_iter_->value().handle.offset();
         }
         block_iter_.SeekToFirst();
       }
@@ -3184,23 +3202,60 @@ void BlockBasedTableIterator<TBlockIter, TValue>::SeekForPrev(
       prev_block_offset_ = index_iter_->value().handle.offset();
 
       block_iter_.SeekToFirst();
-      Slice data_block_first_key = block_iter_.user_key();
+      Slice data_block_first_key = block_iter_.key();
       block_iter_.SeekToLast();
-      Slice data_block_last_key = block_iter_.user_key();
+      Slice data_block_last_key = block_iter_.key();
 
-      plr_index_iter->UpdateBinarySeekRange(
-          ExtractUserKey(target), data_block_first_key, data_block_last_key);
+      plr_index_iter->UpdateBinarySeekRange(target, 
+                                            data_block_first_key, 
+                                            data_block_last_key);
 
-      if (plr_index_iter->IsLastBinarySeek() ||
-          (user_comparator_.Compare(data_block_first_key,
-                                    ExtractUserKey(target)) <= 0 &&
-           user_comparator_.Compare(ExtractUserKey(target),
-                                    data_block_last_key) <= 0)) {
+      if (plr_index_iter->IsLastBinarySeek()) {
         plr_index_iter->SwitchToLinearSeekMode();
         break;
       }
 
       plr_index_iter->Next();
+    }
+    // Since different subsequent internal keys can have same user key,
+    // we need to scan forward/backward until we found 
+    // the first internal key with seqno >= target seqno.
+    bool break_at_prev = false;
+    while (plr_index_iter->Valid()) {
+      block_iter_.SeekToFirst();
+      Slice data_block_first_key = block_iter_.key();
+      block_iter_.SeekToLast();
+      Slice data_block_last_key = block_iter_.key();
+
+      if (icomp_.Compare(data_block_first_key, *target) <= 0 &&
+          icomp_.Compare(*target, data_block_last_key) <= 0) {
+        break;
+      }
+
+      // Either target < data_block_first_key or data_block_last_key < target
+      if (icomp_.Compare(*target, data_block_first_key) < 0) {
+        // target < data_block_first_key
+        plr_index_iter->Prev();
+        InitDataBlock();
+        prev_block_offset_ = index_iter_->value().handle.offset();
+        if (break_at_prev) {
+          break;
+        }
+        continue;
+      }
+
+      // data_block_last_key < target
+      //
+      // Trickiest case: It's possible that the current data block satisfies
+      // the outcome of SeekForPrev(), but we don't know at this point. We need
+      // to Next() once to confirm.
+      // If after Next(), target < data_block_first_key, we need to Prev() and
+      // break. Otherwise, target >= data_block_first_key, we need to continue 
+      // Next().
+      break_at_prev = true;
+      plr_index_iter.Next();
+      InitDataBlock();
+      prev_block_offset_ = index_iter_->value().handle.offset();
     }
   }
 
@@ -3871,7 +3926,8 @@ void BlockBasedTable::MultiGet(const ReadOptions& read_options,
 
       for (auto miter = data_block_range.begin();
            miter != data_block_range.end(); ++miter) {
-        // TODO(fyp): Alter the logic of Index Iterator for PLR
+        // Note(fyp): This loop prepares the block cache for later Seek().
+        // Let's not modify anything for PLR index for now.
         const Slice& key = miter->ikey;
         iiter->Seek(miter->ikey);
 
@@ -4224,13 +4280,13 @@ Status BlockBasedTable::Prefetch(const Slice* const begin,
 
     // Note(fyp): Boundary check for plr index only.
     if (end &&
-        rep_->index_type == BlockBasedTableOptions::kLearnedIndexWithPLR &&
-        ((!is_user_key && comparator.Compare(iiter->key(), *end) >= 0) ||
-         (is_user_key &&
-          user_comparator.Compare(iiter->key(), ExtractUserKey(*end)) >= 0))) {
-      // The index entry represents the last key in the data block.
-      // We should load this page into memory as well, but no more
-      break;
+        rep_->index_type == BlockBasedTableOptions::kLearnedIndexWithPLR) {
+      biter.SeekToLast();
+      if (comparator.Compare(biter.key(), *end) >= 0) {
+        // The index entry represents the last key in the data block.
+        // We should load this page into memory as well, but no more
+        break;
+      }
     }
   }
 
@@ -4942,17 +4998,14 @@ void BlockBasedTable::SetUpPLRBlockIterAfterInitialSeek(const Slice& key,
           read_options, v.handle, &biter, BlockType::kData, get_context,
           &lookup_context, Status(), nullptr);
       biter.SeekToFirst();
-      auto first_key = biter.user_key();
+      auto first_key = biter.key();
       biter.SeekToLast();
-      auto last_key = biter.user_key();
-      plr_block_iter->UpdateBinarySeekRange(ExtractUserKey(key), first_key,
-                                            last_key);
+      auto last_key = biter.key();
+      plr_block_iter->UpdateBinarySeekRange(key, first_key, last_key);
 
       auto user_comparator = UserComparatorWrapper(
           rep_->internal_comparator.user_comparator());
-      if (plr_block_iter->IsLastBinarySeek() ||
-          (user_comparator.Compare(first_key, ExtractUserKey(key)) <= 0 &&
-            user_comparator.Compare(ExtractUserKey(key), last_key) <= 0)) {
+      if (plr_block_iter->IsLastBinarySeek()) {
         plr_block_iter->SwitchToLinearSeekMode();
         break;
       }

@@ -75,7 +75,7 @@ class PLRBlockHelper {
 class PLRBlockIter : public InternalIteratorBase<IndexValue> {
  public:
 	PLRBlockIter(const BlockContents* contents, const uint64_t num_data_blocks, 
-							const Comparator* user_comparator) :
+							const InternalKeyComparator* internal_key_comparator) :
 		InternalIteratorBase<IndexValue>(),
 		seek_mode_(SeekMode::kUnknown),
 		data_(contents->data),
@@ -85,7 +85,7 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 		key_(),
 		is_key_set_(false),
 		value_(),
-		user_comparator_(user_comparator),
+		internal_key_comparator_(internal_key_comparator),
 		status_(),
 		helper_(std::unique_ptr<PLRBlockHelper>(
 			new PLRBlockHelper(num_data_blocks, data_)))
@@ -146,6 +146,7 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 	void UpdateBinarySeekRange(const Slice& seek_key,
 															const Slice& data_block_first_key,
 															const Slice& data_block_last_key);
+
 	std::string GetStateMessage() {
 		return std::string("PLRBlockIter::GetStateMessage():\n")
 						+ "begin_block_: " + std::to_string(begin_block_) 
@@ -153,7 +154,7 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 						+ "; end_block_: " + std::to_string(end_block_);
 	}
 
-	// The following public functions are used by BlockBasedTableIterator.
+	// The following public functions are used by BlockBasedTable(Iterator).
 
 	// Usage: Set key_ as current_ data block last key.
 	// TODO(fyp): Not sure if this will cause memory leak or not.
@@ -227,7 +228,7 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 	// Return true if key_ is set and active; false otherwise. 
 	bool is_key_set_;
 	IndexValue value_;
-	const Comparator* user_comparator_;
+	const InternalKeyComparator* internal_key_comparator_;
 	Status status_;
 
 	std::unique_ptr<PLRBlockHelper> helper_;

@@ -229,14 +229,18 @@ void PLRBlockIter::SetCurrentIndexValue() {
 	// }
 }
 
-// This function should be called if the Seek key does not exist in the current_
-// data block in binary seek mode. It updates the seek range correspondingly,
-// such that the next PLRBlockIter::Next() will update current_ to a correct
-// value.
+// This function updates the seek range correspondingly, such that the 
+// next PLRBlockIter::Next() will update current_ to a correct value.
+//
+// The primary goal of this function is to update current_ until it points to
+// the block that contains the first occurrence of the user key in seek_key.
+// However, there may have optimizations that try to make current_ pointing to
+// a block that contains an internal key with same user key as seek_key and
+// a seqno closer to seek_key (on L.H.S.).
 //
 // Note: This function assumes input data_block first/last keys are the keys of
 // the current data block (as pointed by current_).
-// Note: Only accepts user keys, not internal keys.
+// Note: Only accepts internal keys.
 //
 // REQUIRES: Valid()
 // REQUIRES: binary seek mode
@@ -245,32 +249,78 @@ void PLRBlockIter::UpdateBinarySeekRange(const Slice& seek_key,
 																					const Slice& data_block_last_key) {
 	assert(Valid());
 	assert(seek_mode_ == SeekMode::kBinarySeek);
+
+	ParsedInternalKey parsed_seek_key;
+	if (!ParseInternalKey(seek_key, &parsed_seek_key)) {
+		assert(false);
+	}
+	ParsedInternalKey parsed_first_key;
+	if (!ParseInternalKey(data_block_first_key, &parsed_first_key)) {
+		assert(false);
+	}
+	ParsedInternalKey parsed_last_key;
+	if (!ParseInternalKey(data_block_last_key, &parsed_last_key)) {
+		assert(false);
+	}
+
 	// Slice first_user_key = ExtractUserKey(data_block_first_key);
 	// Slice last_user_key = ExtractUserKey(data_block_last_key);
 	// Slice seek_user_key = ExtractUserKey(seek_key);
 
-	assert(user_comparator_->Compare(data_block_first_key, 
-																	 data_block_last_key) <= 0);
+	assert(internal_key_comparator_->user_comparator()->
+					Compare(parsed_first_key.user_key, parsed_last_key.user_key) <= 0);
 	
 	// Case 1: Seek key > All keys in current data block.
-	if (user_comparator_->Compare(data_block_last_key, seek_key) < 0) {
+	if (internal_key_comparator_->user_comparator()->
+				Compare(parsed_last_key.user_key, parsed_seek_key.user_key) < 0) {
 		SetBeginBlockAsCurrent();
 		return;
 	}
 
 	// Case 2: Seek key < All keys in current data block.
-	if (user_comparator_->Compare(seek_key, data_block_first_key) < 0) {
+	if (internal_key_comparator_->user_comparator()->
+				Compare(parsed_seek_key.user_key, parsed_first_key.user_key) < 0) {
 		SetEndBlockAsCurrent();
 		return;
 	}
 
 	// Case 3: First key in data block <= Seek key <= Last key in data block.
 	// Then Seek key must lie within the current data block if it exists.
-	// However, this function is only called if the Seek key does not exist.
-	// This implies the Seek key does not exist in the SSTable.
-	//
-	// Then we can adjust the seek range such that after the next Next(),
-	// the iterator becomes !Valid().
+
+	if (internal_key_comparator_->user_comparator()->
+				Compare(parsed_first_key.user_key, parsed_seek_key.user_key) < 0) {
+		// Case 3.1: first_key.user_key < target.user_key <= last_key.user_key
+
+		if (internal_key_comparator_->user_comparator()->
+					Compare(parsed_seek_key.user_key, parsed_last_key.user_key) < 0) {
+			// Case 3.1.1: first_key.user_key < target.user_key < last_key.user_key
+			// Seek key (internal key) must exist in this block.
+			// Then we can adjust the seek range such that after the next Next(),
+			// the iterator becomes !Valid().
+			begin_block_ = end_block_+1;
+			assert(IsLastBinarySeek());
+			return;
+		}
+
+		// Case 3.1.2: first_key.user_key < target.user_key = last_key.user_key
+		// begin_block_ = current_;
+		// Start linear seek from current_.
+		begin_block_ = end_block_+1;
+		assert(IsLastBinarySeek());
+		return;
+	}
+
+	// Case 3.2: first_key.user_key = target.user_key <= last_key.user_key
+	if (internal_key_comparator_.Compare(data_block_first_key, seek_key) > 0) {
+		// Case 3.2.1: first_key.seqno > target.seqno
+		// If IsLastBinarySeek(), continue linear seek in current_ though
+		// there should be no matches. Otherwise, continue binary seek at L.H.S.
+		SetEndBlockAsCurrent();
+		return;
+	}
+
+	// Case 3.2.2: first_key.seqno <= target.seqno
+	// Start linear seek from current_.
 	begin_block_ = end_block_+1;
 	assert(IsLastBinarySeek());
 }
