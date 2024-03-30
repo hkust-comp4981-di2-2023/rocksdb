@@ -636,7 +636,7 @@ class PLRIndexBlockTest
 std::string MakeKeyLookLikeInternalKey(const std::string& key) {
   static uint64_t seq_no = 1;
   char buf[8];
-  EncodeFixed64(buf, (seq_no++) << 8 + 1);
+  EncodeFixed64(buf, ((seq_no++) << 8) + 1);
   std::string seq_no_str(buf, 8);
 
   return key + seq_no_str;
