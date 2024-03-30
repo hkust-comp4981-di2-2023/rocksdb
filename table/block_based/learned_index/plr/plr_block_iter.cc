@@ -311,7 +311,7 @@ void PLRBlockIter::UpdateBinarySeekRange(const Slice& seek_key,
 	}
 
 	// Case 3.2: first_key.user_key = target.user_key <= last_key.user_key
-	if (internal_key_comparator_.Compare(data_block_first_key, seek_key) > 0) {
+	if (internal_key_comparator_->Compare(data_block_first_key, seek_key) > 0) {
 		// Case 3.2.1: first_key.seqno > target.seqno
 		// If IsLastBinarySeek(), continue linear seek in current_ though
 		// there should be no matches. Otherwise, continue binary seek at L.H.S.

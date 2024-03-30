@@ -634,10 +634,10 @@ class PLRIndexBlockTest
 
 
 std::string MakeKeyLookLikeInternalKey(const std::string& key) {
-  static int seq_no = 1;
-
-  std::string seq_no_str = std::to_string(seq_no++);
-  seq_no_str = std::string(8 - seq_no_str.length(), '0') + seq_no_str;
+  static uint64_t seq_no = 1;
+  char buf[8];
+  EncodeFixed64(buf, (seq_no++) << 8 + 1);
+  std::string seq_no_str(buf, 8);
 
   return key + seq_no_str;
 }
@@ -709,10 +709,13 @@ void GenerateRandomPLRIndexEntriesMode2(std::vector<BlockHandle> *block_handles,
   // For each of `len` blocks, we need to generate a first and last key.
   // Let's generate n*4 random keys, sort them, group into consecutive pairs.
   std::set<std::string> keys;
-  int no_duplicate_len = len/2;
+  const int num_keys_factor = 4;
+
+  const int no_duplicate_denominator = 3;
+  int no_duplicate_len = len / no_duplicate_denominator;
   int duplicate_len = len - no_duplicate_len;
   
-  while ((int)keys.size() < no_duplicate_len * 4) {
+  while ((int)keys.size() < no_duplicate_len * num_keys_factor) {
     // PLR index only support key of length 8
     keys.insert(test::RandomKey(&rnd, 8));
   }
@@ -726,7 +729,7 @@ void GenerateRandomPLRIndexEntriesMode2(std::vector<BlockHandle> *block_handles,
 
   int idx = 0;
   for (auto it = keys.begin(); it != keys.end(); it++, idx++) {
-    for (int i = 0; i < distribution[idx]; ++i) {
+    for (int i = 0; i < distribution[idx/num_keys_factor]; ++i) {
       final_keys.emplace_back(*it);
     }
   }
@@ -778,6 +781,9 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
                                          num_records);
       break;
     }
+
+    default:
+      assert(false);
   }
   
   // print training data
