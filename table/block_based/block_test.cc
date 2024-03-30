@@ -805,7 +805,7 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
 
   InternalKeyComparator icomp(options.comparator);
 
-  PLRBlockIter* iter = new PLRBlockIter(&block_contents, num_records, icomp);
+  PLRBlockIter* iter = new PLRBlockIter(&block_contents, num_records, &icomp);
 
 
   // Test 1: Read block contents sequentially.
@@ -831,7 +831,7 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   // Expected behavior: After several Next(), ultimately the iterator should
   // point to the correct index entry.
   // printf("Test 2\n");
-  iter = new PLRBlockIter(&block_contents, num_records, options.comparator);
+  iter = new PLRBlockIter(&block_contents, num_records, &icomp);
   for (int i = 0; i < num_records * 2; i++) {
     // find a random key in the lookaside array
     int expected_index = rnd.Uniform(num_records);
@@ -872,7 +872,7 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   // Expected behavior: After several Next(), ultimately the iterator should
   // point to the correct index entry.
   // printf("Test 3\n");
-  iter = new PLRBlockIter(&block_contents, num_records, options.comparator);
+  iter = new PLRBlockIter(&block_contents, num_records, &icomp);
   for (int i = 0; i < num_records * 2; i++) {
     // find a random key in the lookaside array
     int expected_index = rnd.Uniform(num_records);
@@ -909,7 +909,7 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   // Expected behavior: After several Next(), ultimately the iterator should
   // find out no index entry matches
   // printf("Test 4\n");
-  iter = new PLRBlockIter(&block_contents, num_records, options.comparator);
+  iter = new PLRBlockIter(&block_contents, num_records, &icomp);
   for (int i = 0; i < num_records * 2; i++) {
     // find a random key in the lookaside array
     int expected_index = rnd.Uniform(num_records);
