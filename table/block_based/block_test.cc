@@ -624,17 +624,24 @@ INSTANTIATE_TEST_CASE_P(P, IndexBlockTest,
 
 class PLRIndexBlockTest
     : public testing::Test,
-      public testing::WithParamInterface<double> {
+      public testing::WithParamInterface<std::tuple<int, double>> {
  public:
   PLRIndexBlockTest() = default;
 
-  double gamma() const { return GetParam(); }
+  int test_mode() const { return std::get<0>(GetParam()); }
+  double gamma() const { return std::get<1>(GetParam()); }
 };
 
 
 std::string MakeKeyLookLikeInternalKey(const std::string& key) {
-  return key + "12345678";
+  static int seq_no = 1;
+
+  std::string seq_no_str = std::to_string(seq_no++);
+  seq_no_str = std::string(8 - seq_no_str.length(), '0') + seq_no_str;
+
+  return key + seq_no_str;
 }
+
 std::string uint2str(uint64_t x) {
     std::string s = "";
     for (int i = 7; i >= 0; --i) {
@@ -645,6 +652,7 @@ std::string uint2str(uint64_t x) {
     }
     return s;
 }
+
 // Similar to GenerateRandomIndexEntries but for index block contents.
 void GenerateRandomPLRIndexEntries(std::vector<BlockHandle> *block_handles,
                                 std::vector<std::string> *first_keys,
@@ -687,6 +695,60 @@ void GenerateRandomPLRIndexEntries(std::vector<BlockHandle> *block_handles,
   }
 }
 
+// Similar to GenerateRandomIndexEntries but for index block contents.
+void GenerateRandomPLRIndexEntriesMode2(std::vector<BlockHandle> *block_handles,
+                                std::vector<std::string> *first_keys,
+                                std::vector<std::string> *in_block_keys,
+                                std::vector<std::string> *last_keys,
+                                std::vector<std::string> *out_of_block_keys,
+                                std::map<int, int> &reverse_index,
+                                const int len) {
+  Random rnd(42);
+  assert(len > 0);
+
+  // For each of `len` blocks, we need to generate a first and last key.
+  // Let's generate n*4 random keys, sort them, group into consecutive pairs.
+  std::set<std::string> keys;
+  int no_duplicate_len = len/2;
+  int duplicate_len = len - no_duplicate_len;
+  
+  while ((int)keys.size() < no_duplicate_len * 4) {
+    // PLR index only support key of length 8
+    keys.insert(test::RandomKey(&rnd, 8));
+  }
+
+  std::vector<int> distribution(no_duplicate_len, 1);
+  for (int i = 0; i < duplicate_len; ++i) {
+    distribution[rnd.Uniform(no_duplicate_len)]++;
+  }
+
+  std::vector<std::string> final_keys;
+
+  int idx = 0;
+  for (auto it = keys.begin(); it != keys.end(); it++, idx++) {
+    for (int i = 0; i < distribution[idx]; ++i) {
+      final_keys.emplace_back(*it);
+    }
+  }
+  
+  uint64_t offset = 0;
+  idx = 0;
+  for (auto it = final_keys.begin(); it != final_keys.end();) {
+
+    first_keys->emplace_back(MakeKeyLookLikeInternalKey(*it++));
+    in_block_keys->emplace_back(MakeKeyLookLikeInternalKey(*it++));
+    last_keys->emplace_back(MakeKeyLookLikeInternalKey(*it++));
+    out_of_block_keys->emplace_back(MakeKeyLookLikeInternalKey(*it++));
+
+
+    uint64_t size = rnd.Uniform(1024 * 16);
+    BlockHandle handle(offset, size);
+    offset += size + kBlockTrailerSize;
+    block_handles->emplace_back(handle);
+    reverse_index[handle.offset()] = idx++;
+  }
+}
+
 TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   Random rnd(302);
   Options options = Options();
@@ -701,9 +763,22 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   PLRIndexBuilder builder(gamma());
   int num_records = 100;
 
-  GenerateRandomPLRIndexEntries(&block_handles, &first_keys, &in_block_keys,
-                                &last_keys, &out_of_block_keys, reverse_index,
-                                num_records);
+  switch(test_mode()) {
+    case 0: {
+      GenerateRandomPLRIndexEntries(&block_handles, &first_keys, &in_block_keys,
+                                    &last_keys, &out_of_block_keys, 
+                                    reverse_index, num_records);
+      break;
+    }
+
+    case 1: {
+      GenerateRandomPLRIndexEntriesMode2(&block_handles, &first_keys, 
+                                         &in_block_keys, &last_keys, 
+                                         &out_of_block_keys, reverse_index, 
+                                         num_records);
+      break;
+    }
+  }
   
   // print training data
   // printf("Training with keys:\n");
@@ -712,31 +787,25 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   // }
   // printf("Ended training.\n\n");
 
-  Slice key(first_keys[0]);
-  builder.OnKeyAdded(key);
-  for (int i = 1; i < num_records; ++i) {
+  for (int i = 0; i < num_records; ++i) {
     Slice first_key = Slice(first_keys[i]);
-    Slice middle_key = Slice(in_block_keys[i-1]);
-    Slice last_key = Slice(last_keys[i-1]);
+    Slice middle_key = Slice(in_block_keys[i]);
+    Slice last_key = Slice(last_keys[i]);
+
+    builder.OnKeyAdded(first_key);
     builder.OnKeyAdded(middle_key);
     builder.OnKeyAdded(last_key);
-    builder.AddIndexEntry(nullptr, &first_key, block_handles[i-1]);
-    builder.OnKeyAdded(first_key);
+    builder.AddIndexEntry(nullptr, nullptr, block_handles[i]);
   }
-  key = Slice(in_block_keys[num_records-1]);
-  builder.OnKeyAdded(key);
-  key = Slice(last_keys[num_records-1]);
-  builder.OnKeyAdded(key);
-  builder.AddIndexEntry(nullptr, nullptr, block_handles[num_records-1]);
 
   // read serialized contents of the block
   IndexBuilder::IndexBlocks rawblock;
   builder.Finish(&rawblock, block_handles[num_records-1]);
   BlockContents block_contents(rawblock.index_block_contents);
 
+  InternalKeyComparator icomp(options.comparator);
 
-  PLRBlockIter* iter = new PLRBlockIter(&block_contents, num_records, 
-                                        options.comparator);
+  PLRBlockIter* iter = new PLRBlockIter(&block_contents, num_records, icomp);
 
 
   // Test 1: Read block contents sequentially.
@@ -785,9 +854,8 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
       } else {
         Slice seek_result_first_key(first_keys[seek_result_index]);
         Slice seek_result_last_key(last_keys[seek_result_index]);
-        iter->UpdateBinarySeekRange(ExtractUserKey(query_key), 
-                                    ExtractUserKey(seek_result_first_key), 
-                                    ExtractUserKey(seek_result_last_key));
+        iter->UpdateBinarySeekRange(query_key, seek_result_first_key, 
+                                    seek_result_last_key);
         iter->Next();
       }
     }
@@ -823,9 +891,8 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
       } else {
         Slice seek_result_first_key(first_keys[seek_result_index]);
         Slice seek_result_last_key(last_keys[seek_result_index]);
-        iter->UpdateBinarySeekRange(ExtractUserKey(query_key), 
-                                    ExtractUserKey(seek_result_first_key), 
-                                    ExtractUserKey(seek_result_last_key));
+        iter->UpdateBinarySeekRange(query_key, seek_result_first_key, 
+                                    seek_result_last_key);
         iter->Next();
       }
     }
@@ -866,9 +933,8 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
       }
       if (cmp->Compare(query_key, seek_result_first_key) < 0
           || cmp->Compare(seek_result_last_key, query_key) < 0) {
-        iter->UpdateBinarySeekRange(ExtractUserKey(query_key), 
-                                    ExtractUserKey(seek_result_first_key), 
-                                    ExtractUserKey(seek_result_last_key));
+        iter->UpdateBinarySeekRange(query_key, seek_result_first_key, 
+                                    seek_result_last_key);
         iter->Next();
         continue;
       }
@@ -884,16 +950,26 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
 }
 
 INSTANTIATE_TEST_CASE_P(PLR, PLRIndexBlockTest,
-                        ::testing::Values(0.03, 
-                                          0.06, 
-                                          0.3, 
-                                          0.6, 
-                                          1.0, 
-                                          1.2, 
-                                          1.5, 
-                                          2.0, 
-                                          3.0, 
-                                          4.0));
+                        ::testing::Values(std::make_tuple(0, 0.03), 
+                                          std::make_tuple(0, 0.06), 
+                                          std::make_tuple(0, 0.3), 
+                                          std::make_tuple(0, 0.6), 
+                                          std::make_tuple(0, 1.0), 
+                                          std::make_tuple(0, 1.2), 
+                                          std::make_tuple(0, 1.5), 
+                                          std::make_tuple(0, 2.0), 
+                                          std::make_tuple(0, 3.0), 
+                                          std::make_tuple(0, 4.0),
+                                          std::make_tuple(1, 0.03), 
+                                          std::make_tuple(1, 0.06), 
+                                          std::make_tuple(1, 0.3), 
+                                          std::make_tuple(1, 0.6), 
+                                          std::make_tuple(1, 1.0), 
+                                          std::make_tuple(1, 1.2), 
+                                          std::make_tuple(1, 1.5), 
+                                          std::make_tuple(1, 2.0), 
+                                          std::make_tuple(1, 3.0), 
+                                          std::make_tuple(1, 4.0)));
 
 }  // namespace ROCKSDB_NAMESPACE
 
