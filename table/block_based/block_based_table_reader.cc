@@ -3091,7 +3091,7 @@ void BlockBasedTableIterator<TBlockIter, TValue>::SeekImpl(
           }
 
           // Internal key comparison: target > data_block_last_key
-          plr_index_ite->Next();
+          plr_index_iter->Next();
           InitDataBlock();
           prev_block_offset_ = index_iter_->value().handle.offset();
         }
