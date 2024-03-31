@@ -191,6 +191,8 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 
 	void SeekEndBlock();
 
+	void SetStatus(Status s) { status_ = s; }
+
  private:
 	enum class SeekMode : char {
 		kUnknown = 0x00,

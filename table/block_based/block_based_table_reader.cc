@@ -3102,6 +3102,8 @@ void BlockBasedTableIterator<TBlockIter, TValue>::SeekImpl(
 
         if (plr_index_iter->Valid()) {
           block_iter_.SeekToFirst();
+        } else {
+          plr_index_iter.SetStatus(Status::NotFound());
         }
       }
     } else {
@@ -3244,6 +3246,7 @@ void BlockBasedTableIterator<TBlockIter, TValue>::SeekForPrev(
         // target < data_block_first_key
         plr_index_iter->Prev();
         if (!plr_index_iter->Valid()) {
+          plr_index_iter->SetStatus(Status::NotFound());
           break;
         }
 
@@ -3266,9 +3269,10 @@ void BlockBasedTableIterator<TBlockIter, TValue>::SeekForPrev(
       break_at_prev = true;
       plr_index_iter->Next();
       if (!plr_index_iter->Valid()) {
+        plr_index_iter->SetStatus(Status::NotFound());
         break;
       }
-      
+
       InitDataBlock();
       prev_block_offset_ = index_iter_->value().handle.offset();
     }
