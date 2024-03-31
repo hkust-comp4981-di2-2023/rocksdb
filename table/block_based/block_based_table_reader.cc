@@ -3727,7 +3727,7 @@ Status BlockBasedTable::Get(const ReadOptions& read_options, const Slice& key,
           plr_iter_first_seek) {
         SetUpPLRBlockIterAfterInitialSeek(key, iiter, 
             read_options, lookup_context, get_context);
-        if (!plr_iter_first_seek->Valid()) {
+        if (!iiter->Valid()) {
           // TODO(fyp): Test if this logic is correct. If not, change SetUp..()
           // so that the iter remains Valid().
           break;
@@ -4996,9 +4996,9 @@ void BlockBasedTable::SetUpPLRBlockIterAfterInitialSeek(const Slice& key,
     // We call Next() and UpdateBinarySeekRange() until the correct block 
     // is found.
     PLRBlockIter* plr_block_iter = reinterpret_cast<PLRBlockIter*>(iiter);
+    DataBlockIter biter;
     while (plr_block_iter->Valid()) {
       IndexValue v = plr_block_iter->value();
-      DataBlockIter biter;
       NewDataBlockIterator<DataBlockIter>(
           read_options, v.handle, &biter, BlockType::kData, get_context,
           &lookup_context, Status(), nullptr);
@@ -5024,7 +5024,6 @@ void BlockBasedTable::SetUpPLRBlockIterAfterInitialSeek(const Slice& key,
       plr_block_iter->Next();
       if (plr_block_iter->Valid()) {
         IndexValue v = plr_block_iter->value();
-        DataBlockIter biter;
         NewDataBlockIterator<DataBlockIter>(
             read_options, v.handle, &biter, BlockType::kData, get_context,
             &lookup_context, Status(), nullptr);
