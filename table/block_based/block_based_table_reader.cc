@@ -3077,14 +3077,14 @@ void BlockBasedTableIterator<TBlockIter, TValue>::SeekImpl(
         // we need to scan until we found the first internal key with seqno >=
         // target seqno.
         while (plr_index_iter->Valid()) {
-          block_iter_.SeekToFirst();
-          Slice data_block_first_key = block_iter_.key();
+          // block_iter_.SeekToFirst();
+          // Slice data_block_first_key = block_iter_.key();
           block_iter_.SeekToLast();
           Slice data_block_last_key = block_iter_.key();
 
-          if (icomp_.Compare(*target, data_block_first_key) <= 0) {
-            break;
-          }
+          // if (icomp_.Compare(*target, data_block_first_key) <= 0) {
+          //   break;
+          // }
           // Internal key comparison: target > data_block_first_key
           if (icomp_.Compare(*target, data_block_last_key) <= 0) {
             break;
@@ -3727,6 +3727,11 @@ Status BlockBasedTable::Get(const ReadOptions& read_options, const Slice& key,
           plr_iter_first_seek) {
         SetUpPLRBlockIterAfterInitialSeek(key, iiter, 
             read_options, lookup_context, get_context);
+        if (!plr_iter_first_seek->Valid()) {
+          // TODO(fyp): Test if this logic is correct. If not, change SetUp..()
+          // so that the iter remains Valid().
+          break;
+        }
         v = iiter->value();
         plr_iter_first_seek = false;
       }
@@ -5003,15 +5008,30 @@ void BlockBasedTable::SetUpPLRBlockIterAfterInitialSeek(const Slice& key,
       auto last_key = biter.key();
       plr_block_iter->UpdateBinarySeekRange(key, first_key, last_key);
 
-      auto user_comparator = UserComparatorWrapper(
-          rep_->internal_comparator.user_comparator());
       if (plr_block_iter->IsLastBinarySeek()) {
+        // current_ should point to the first data block with the same user key.
         plr_block_iter->SwitchToLinearSeekMode();
         break;
       }
       plr_block_iter->Next();
     }
     assert(plr_block_iter->Valid());
+
+    // Move current_ until key.seqno >= some seqno in the data block.
+    auto last_key = biter.key();
+    while (plr_block_iter->Valid() && 
+            rep_->internal_comparator.Compare(key, last_key) > 0) {
+      plr_block_iter->Next();
+      if (plr_block_iter->Valid()) {
+        IndexValue v = plr_block_iter->value();
+        DataBlockIter biter;
+        NewDataBlockIterator<DataBlockIter>(
+            read_options, v.handle, &biter, BlockType::kData, get_context,
+            &lookup_context, Status(), nullptr);
+        biter.SeekToLast();
+        last_key = biter.key();
+      }
+    }
     return;
   }
   assert(!"Input index iterator iiter must be PLRBlockIter");
