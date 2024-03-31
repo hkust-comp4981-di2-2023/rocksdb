@@ -28,6 +28,11 @@ class PLRBlockHelper {
 		model_(nullptr),
 		handle_calculator_(nullptr),
 		num_data_blocks_(num_data_blocks) {
+		// TODO(fyp): If num_data_blocks == 0, it's possible that sstable only
+		// stores info. about deleted data(?) without any data block.
+		// In this case, we may need to make plr block iter do nothing when
+		// num_data_block is 0. But then will iiter still be invoked?
+		assert(num_data_blocks > 0);
 		DecodePLRBlock(data); 
 	}
 

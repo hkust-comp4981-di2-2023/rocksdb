@@ -221,12 +221,6 @@ void PLRBlockIter::SetCurrentIndexValue() {
 	}
 
 	value_.handle = handle;
-
-	// TODO(fyp): What is this??
-	// if (seek_mode_ == SeekMode::kBinarySeek) {
-	// 	// Update the begin_block_ or end_block_, based on current block value.
-	// 	// do nothing currently, unless have time to change SetBeginBlockAsCurrent()
-	// }
 }
 
 // This function updates the seek range correspondingly, such that the 
@@ -324,6 +318,7 @@ Status PLRBlockHelper::PredictBlockRange(const Slice& target,
 	auto range =  model_->GetValue(static_cast<EncodedStrBaseType>(key));
 	assert(range.first <= range.second);
 
+	assert(num_data_blocks_ > 0);
 	begin_block = std::max<uint64_t>(0, 
 																	std::min(num_data_blocks_ - 1, static_cast<uint64_t>(range.first)));
 	end_block = std::max<uint64_t>(0, 
