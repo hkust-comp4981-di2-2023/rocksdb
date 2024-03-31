@@ -3103,7 +3103,7 @@ void BlockBasedTableIterator<TBlockIter, TValue>::SeekImpl(
         if (plr_index_iter->Valid()) {
           block_iter_.SeekToFirst();
         } else {
-          plr_index_iter.SetStatus(Status::NotFound());
+          plr_index_iter->SetStatus(Status::NotFound());
         }
       }
     } else {
