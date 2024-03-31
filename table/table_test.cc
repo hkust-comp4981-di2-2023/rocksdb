@@ -1066,6 +1066,8 @@ class TableTest : public testing::Test {
   void PLRIndexTest(BlockBasedTableOptions table_options, double gamma);
   void PLRIndexTestMoreEntries(BlockBasedTableOptions table_options, 
                                double gamma);
+  void PLRIndexTestManySameUserKeys(BlockBasedTableOptions table_options, 
+                               double gamma);
 
  private:
   std::unique_ptr<InternalKeyComparator> plain_internal_comparator;
@@ -2037,7 +2039,7 @@ void AddInternalKeyForPLR(TableConstructor* c, const std::string& prefix,
                           std::string value_prefix = "v",
                           uint64_t seqno = 0) {
   static Random rnd(1023);
-  static global_seqno = UINT64_MAX >> 8;
+  static uint64_t global_seqno = UINT64_MAX >> 8;
 
   assert(prefix.size() <= 8);
   int suffix_len = 8 - prefix.size();
@@ -2427,17 +2429,17 @@ void TableTest::PLRIndexTestManySameUserKeys(BlockBasedTableOptions table_option
   // keys with prefix length 2/3, make sure the key/value is big enough to fill
   // one block
   AddInternalKeyForPLR(&c, "00050000", data_block_values[0], "v", 100);
-  AddInternalKeyForPLR(&c, "00150000", data_block_values[1], "v", 1000);
-  AddInternalKeyForPLR(&c, "00150000", data_block_values[2], "v", 900);
-  AddInternalKeyForPLR(&c, "00150000", data_block_values[3], "v", 800);
-  AddInternalKeyForPLR(&c, "00150000", data_block_values[4], "v", 700);
-  AddInternalKeyForPLR(&c, "00150000", data_block_values[5], "v", 600);
-  AddInternalKeyForPLR(&c, "00150000", data_block_values[6], "v", 500);
-  AddInternalKeyForPLR(&c, "00150000", data_block_values[7], "v", 400);
-  AddInternalKeyForPLR(&c, "00150000", data_block_values[8], "v", 300);
-  AddInternalKeyForPLR(&c, "00150000", data_block_values[9], "v", 200);
+  AddInternalKeyForPLR(&c, "00150000", data_block_values[1], "v", 10000);
+  AddInternalKeyForPLR(&c, "00150000", data_block_values[2], "v", 9000);
+  AddInternalKeyForPLR(&c, "00150000", data_block_values[3], "v", 8000);
+  AddInternalKeyForPLR(&c, "00150000", data_block_values[4], "v", 7000);
+  AddInternalKeyForPLR(&c, "00150000", data_block_values[5], "v", 6000);
+  AddInternalKeyForPLR(&c, "00150000", data_block_values[6], "v", 5000);
+  AddInternalKeyForPLR(&c, "00150000", data_block_values[7], "v", 4000);
+  AddInternalKeyForPLR(&c, "00150000", data_block_values[8], "v", 3000);
+  AddInternalKeyForPLR(&c, "00150000", data_block_values[9], "v", 2000);
 
-  AddInternalKeyForPLR(&c, "00150000", data_block_values[10], "v", 100);
+  AddInternalKeyForPLR(&c, "00150000", data_block_values[10], "v", 1000);
   AddInternalKeyForPLR(&c, "0135", data_block_values[11], "v", 0);
   AddInternalKeyForPLR(&c, "0154", data_block_values[12], "v", 0);
   AddInternalKeyForPLR(&c, "0155", data_block_values[13], "v", 0);
@@ -2457,7 +2459,7 @@ void TableTest::PLRIndexTestManySameUserKeys(BlockBasedTableOptions table_option
   AddInternalKeyForPLR(&c, "08701234", data_block_values[26], "v", 3000);
   AddInternalKeyForPLR(&c, "08701234", data_block_values[27], "v", 2000);
   AddInternalKeyForPLR(&c, "08701234", data_block_values[28], "v", 1000);
-  AddInternalKeyForPLR(&c, "99887766", data_block_values[29], "v", 0);
+  AddInternalKeyForPLR(&c, "99887766", data_block_values[29], "v", 500);
 
   std::vector<std::string> keys;
   stl_wrappers::KVMap kvmap;
@@ -2582,29 +2584,37 @@ void TableTest::PLRIndexTestManySameUserKeys(BlockBasedTableOptions table_option
 
   // seek same user keys with different seq nos
   std::vector<Slice> seek_keys = {
-    InternalKey("00150000", 1000, kTypeValue).Encode(),
-    InternalKey("00150000", 999, kTypeValue).Encode(),
-    InternalKey("00150000", 901, kTypeValue).Encode(),
-    InternalKey("00150000", 900, kTypeValue).Encode(),
-    InternalKey("00150000", 899, kTypeValue).Encode(),
-    InternalKey("00150000", 800, kTypeValue).Encode(),
-    InternalKey("00150000", 301, kTypeValue).Encode(),
-    InternalKey("00150000", 250, kTypeValue).Encode(),
-    InternalKey("00150000", 101, kTypeValue).Encode(),
+    InternalKey("00150000", 10000, kTypeValue).Encode(),
+    InternalKey("00150000", 9990, kTypeValue).Encode(),
+    InternalKey("00150000", 9010, kTypeValue).Encode(),
+    InternalKey("00150000", 9000, kTypeValue).Encode(),
+    InternalKey("00150000", 8990, kTypeValue).Encode(),
+    InternalKey("00150000", 8000, kTypeValue).Encode(),
+    InternalKey("00150000", 3010, kTypeValue).Encode(),
+    InternalKey("00150000", 2500, kTypeValue).Encode(),
+    InternalKey("00150000", 1010, kTypeValue).Encode(),
     InternalKey("08701234", 114514, kTypeValue).Encode(),
     InternalKey("08701234", 8310, kTypeValue).Encode(),
     InternalKey("08701234", 7210, kTypeValue).Encode(),
+    InternalKey("08701234", 690, kTypeValue).Encode(),
     InternalKey("08701234", 69, kTypeValue).Encode(),
+    InternalKey("08701234", 0, kTypeValue).Encode(),
   };
   std::vector<std::string> sk_answers = {
     data_block_values[1], data_block_values[2], data_block_values[2], 
     data_block_values[2], data_block_values[3], data_block_values[3],
     data_block_values[8], data_block_values[9], data_block_values[10],
     data_block_values[19], data_block_values[21], data_block_values[22],
-    data_block_values[29],
+    data_block_values[29], std::string(""), std::string(""),
   };
   for (size_t i = 0; i < seek_keys.size(); ++i) {
-    index_iter->Seek(seek_keys);
+    index_iter->Seek(seek_keys[i]);
+
+    if (i == 13 || i == 14) {
+      ASSERT_TRUE(!index_iter->Valid());
+      continue;
+    }
+    
     ASSERT_OK(index_iter->status());
     ASSERT_TRUE(index_iter->Valid());
 
