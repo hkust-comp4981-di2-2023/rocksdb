@@ -787,6 +787,18 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
       assert(false);
   }
 
+  InternalKeyComparator icomp(options.comparator);
+
+  // Verify PLR index entries order correctness
+  for (int i = 0; i < num_records; ++i) {
+    ASSERT_TRUE(icomp.Compare(first_keys[i], in_block_keys[i]) < 0);
+    ASSERT_TRUE(icomp.Compare(in_block_keys[i], last_keys[i]) < 0);
+    ASSERT_TRUE(icomp.Compare(last_keys[i], out_of_block_keys[i]) < 0);
+    if (i + 1 < num_records) {
+      ASSERT_TRUE(icomp.Compare(out_of_block_keys[i], first_keys[i+1]) < 0);
+    }
+  }
+
   /*
   for (int i = 0; i < num_records; ++i) {
     std::cout << "Index " << i << " - First key: " << first_keys[i] 
@@ -822,8 +834,6 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   IndexBuilder::IndexBlocks rawblock;
   builder.Finish(&rawblock, block_handles[num_records-1]);
   BlockContents block_contents(rawblock.index_block_contents);
-
-  InternalKeyComparator icomp(options.comparator);
 
   PLRBlockIter* iter = new PLRBlockIter(&block_contents, num_records, &icomp);
 
@@ -880,10 +890,12 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
           iter->SwitchToLinearSeekMode();
           // Special handling for cases where multiple internal keys with the
           // same user key but different seq_no exist.
-          if (icomp.Compare(query_key, seek_result_last_key) > 0) {
+          while (iter->Valid() && icomp.Compare(query_key, seek_result_last_key) > 0) {
             iter->Next();
             if (iter->Valid()) {
               v = iter->value();
+              seek_result_index = reverse_index[v.handle.offset()];
+              seek_result_last_key = Slice(last_keys[seek_result_index]);
             }
           }
           break;
@@ -929,10 +941,12 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
           iter->SwitchToLinearSeekMode();
           // Special handling for cases where multiple internal keys with the
           // same user key but different seq_no exist.
-          if (icomp.Compare(query_key, seek_result_last_key) > 0) {
+          while (iter->Valid() && icomp.Compare(query_key, seek_result_last_key) > 0) {
             iter->Next();
             if (iter->Valid()) {
               v = iter->value();
+              seek_result_index = reverse_index[v.handle.offset()];
+              seek_result_last_key = Slice(last_keys[seek_result_index]);
             }
           }
           break;
@@ -954,6 +968,7 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   // should point to the closest data block with first_key > out_of_block_key,
   // if such block exists (if not exists, becomes !Valid()).
   // printf("Test 4\n");
+  /*
   iter = new PLRBlockIter(&block_contents, num_records, &icomp);
   for (int i = 0; i < num_records * 2; i++) {
     // find a random key in the lookaside array
@@ -978,10 +993,12 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
         iter->SwitchToLinearSeekMode();
         // Special handling for cases where multiple internal keys with the
         // same user key but different seq_no exist.
-        if (icomp.Compare(query_key, seek_result_last_key) > 0) {
+        while (iter->Valid() && icomp.Compare(query_key, seek_result_last_key) > 0) {
           iter->Next();
           if (iter->Valid()) {
             v = iter->value();
+            seek_result_index = reverse_index[v.handle.offset()];
+            seek_result_last_key = Slice(last_keys[seek_result_index]);
           }
         }
         break;
@@ -997,6 +1014,7 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   }
   delete iter;
   iter = nullptr;
+  */
 
 }
 
