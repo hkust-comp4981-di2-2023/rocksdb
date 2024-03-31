@@ -3092,10 +3092,17 @@ void BlockBasedTableIterator<TBlockIter, TValue>::SeekImpl(
 
           // Internal key comparison: target > data_block_last_key
           plr_index_iter->Next();
+          if (!plr_index_iter->Valid()) {
+            break;
+          }
+
           InitDataBlock();
           prev_block_offset_ = index_iter_->value().handle.offset();
         }
-        block_iter_.SeekToFirst();
+
+        if (plr_index_iter->Valid()) {
+          block_iter_.SeekToFirst();
+        }
       }
     } else {
       index_iter_->SeekToFirst();
@@ -3236,6 +3243,10 @@ void BlockBasedTableIterator<TBlockIter, TValue>::SeekForPrev(
       if (icomp_.Compare(target, data_block_first_key) < 0) {
         // target < data_block_first_key
         plr_index_iter->Prev();
+        if (!plr_index_iter->Valid()) {
+          break;
+        }
+
         InitDataBlock();
         prev_block_offset_ = index_iter_->value().handle.offset();
         if (break_at_prev) {
@@ -3254,6 +3265,10 @@ void BlockBasedTableIterator<TBlockIter, TValue>::SeekForPrev(
       // Next().
       break_at_prev = true;
       plr_index_iter->Next();
+      if (!plr_index_iter->Valid()) {
+        break;
+      }
+      
       InitDataBlock();
       prev_block_offset_ = index_iter_->value().handle.offset();
     }
