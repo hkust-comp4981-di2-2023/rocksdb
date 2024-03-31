@@ -5015,16 +5015,20 @@ void BlockBasedTable::SetUpPLRBlockIterAfterInitialSeek(const Slice& key,
     // We call Next() and UpdateBinarySeekRange() until the correct block 
     // is found.
     PLRBlockIter* plr_block_iter = reinterpret_cast<PLRBlockIter*>(iiter);
-    DataBlockIter biter;
+    Slice first_key, last_key;
+
     while (plr_block_iter->Valid()) {
+      DataBlockIter biter;
       IndexValue v = plr_block_iter->value();
       NewDataBlockIterator<DataBlockIter>(
           read_options, v.handle, &biter, BlockType::kData, get_context,
           &lookup_context, Status(), nullptr);
+      
       biter.SeekToFirst();
-      auto first_key = biter.key();
+      first_key = biter.key();
       biter.SeekToLast();
-      auto last_key = biter.key();
+      last_key = biter.key();
+
       plr_block_iter->UpdateBinarySeekRange(key, first_key, last_key);
 
       if (plr_block_iter->IsLastBinarySeek()) {
@@ -5037,9 +5041,9 @@ void BlockBasedTable::SetUpPLRBlockIterAfterInitialSeek(const Slice& key,
     assert(plr_block_iter->Valid());
 
     // Move current_ until key.seqno >= some seqno in the data block.
-    auto last_key = biter.key();
     while (plr_block_iter->Valid() && 
             rep_->internal_comparator.Compare(key, last_key) > 0) {
+      DataBlockIter biter;
       plr_block_iter->Next();
       if (plr_block_iter->Valid()) {
         IndexValue v = plr_block_iter->value();
