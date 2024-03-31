@@ -5017,6 +5017,32 @@ void BlockBasedTable::SetUpPLRBlockIterAfterInitialSeek(const Slice& key,
     PLRBlockIter* plr_block_iter = reinterpret_cast<PLRBlockIter*>(iiter);
     Slice first_key, last_key;
 
+    plr_block_iter->SeekToFirst();
+    while (plr_block_iter->Valid()) {
+      DataBlockIter biter;
+      IndexValue v = plr_block_iter->value();
+      NewDataBlockIterator<DataBlockIter>(
+          read_options, v.handle, &biter, BlockType::kData, get_context,
+          &lookup_context, Status(), nullptr);
+      
+      biter.SeekToFirst();
+      first_key = biter.key();
+      biter.SeekToLast();
+      last_key = biter.key();
+
+      if (rep_->internal_comparator.Compare(first_key, key) <= 0 &&
+              rep_->internal_comparator.Compare(key, last_key) <= 0) {
+        break;
+      }
+
+      if (rep_->internal_comparator.Compare(key, last_key) > 0) {
+        plr_block_iter->Next();
+        continue;
+      }
+
+      break;
+    }
+    /*
     while (plr_block_iter->Valid()) {
       DataBlockIter biter;
       IndexValue v = plr_block_iter->value();
@@ -5039,7 +5065,7 @@ void BlockBasedTable::SetUpPLRBlockIterAfterInitialSeek(const Slice& key,
       plr_block_iter->Next();
     }
     assert(plr_block_iter->Valid());
-
+    */
     // Move current_ until key.seqno >= some seqno in the data block.
     /*
     while (plr_block_iter->Valid() && 
@@ -5060,6 +5086,7 @@ void BlockBasedTable::SetUpPLRBlockIterAfterInitialSeek(const Slice& key,
             (rep_->internal_comparator.Compare(first_key, key) <= 0 &&
              rep_->internal_comparator.Compare(key, last_key) <= 0));
     */
+    /*
     bool break_at_prev = false;
     while (plr_block_iter->Valid() && 
             !(rep_->internal_comparator.Compare(first_key, key) <= 0 &&
@@ -5098,6 +5125,7 @@ void BlockBasedTable::SetUpPLRBlockIterAfterInitialSeek(const Slice& key,
         }
       }
     }
+    */
     return;
   }
   assert(!"Input index iterator iiter must be PLRBlockIter");
