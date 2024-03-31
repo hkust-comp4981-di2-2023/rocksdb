@@ -5041,6 +5041,7 @@ void BlockBasedTable::SetUpPLRBlockIterAfterInitialSeek(const Slice& key,
     assert(plr_block_iter->Valid());
 
     // Move current_ until key.seqno >= some seqno in the data block.
+    /*
     while (plr_block_iter->Valid() && 
             rep_->internal_comparator.Compare(key, last_key) > 0) {
       DataBlockIter biter;
@@ -5058,6 +5059,45 @@ void BlockBasedTable::SetUpPLRBlockIterAfterInitialSeek(const Slice& key,
     assert(!plr_block_iter->Valid() ||
             (rep_->internal_comparator.Compare(first_key, key) <= 0 &&
              rep_->internal_comparator.Compare(key, last_key) <= 0));
+    */
+    bool break_at_prev = false;
+    while (plr_block_iter->Valid() && 
+            !(rep_->internal_comparator.Compare(first_key, key) <= 0 &&
+              rep_->internal_comparator.Compare(key, last_key) <= 0)) {
+      DataBlockIter biter;
+      if (rep_->internal_comparator.Compare(key, last_key) > 0) {
+        break_at_prev = true;
+        plr_block_iter->Next();
+        if (plr_block_iter->Valid()) {
+          IndexValue v = plr_block_iter->value();
+          NewDataBlockIterator<DataBlockIter>(
+              read_options, v.handle, &biter, BlockType::kData, get_context,
+              &lookup_context, Status(), nullptr);
+          biter.SeekToLast();
+          first_key = biter.key(); // for debug purpose
+          last_key = biter.key();
+        }
+      }
+      else if (rep_->internal_comparator.Compare(first_key, key) > 0) {
+        plr_block_iter->Prev();
+        if (plr_block_iter->Valid()) {
+          IndexValue v = plr_block_iter->value();
+          NewDataBlockIterator<DataBlockIter>(
+              read_options, v.handle, &biter, BlockType::kData, get_context,
+              &lookup_context, Status(), nullptr);
+          biter.SeekToLast();
+          first_key = biter.key(); // for debug purpose
+          last_key = biter.key();
+        } else {
+          plr_block_iter->SeekToFirst();
+          break;
+        }
+
+        if (break_at_prev) {
+          break;
+        }
+      }
+    }
     return;
   }
   assert(!"Input index iterator iiter must be PLRBlockIter");
