@@ -2525,12 +2525,12 @@ void TableTest::PLRIndexTestManySameUserKeys(BlockBasedTableOptions table_option
   }
 
   // find the first_keys of prefixes
-  std::vector<std::string> upper_bound = {keys[1], keys[2], keys[12], 
-                                          keys[20], std::string("")};
+  std::vector<std::string> upper_bound = {keys[1], keys[11], keys[19], 
+                                          keys[29], std::string("")};
   std::vector<std::string> ub_answers = {data_block_values[1], 
-                                         data_block_values[2], 
-                                         data_block_values[12], 
-                                         data_block_values[20],
+                                         data_block_values[11], 
+                                         data_block_values[19], 
+                                         data_block_values[29],
                                          std::string("")};
 
   for (size_t i = 0; i < prefixes.size(); ++i) {
