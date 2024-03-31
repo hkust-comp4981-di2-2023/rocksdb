@@ -2464,7 +2464,7 @@ void TableTest::PLRIndexTestManySameUserKeys(BlockBasedTableOptions table_option
   std::vector<std::string> keys;
   stl_wrappers::KVMap kvmap;
   Options options;
-  options.prefix_extractor.reset(NewFixedPrefixTransform(3));
+  options.prefix_extractor.reset(NewFixedPrefixTransform(4));
   table_options.block_size = 1700;
   table_options.block_cache = NewLRUCache(1024, 4);
   table_options.plr_index_block_gamma = gamma;
@@ -2583,38 +2583,33 @@ void TableTest::PLRIndexTestManySameUserKeys(BlockBasedTableOptions table_option
   }
 
   // seek same user keys with different seq nos
-  std::vector<Slice> seek_keys = {
-    InternalKey("00150000", 10000, kTypeValue).Encode(),
-    InternalKey("00150000", 9990, kTypeValue).Encode(),
-    InternalKey("00150000", 9010, kTypeValue).Encode(),
-    InternalKey("00150000", 9000, kTypeValue).Encode(),
-    InternalKey("00150000", 8990, kTypeValue).Encode(),
-    InternalKey("00150000", 8000, kTypeValue).Encode(),
-    InternalKey("00150000", 3010, kTypeValue).Encode(),
-    InternalKey("00150000", 2500, kTypeValue).Encode(),
-    InternalKey("00150000", 1010, kTypeValue).Encode(),
-    InternalKey("08701234", 114514, kTypeValue).Encode(),
-    InternalKey("08701234", 8310, kTypeValue).Encode(),
-    InternalKey("08701234", 7210, kTypeValue).Encode(),
-    InternalKey("08701234", 690, kTypeValue).Encode(),
-    InternalKey("08701234", 69, kTypeValue).Encode(),
-    InternalKey("08701234", 0, kTypeValue).Encode(),
+  std::vector<InternalKey> seek_keys = {
+    InternalKey("00150000", 10000, kTypeValue),
+    InternalKey("00150000", 9990, kTypeValue),
+    InternalKey("00150000", 9010, kTypeValue),
+    InternalKey("00150000", 9000, kTypeValue),
+    InternalKey("00150000", 8990, kTypeValue),
+    InternalKey("00150000", 8000, kTypeValue),
+    InternalKey("00150000", 3010, kTypeValue),
+    InternalKey("00150000", 2500, kTypeValue),
+    InternalKey("00150000", 1010, kTypeValue),
+    InternalKey("08701234", 114514, kTypeValue),
+    InternalKey("08701234", 8310, kTypeValue),
+    InternalKey("08701234", 7210, kTypeValue),
+    InternalKey("08701234", 1690, kTypeValue),
+    InternalKey("08701234", 69, kTypeValue),
+    InternalKey("08701234", 0, kTypeValue),
   };
   std::vector<std::string> sk_answers = {
     data_block_values[1], data_block_values[2], data_block_values[2], 
     data_block_values[2], data_block_values[3], data_block_values[3],
     data_block_values[8], data_block_values[9], data_block_values[10],
     data_block_values[19], data_block_values[21], data_block_values[22],
-    data_block_values[29], std::string(""), std::string(""),
+    data_block_values[28], data_block_values[29], data_block_values[29],
   };
   for (size_t i = 0; i < seek_keys.size(); ++i) {
-    index_iter->Seek(seek_keys[i]);
+    index_iter->Seek(seek_keys[i].Encode());
 
-    if (i == 13 || i == 14) {
-      ASSERT_TRUE(!index_iter->Valid());
-      continue;
-    }
-    
     ASSERT_OK(index_iter->status());
     ASSERT_TRUE(index_iter->Valid());
 
