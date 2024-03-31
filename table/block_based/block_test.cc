@@ -880,12 +880,12 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
           iter->SwitchToLinearSeekMode();
           // Special handling for cases where multiple internal keys with the
           // same user key but different seq_no exist.
-          // while (icomp.Compare(query_key, seek_result_last_key) > 0) {
-          //   iter->Next();
-          //   v = iter->value();
-          //   seek_result_index = reverse_index[v.handle.offset()];
-          //   seek_result_last_key= Slice(last_keys[seek_result_index]);
-          // }
+          if (icomp.Compare(query_key, seek_result_last_key) > 0) {
+            iter->Next();
+            if (iter->Valid()) {
+              v = iter->value();
+            }
+          }
           break;
         }
         iter->Next();
@@ -929,12 +929,12 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
           iter->SwitchToLinearSeekMode();
           // Special handling for cases where multiple internal keys with the
           // same user key but different seq_no exist.
-          // while (icomp.Compare(query_key, seek_result_last_key) > 0) {
-          //   iter->Next();
-          //   v = iter->value();
-          //   seek_result_index = reverse_index[v.handle.offset()];
-          //   seek_result_last_key= Slice(last_keys[seek_result_index]);
-          // }
+          if (icomp.Compare(query_key, seek_result_last_key) > 0) {
+            iter->Next();
+            if (iter->Valid()) {
+              v = iter->value();
+            }
+          }
           break;
         }
         iter->Next();
@@ -982,8 +982,6 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
           iter->Next();
           if (iter->Valid()) {
             v = iter->value();
-            seek_result_index = reverse_index[v.handle.offset()];
-            seek_result_first_key = Slice(first_keys[seek_result_index]);
           }
         }
         break;
