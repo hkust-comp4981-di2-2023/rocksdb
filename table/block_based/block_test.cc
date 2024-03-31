@@ -960,7 +960,6 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   // should point to the closest data block with first_key > out_of_block_key,
   // if such block exists (if not exists, becomes !Valid()).
   // printf("Test 4\n");
-  /*
   iter = new PLRBlockIter(&block_contents, num_records, &icomp);
   for (int i = 0; i < num_records * 2; i++) {
     // find a random key in the lookaside array
@@ -1008,7 +1007,6 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   }
   delete iter;
   iter = nullptr;
-  */
 
 }
 
