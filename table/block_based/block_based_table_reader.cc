@@ -5017,7 +5017,8 @@ void BlockBasedTable::SetUpPLRBlockIterAfterInitialSeek(const Slice& key,
     PLRBlockIter* plr_block_iter = reinterpret_cast<PLRBlockIter*>(iiter);
     Slice first_key, last_key;
 
-    plr_block_iter->SeekToFirst();
+    plr_block_iter->SeekBeginBlock();
+    plr_block_iter->SwitchToLinearSeekMode();
     while (plr_block_iter->Valid()) {
       DataBlockIter biter;
       IndexValue v = plr_block_iter->value();

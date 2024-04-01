@@ -324,8 +324,8 @@ Status PLRBlockHelper::PredictBlockRange(const Slice& target,
 	end_block = std::max<uint64_t>(0, 
 																	std::min(num_data_blocks_ - 1, static_cast<uint64_t>(range.second)));
 	// TODO(fyp): debug only:
-	begin_block = 0;
-	end_block = num_data_blocks_ - 1;
+	// begin_block = 0;
+	// end_block = num_data_blocks_ - 1;
 	return Status::OK();
 }
 
