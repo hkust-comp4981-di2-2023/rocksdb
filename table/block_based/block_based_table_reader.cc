@@ -3082,6 +3082,7 @@ void BlockBasedTableIterator<TBlockIter, TValue>::SeekImpl(
           block_iter_.SeekToLast();
           Slice data_block_last_key = block_iter_.key();
 
+          // TODO(fyp): If incorrect, enable sth similar to the following:
           // if (icomp_.Compare(*target, data_block_first_key) <= 0) {
           //   break;
           // }
@@ -3124,6 +3125,7 @@ void BlockBasedTableIterator<TBlockIter, TValue>::SeekImpl(
   if (!v.first_internal_key.empty() && !same_block &&
       (!target || icomp_.Compare(*target, v.first_internal_key) <= 0) &&
       read_options_.read_tier != kBlockCacheTier) {
+    assert(!plr_index_iter);
     // Index contains the first key of the block, and it's >= target.
     // We can defer reading the block.
     is_at_first_key_from_index_ = true;
@@ -3269,7 +3271,13 @@ void BlockBasedTableIterator<TBlockIter, TValue>::SeekForPrev(
       break_at_prev = true;
       plr_index_iter->Next();
       if (!plr_index_iter->Valid()) {
-        plr_index_iter->SetStatus(Status::NotFound());
+        // We are trying to Next() to approach the closest data block with key
+        // <= target. But unfortunately, the previous Next() yields !Valid().
+        // This means before Next(), we are already closest to target.
+        // So SeekToLast().
+        plr_index_iter->SeekToLast();
+        InitDataBlock();
+        prev_block_offset_ = index_iter_->value().handle.offset();
         break;
       }
 
@@ -3330,6 +3338,8 @@ void BlockBasedTableIterator<TBlockIter, TValue>::SeekToLast() {
 template <class TBlockIter, typename TValue>
 void BlockBasedTableIterator<TBlockIter, TValue>::Next() {
   if (is_at_first_key_from_index_ && !MaterializeCurrentBlock()) {
+    assert(table_->get_rep()->index_type !=
+           BlockBasedTableOptions::kLearnedIndexWithPLR);
     return;
   }
   assert(block_iter_points_to_real_block_);
@@ -3353,6 +3363,8 @@ bool BlockBasedTableIterator<TBlockIter, TValue>::NextAndGetResult(
 template <class TBlockIter, typename TValue>
 void BlockBasedTableIterator<TBlockIter, TValue>::Prev() {
   if (is_at_first_key_from_index_) {
+    assert(table_->get_rep()->index_type !=
+           BlockBasedTableOptions::kLearnedIndexWithPLR);
     is_at_first_key_from_index_ = false;
 
     index_iter_->Prev();
@@ -3444,6 +3456,7 @@ void BlockBasedTableIterator<TBlockIter, TValue>::InitDataBlock() {
       block_iter_.SeekToLast();
       assert(block_iter_.Valid());
       reinterpret_cast<PLRBlockIter*>(index_iter_)->SetKey(block_iter_.key());
+      block_iter_.SeekToFirst();
     }
 
     CheckDataBlockWithinUpperBound();
@@ -3530,11 +3543,15 @@ void BlockBasedTableIterator<TBlockIter, TValue>::FindBlockForward() {
     if (!v.first_internal_key.empty() &&
         read_options_.read_tier != kBlockCacheTier) {
       // Index contains the first key of the block. Defer reading the block.
+      assert(table_->get_rep()->index_type !=
+             BlockBasedTableOptions::kLearnedIndexWithPLR);
       is_at_first_key_from_index_ = true;
       return;
     }
 
     InitDataBlock();
+    // TODO(fyp): Remove if bugged.
+    prev_block_offset_ = index_iter_->value().handle.offset();
     block_iter_.SeekToFirst();
   } while (!block_iter_.Valid());
 }
@@ -3551,6 +3568,8 @@ void BlockBasedTableIterator<TBlockIter, TValue>::FindKeyBackward() {
 
     if (index_iter_->Valid()) {
       InitDataBlock();
+      // TODO(fyp): Remove if bugged.
+      prev_block_offset_ = index_iter_->value().handle.offset();
       block_iter_.SeekToLast();
     } else {
       return;
