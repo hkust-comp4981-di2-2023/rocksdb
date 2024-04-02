@@ -4,10 +4,10 @@ namespace ROCKSDB_NAMESPACE {
 
 bool PLRBlockIter::Valid() const {
 	if (current_ == invalid_block_number_) {
-		op_logs += "Valid();";
+		op_logs.append("Valid();");
 	}
 	else {
-		op_logs += "InValid();";
+		op_logs.append("InValid();");
 	}
 	return current_ != invalid_block_number_;
 }
@@ -102,7 +102,7 @@ void PLRBlockIter::Seek(const Slice& target) {
 	
 	Slice seek_key = ExtractUserKey(target);
 	for (size_t idx = 0; idx < seek_key.size(); ++idx) {
-		op_logs += std::to_string((unsigned int) ((unsigned char) seek_key[idx])) + ";"
+		op_logs += std::to_string((unsigned int) ((unsigned char) seek_key[idx])) + ";";
 	}
 	op_logs += "):[";
 
@@ -210,12 +210,12 @@ void PLRBlockIter::Prev() {
 Slice PLRBlockIter::key() const {
 	assert(Valid());
 	if (is_key_set_) {
-		op_logs += "key()[";
+		op_logs.append("key()[");
 		Slice k = key_.GetKey();
 		for (size_t idx = 0; idx < k.size(); ++idx) {
-			op_logs += std::to_string((unsigned int) ((unsigned char) k[idx])) + ";"
+			op_logs.append(std::to_string((unsigned int) ((unsigned char) k[idx])) + ";");
 		}
-		op_logs += "];";
+		op_logs.append("];");
 		return key_.GetKey();
 	}
 	return Slice(key_extraction_not_supported_);
