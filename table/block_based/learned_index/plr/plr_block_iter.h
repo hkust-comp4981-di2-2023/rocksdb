@@ -241,7 +241,7 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 	const InternalKeyComparator* internal_key_comparator_;
 	Status status_;
 
-	std::string op_logs;
+	mutable std::string op_logs;
 
 	std::unique_ptr<PLRBlockHelper> helper_;
 
