@@ -11,6 +11,8 @@
 #pragma once
 #include "db_stress_tool/db_stress_common.h"
 #include "db_stress_tool/db_stress_shared_state.h"
+// TODO(fyp): Remove this with VerifyIterator() additional logic
+#include "table/block_based/learned_index/plr/plr_block_iter.h"
 
 namespace ROCKSDB_NAMESPACE {
 class Transaction;

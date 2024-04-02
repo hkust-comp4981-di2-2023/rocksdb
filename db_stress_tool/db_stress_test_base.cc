@@ -1123,6 +1123,12 @@ void StressTest::VerifyIterator(ThreadState* thread,
         } else {
           fprintf(stderr, "iterator is not valid\n");
         }
+        // TODO(fyp): Remove this
+        PLRBlockIter* plr_block_iter = dynamic_cast<PLRBlockIter*>(iter);
+        if (plr_block_iter != nullptr) {
+          fprintf(stderr, "plr block iter has op_logs:{%s}\n", 
+                  plr_block_iter->GetOpLogs());
+        }
         *diverged = true;
       }
     }

@@ -92,6 +92,7 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 		value_(),
 		internal_key_comparator_(internal_key_comparator),
 		status_(),
+		op_logs(),
 		helper_(std::unique_ptr<PLRBlockHelper>(
 			new PLRBlockHelper(num_data_blocks, data_)))
 		{
@@ -198,6 +199,8 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 
 	void SetStatus(Status s) { status_ = s; }
 
+	std::string GetOpLogs() { return op_logs; }
+
  private:
 	enum class SeekMode : char {
 		kUnknown = 0x00,
@@ -238,6 +241,8 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 	const InternalKeyComparator* internal_key_comparator_;
 	Status status_;
 
+	std::string op_logs;
+
 	std::unique_ptr<PLRBlockHelper> helper_;
 
 	inline bool IsLastLinearSeek() const {
@@ -250,6 +255,7 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 
 	inline void SetBeginBlockAsCurrent() {
 		begin_block_ = current_ + 1;
+		op_logs += "SetBeginBlockAsCurrent();";
 	}
 
 	inline void SetEndBlockAsCurrent() {
@@ -264,6 +270,7 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 		else {
 			end_block_ = current_ - 1;
 		}
+		op_logs += "SetEndBlockAsCurrent();";
 	}
 
 	void SetCurrentIndexValue();
