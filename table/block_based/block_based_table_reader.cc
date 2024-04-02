@@ -3327,12 +3327,12 @@ void BlockBasedTableIterator<TBlockIter, TValue>::SeekForPrev(
       block_iter_.SeekToLast();
       Slice data_block_last_key = block_iter_.key();
 
-      if (icomp_.Compare(data_block_first_key, *target) <= 0 &&
-          icomp_.Compare(*target, data_block_last_key) <= 0) {
+      if (icomp_.Compare(data_block_first_key, target) <= 0 &&
+          icomp_.Compare(target, data_block_last_key) <= 0) {
         break;
       }
 
-      if (icomp_.Compare(*target, data_block_last_key) > 0) {
+      if (icomp_.Compare(target, data_block_last_key) > 0) {
         plr_index_iter->Next();
         continue;
       }
@@ -3357,12 +3357,12 @@ void BlockBasedTableIterator<TBlockIter, TValue>::SeekForPrev(
       block_iter_.SeekToLast();
       Slice data_block_last_key = block_iter_.key();
 
-      if (icomp_.Compare(data_block_first_key, *target) <= 0 &&
-          icomp_.Compare(*target, data_block_last_key) <= 0) {
+      if (icomp_.Compare(data_block_first_key, target) <= 0 &&
+          icomp_.Compare(target, data_block_last_key) <= 0) {
         break;
       }
 
-      if (icomp_.Compare(data_block_first_key, *target) > 0) {
+      if (icomp_.Compare(data_block_first_key, target) > 0) {
         plr_index_iter->Prev();
         continue;
       }
