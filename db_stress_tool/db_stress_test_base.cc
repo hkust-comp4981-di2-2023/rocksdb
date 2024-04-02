@@ -938,6 +938,7 @@ Status StressTest::TestIterate(ThreadState* thread,
                    last_op, key, op_logs, &diverged);
     
     // TODO(fyp): Remove this
+    /*
     if (diverged) {
       fprintf(stderr, 
               "Diverged after checkpoint 1: {iter->key()=%s} "
@@ -946,6 +947,7 @@ Status StressTest::TestIterate(ThreadState* thread,
               cmp_iter->Valid() ? cmp_iter->key().ToString(true).c_str() : "Invalid()",
               op_logs.c_str());
     }
+    */
 
     bool no_reverse =
         (FLAGS_memtablerep == "prefix_hash" && !expect_total_order);
@@ -970,6 +972,7 @@ Status StressTest::TestIterate(ThreadState* thread,
                      cmp_iter.get(), last_op, key, op_logs, &diverged);
     }
 
+    /*
     if (diverged) {
       fprintf(stderr, 
               "Diverged after checkpoint 2: {iter->key()=%s} "
@@ -978,6 +981,7 @@ Status StressTest::TestIterate(ThreadState* thread,
               cmp_iter->Valid() ? cmp_iter->key().ToString(true).c_str() : "Invalid()",
               op_logs.c_str());
     }
+    */
 
     if (s.ok()) {
       thread->stats.AddIterations(1);
