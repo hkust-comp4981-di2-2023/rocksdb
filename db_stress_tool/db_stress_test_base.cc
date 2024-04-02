@@ -936,6 +936,11 @@ Status StressTest::TestIterate(ThreadState* thread,
     }
     VerifyIterator(thread, cmp_cfh, readoptionscopy, iter.get(), cmp_iter.get(),
                    last_op, key, op_logs, &diverged);
+    
+    // TODO(fyp): Remove this
+    if (diverged) {
+      fprintf(stderr, "Diverged after checkpoint 1: {%s}\n", op_logs.c_str());
+    }
 
     bool no_reverse =
         (FLAGS_memtablerep == "prefix_hash" && !expect_total_order);
@@ -958,6 +963,10 @@ Status StressTest::TestIterate(ThreadState* thread,
       last_op = kLastOpNextOrPrev;
       VerifyIterator(thread, cmp_cfh, readoptionscopy, iter.get(),
                      cmp_iter.get(), last_op, key, op_logs, &diverged);
+    }
+
+    if (diverged) {
+      fprintf(stderr, "Diverged after checkpoint 2: {%s}\n", op_logs.c_str());
     }
 
     if (s.ok()) {
@@ -1122,12 +1131,6 @@ void StressTest::VerifyIterator(ThreadState* thread,
                   iter->key().ToString(true).c_str());
         } else {
           fprintf(stderr, "iterator is not valid\n");
-        }
-        // TODO(fyp): Remove this
-        PLRBlockIter* plr_block_iter = dynamic_cast<PLRBlockIter*>(iter);
-        if (plr_block_iter != nullptr) {
-          fprintf(stderr, "plr block iter has op_logs:{%s}\n", 
-                  plr_block_iter->GetOpLogs().c_str());
         }
         *diverged = true;
       }
