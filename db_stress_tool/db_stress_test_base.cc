@@ -1127,7 +1127,7 @@ void StressTest::VerifyIterator(ThreadState* thread,
         PLRBlockIter* plr_block_iter = dynamic_cast<PLRBlockIter*>(iter);
         if (plr_block_iter != nullptr) {
           fprintf(stderr, "plr block iter has op_logs:{%s}\n", 
-                  plr_block_iter->GetOpLogs());
+                  plr_block_iter->GetOpLogs().c_str());
         }
         *diverged = true;
       }
