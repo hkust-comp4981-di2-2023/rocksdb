@@ -939,7 +939,12 @@ Status StressTest::TestIterate(ThreadState* thread,
     
     // TODO(fyp): Remove this
     if (diverged) {
-      fprintf(stderr, "Diverged after checkpoint 1: {%s}\n", op_logs.c_str());
+      fprintf(stderr, 
+              "Diverged after checkpoint 1: {iter->key()=%s} "
+              "{cmp_iter->key=()%s} {%s}\n",
+              iter->Valid() ? iter->key().ToString(true).c_str() : "Invalid()",
+              cmp_iter->Valid() ? cmp_iter->key().ToString(true).c_str() : "Invalid()",
+              op_logs.c_str());
     }
 
     bool no_reverse =
@@ -966,7 +971,12 @@ Status StressTest::TestIterate(ThreadState* thread,
     }
 
     if (diverged) {
-      fprintf(stderr, "Diverged after checkpoint 2: {%s}\n", op_logs.c_str());
+      fprintf(stderr, 
+              "Diverged after checkpoint 2: {iter->key()=%s} "
+              "{cmp_iter->key=()%s} {%s}\n",
+              iter->Valid() ? iter->key().ToString(true).c_str() : "Invalid()",
+              cmp_iter->Valid() ? cmp_iter->key().ToString(true).c_str() : "Invalid()",
+              op_logs.c_str());
     }
 
     if (s.ok()) {

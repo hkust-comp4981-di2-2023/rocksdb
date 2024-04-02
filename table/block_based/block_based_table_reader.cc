@@ -3051,6 +3051,7 @@ void BlockBasedTableIterator<TBlockIter, TValue>::SeekImpl(
         // Method 2: Linear seek, materialize and start from begin_block_.
         //
         // We pick method 1 for now.
+        /*
         while (plr_index_iter->Valid()) {
           // InitDataBlock() will set block_iter_points_to_real_block_ to true
           // and invoke plr_index_iter->SetKey().
@@ -3099,6 +3100,32 @@ void BlockBasedTableIterator<TBlockIter, TValue>::SeekImpl(
 
           InitDataBlock();
           prev_block_offset_ = index_iter_->value().handle.offset();
+        }
+        */
+        plr_index_iter->SeekBeginBlock();
+        plr_index_iter->SwitchToLinearSeekMode();
+        while (plr_index_iter->Valid()) {
+          // InitDataBlock() will set block_iter_points_to_real_block_ to true
+          // and invoke plr_index_iter->SetKey().
+          InitDataBlock();
+          prev_block_offset_ = index_iter_->value().handle.offset();
+
+          block_iter_.SeekToFirst();
+          Slice data_block_first_key = block_iter_.key();
+          block_iter_.SeekToLast();
+          Slice data_block_last_key = block_iter_.key();
+
+          if (icomp_.Compare(data_block_first_key, *target) <= 0 &&
+              icomp_.Compare(*target, data_block_last_key) <= 0) {
+            break;
+          }
+
+          if (icomp_.Compare(*target, data_block_last_key) > 0) {
+            plr_index_iter->Next();
+            continue;
+          }
+
+          break;
         }
 
         if (plr_index_iter->Valid()) {
@@ -3206,6 +3233,7 @@ void BlockBasedTableIterator<TBlockIter, TValue>::SeekForPrev(
   if (plr_index_iter) {
     // Note(fyp): If index type is plr index, special treatment is needed.
     // Similar to Seek().
+    /*
     while (plr_index_iter->Valid()) {
       // InitDataBlock() will set block_iter_points_to_real_block_ to true
       // and invoke plr_index_iter->SetKey().
@@ -3283,6 +3311,67 @@ void BlockBasedTableIterator<TBlockIter, TValue>::SeekForPrev(
 
       InitDataBlock();
       prev_block_offset_ = index_iter_->value().handle.offset();
+    }
+    */
+    plr_index_iter->SeekEndBlock();
+    plr_index_iter->SwitchToLinearSeekMode();
+    // Next() if needed.
+    while (plr_index_iter->Valid()) {
+      // InitDataBlock() will set block_iter_points_to_real_block_ to true
+      // and invoke plr_index_iter->SetKey().
+      InitDataBlock();
+      prev_block_offset_ = index_iter_->value().handle.offset();
+
+      block_iter_.SeekToFirst();
+      Slice data_block_first_key = block_iter_.key();
+      block_iter_.SeekToLast();
+      Slice data_block_last_key = block_iter_.key();
+
+      if (icomp_.Compare(data_block_first_key, *target) <= 0 &&
+          icomp_.Compare(*target, data_block_last_key) <= 0) {
+        break;
+      }
+
+      if (icomp_.Compare(*target, data_block_last_key) > 0) {
+        plr_index_iter->Next();
+        continue;
+      }
+
+      break;
+    }
+    // Adjust to point to last data block,
+    // because target > all keys in all data blocks.
+    if (!plr_index_iter->Valid()) {
+      plr_index_iter->SeekToLast();
+    }
+
+    // Prev() if needed.
+    while (plr_index_iter->Valid()) {
+      // InitDataBlock() will set block_iter_points_to_real_block_ to true
+      // and invoke plr_index_iter->SetKey().
+      InitDataBlock();
+      prev_block_offset_ = index_iter_->value().handle.offset();
+
+      block_iter_.SeekToFirst();
+      Slice data_block_first_key = block_iter_.key();
+      block_iter_.SeekToLast();
+      Slice data_block_last_key = block_iter_.key();
+
+      if (icomp_.Compare(data_block_first_key, *target) <= 0 &&
+          icomp_.Compare(*target, data_block_last_key) <= 0) {
+        break;
+      }
+
+      if (icomp_.Compare(data_block_first_key, *target) > 0) {
+        plr_index_iter->Prev();
+        continue;
+      }
+
+      break;
+    }
+    // target < all keys in all data blocks, so NotFound().
+    if (!plr_index_iter->Valid()) {
+      plr_index_iter->SetStatus(Status::NotFound());
     }
   }
 
