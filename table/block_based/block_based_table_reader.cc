@@ -4318,11 +4318,11 @@ void BlockBasedTable::MultiGet(const ReadOptions& read_options,
         }
       } while (iiter->Valid());
 
-      if (!first_block) {
-        // Note(fyp): If we reused or initialized next_biter in this iteration,
-        // we will try to reuse next_biter in the next iterations if needed.
-        is_last_plr_biter_set = true;
-      }
+      // if (!first_block) {
+      //   // Note(fyp): If we reused or initialized next_biter in this iteration,
+      //   // we will try to reuse next_biter in the next iterations if needed.
+      //   is_last_plr_biter_set = true;
+      // }
 
       if (matched && filter != nullptr && !filter->IsBlockBased()) {
         RecordTick(rep_->ioptions.statistics, BLOOM_FILTER_FULL_TRUE_POSITIVE);
