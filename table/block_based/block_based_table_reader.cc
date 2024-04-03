@@ -4058,10 +4058,15 @@ void BlockBasedTable::MultiGet(const ReadOptions& read_options,
 
       for (auto miter = data_block_range.begin();
            miter != data_block_range.end(); ++miter) {
-        // Note(fyp): This loop prepares the block cache for later Seek().
-        // Let's not modify anything for PLR index for now.
         const Slice& key = miter->ikey;
         iiter->Seek(miter->ikey);
+
+        // Note(fyp): This loop prepares the block cache for later Seek().
+        // Let's cache the begin_block_ for now.
+        // if (rep_->index_type == 
+        //           BlockBasedTableOptions::IndexType::kLearnedIndexWithPLR) {
+        //   reinterpret_cast<PLRBlockIter*>(iiter)->SeekBeginBlock();
+        // }
 
         IndexValue v;
         if (iiter->Valid()) {
@@ -4222,7 +4227,10 @@ void BlockBasedTable::MultiGet(const ReadOptions& read_options,
         }
 
         bool may_exist = biter->SeekForGet(key);
-        if (!may_exist) {
+        if (!may_exist &&
+            (rep_->index_type != 
+                  BlockBasedTableOptions::IndexType::kLearnedIndexWithPLR ||
+             !plr_iter_first_seek)) {
           // HashSeek cannot find the key this block and the the iter is not
           // the end of the block, i.e. cannot be in the following blocks
           // either. In this case, the seek_key cannot be found, so we break
