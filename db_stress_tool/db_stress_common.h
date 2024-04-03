@@ -394,7 +394,7 @@ extern inline std::string GetStringFromIntForFYP(int32_t val) {
 }
 
 // Note(fyp): Override by FYP stress testing modifications.
-// Note(fyP): max_key can be represented by 32-bits.
+// Note(fyp): max_key can be represented by 32-bits.
 // Generate a variable length key string from the given int64 val. The
 // order of the keys is preserved. The key could be anywhere from 8 to
 // max_key_len * 8 bytes.
@@ -406,9 +406,9 @@ extern inline std::string GetStringFromIntForFYP(int32_t val) {
 // {(x-1),0}..{(x-1),(y-1)},{(x-1),(y-1),0}..{(x-1),(y-1),(z-1)} and so on.
 // Additionally, a trailer of 0-7 bytes could be appended.
 extern inline std::string Key(int64_t val) {
-  std::string key;
-  key.append(GetStringFromIntForFYP((int32_t) val));
+  return GetStringFromIntForFYP((int32_t) val);
   /*
+  std::string key;
   uint64_t window = key_gen_ctx.window;
   size_t levels = key_gen_ctx.weights.size();
   std::string key;
@@ -443,9 +443,9 @@ extern inline std::string Key(int64_t val) {
     fprintf(stdout, "Key() [%s] has size < 8, now truncated\n", key.c_str());
     key = key.substr(0, 8);
   }
-  */
 
   return key;
+  */
 }
 
 // Given a string key, map it to an index into the expected values buffer
