@@ -936,6 +936,18 @@ Status StressTest::TestIterate(ThreadState* thread,
     }
     VerifyIterator(thread, cmp_cfh, readoptionscopy, iter.get(), cmp_iter.get(),
                    last_op, key, op_logs, &diverged);
+    
+    // TODO(fyp): Remove this
+    /*
+    if (diverged) {
+      fprintf(stderr, 
+              "Diverged after checkpoint 1: {iter->key()=%s} "
+              "{cmp_iter->key=()%s} {%s}\n",
+              iter->Valid() ? iter->key().ToString(true).c_str() : "Invalid()",
+              cmp_iter->Valid() ? cmp_iter->key().ToString(true).c_str() : "Invalid()",
+              op_logs.c_str());
+    }
+    */
 
     bool no_reverse =
         (FLAGS_memtablerep == "prefix_hash" && !expect_total_order);
@@ -959,6 +971,17 @@ Status StressTest::TestIterate(ThreadState* thread,
       VerifyIterator(thread, cmp_cfh, readoptionscopy, iter.get(),
                      cmp_iter.get(), last_op, key, op_logs, &diverged);
     }
+
+    /*
+    if (diverged) {
+      fprintf(stderr, 
+              "Diverged after checkpoint 2: {iter->key()=%s} "
+              "{cmp_iter->key=()%s} {%s}\n",
+              iter->Valid() ? iter->key().ToString(true).c_str() : "Invalid()",
+              cmp_iter->Valid() ? cmp_iter->key().ToString(true).c_str() : "Invalid()",
+              op_logs.c_str());
+    }
+    */
 
     if (s.ok()) {
       thread->stats.AddIterations(1);

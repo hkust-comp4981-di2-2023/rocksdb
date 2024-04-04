@@ -461,7 +461,8 @@ class PLRIndexBuilder: public IndexBuilder {
   PLRIndexBuilder(double gamma): 
     IndexBuilder(nullptr),
     helper_(gamma),
-    is_first_key_in_first_block_(true) {}
+    is_first_key_in_first_block_(true),
+    is_non_first_key_(false) {}
 
   // Use helper_ to add a new Point for PLR training of (i+1)-th block. Also,
   // store block_handle of i-th block in helper_. For the last function call, do
@@ -471,15 +472,18 @@ class PLRIndexBuilder: public IndexBuilder {
   // Note: It seems that both input keys are internal keys, so we need to
   // ExtractUserKey() before storing.
   void AddIndexEntry(std::string* /*last_key_in_current_block*/,
-                    const Slice* first_key_in_next_block,
+                    const Slice* /*first_key_in_next_block*/,
                     const BlockHandle& block_handle) override {
+    /* TODO(fyp): remove this:
     if (first_key_in_next_block != nullptr) {
       // current AddIndexEntry() call is not processing with:
       // current_block = last data block
       assert(ExtractUserKey(*first_key_in_next_block).size() <= 8);
       helper_.AddPLRTrainingPoint(ExtractUserKey(*first_key_in_next_block));
     }
+    */
     helper_.AddHandle(block_handle);
+    is_non_first_key_ = false;
   }
   
   // If it is the first every key from the first data block, use helper_ to add
@@ -487,10 +491,34 @@ class PLRIndexBuilder: public IndexBuilder {
   //
   // Note: It seems input key is an internal key, so we need ExtractUserKey().
   void OnKeyAdded(const Slice& key) override {
+    Slice user_key = ExtractUserKey(key);
+
+    // TODO(fyp): remove after debugging
+    /*
+    std::string user_key_str = user_key.ToString();
+    if (exist_keys_.count(user_key_str) > 0) {
+      duplicated_keys_.insert(user_key_str);
+    }
+    else {
+      exist_keys_[user_key_str] = std::vector<std::string>();
+    }
+    exist_keys_[user_key_str].emplace_back(key.ToString());
+    */
+
     if (is_first_key_in_first_block_) {
+      assert(!is_non_first_key_);
       is_first_key_in_first_block_ = false;
-      assert(ExtractUserKey(key).size() <= 8);
-      helper_.AddPLRTrainingPoint(ExtractUserKey(key));
+      assert(user_key.size() <= 8);
+      helper_.AddPLRTrainingPoint(user_key);
+      is_non_first_key_ = true;
+      return;
+    }
+    if (is_non_first_key_) {
+      helper_.AddPLRIntermediateTrainingPoint(user_key);
+    }
+    else {
+      helper_.AddPLRTrainingPoint(user_key);
+      is_non_first_key_ = true;
     }
   }
 
@@ -500,6 +528,24 @@ class PLRIndexBuilder: public IndexBuilder {
 
     index_blocks->index_block_contents = helper_.Finish();
     index_size_ = index_blocks->index_block_contents.size();
+
+    // TODO(fyp): remove after debugging
+    /*
+    if (!duplicated_keys_.empty()) {
+      std::cout << "PLRIndexBuilder: Following user keys are duplicated:" << std::endl;
+      for (const auto& k: duplicated_keys_) {
+        std::cout << "User key: " << k << std::endl;
+        for (const auto& key_string: exist_keys_[k]) {
+          std::cout << "internal key string representation: " << key_string << std::endl;
+          std::cout << "internal key byte representation: ";
+          for (size_t i = 0; i < key_string.size(); ++i) {
+            std::cout << (unsigned int) ((unsigned char) key_string[i]) << ";";
+          }
+          std::cout << std::endl;
+        }
+      }
+    }
+    */
 
     return Status::OK();
   }
@@ -521,5 +567,10 @@ class PLRIndexBuilder: public IndexBuilder {
   // If true, OnKeyAdded() will use helper_ to add an Point for PLR training
   // then set this flag to false.
   bool is_first_key_in_first_block_;
+  bool is_non_first_key_;
+
+  // TODO(fyp): remove these after debugging
+  // std::set<std::string> duplicated_keys_;
+  // std::unordered_map<std::string, std::vector<std::string>> exist_keys_;
 };
 }  // namespace ROCKSDB_NAMESPACE
