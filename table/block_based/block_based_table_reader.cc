@@ -961,7 +961,6 @@ class PLRIndexReader : public BlockBasedTable::CustomIndexReaderCommon {
     // to set `block_contents_pinned`.
 
     BlockContents* block_content = index_block_contents.GetValue();
-
     // TODO(fyp): Unsure if there'll be memory leak or not
     auto it = new PLRBlockIter(block_content, num_data_blocks_,
                                internal_comparator());
@@ -4782,6 +4781,7 @@ Status BlockBasedTable::GetKVPairsFromDataBlocks(
     // Cannot read Index Block
     return s;
   }
+  
   for (blockhandles_iter->SeekToFirst(); blockhandles_iter->Valid();
        blockhandles_iter->Next()) {
     s = blockhandles_iter->status();

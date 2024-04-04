@@ -632,7 +632,6 @@ class PLRIndexBlockTest
   double gamma() const { return std::get<1>(GetParam()); }
 };
 
-
 std::string MakeKeyLookLikeInternalKey(const std::string& key) {
   // Internal key order: asc user key -> dsc seq no.
   static uint64_t seq_no = UINT64_MAX >> 8;
@@ -681,12 +680,10 @@ void GenerateRandomPLRIndexEntries(std::vector<BlockHandle> *block_handles,
   uint64_t offset = 0;
   int idx = 0;
   for (auto it = keys.begin(); it != keys.end();) {
-
     first_keys->emplace_back(MakeKeyLookLikeInternalKey(*it++));
     in_block_keys->emplace_back(MakeKeyLookLikeInternalKey(*it++));
     last_keys->emplace_back(MakeKeyLookLikeInternalKey(*it++));
     out_of_block_keys->emplace_back(MakeKeyLookLikeInternalKey(*it++));
-
 
     uint64_t size = rnd.Uniform(1024 * 16);
     BlockHandle handle(offset, size);
@@ -836,7 +833,6 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   BlockContents block_contents(rawblock.index_block_contents);
 
   PLRBlockIter* iter = new PLRBlockIter(&block_contents, num_records, &icomp);
-
 
   // Test 1: Read block contents sequentially.
   // Note: We won't test key(), because key() is not supported.
