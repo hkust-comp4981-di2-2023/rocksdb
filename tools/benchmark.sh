@@ -66,7 +66,7 @@ const_params="
   \
   --num=$num_keys \
   --num_levels=6 \
-  --key_size=$key_size \
+  --key_size=8 \
   --value_size=$value_size \
   --block_size=$block_size \
   --cache_size=$cache_size \
@@ -90,7 +90,7 @@ const_params="
   --delete_obsolete_files_period_micros=$((60 * M)) \
   --max_bytes_for_level_multiplier=8 \
   \
-  --statistics=0 \
+  --statistics=1 \
   --stats_per_interval=1 \
   --stats_interval_seconds=60 \
   --histogram=1 \
