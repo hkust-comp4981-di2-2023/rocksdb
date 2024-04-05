@@ -180,6 +180,8 @@ function run_bulkload {
        --use_existing_db=0 \
        --disable_auto_compactions=1 \
        --sync=0 \
+       --report_interval_seconds=1 \
+       --report_file="report_fillrandom.csv" \
        $params_bulkload \
        --threads=1 \
        --memtablerep=vector \
@@ -195,6 +197,8 @@ function run_bulkload {
        --use_existing_db=1 \
        --disable_auto_compactions=1 \
        --sync=0 \
+       --report_interval_seconds=1 \
+       --report_file="report_compact.csv" \
        $params_w \
        --threads=1 \
        2>&1 | tee -a $output_dir/benchmark_bulkload_compact.log"
