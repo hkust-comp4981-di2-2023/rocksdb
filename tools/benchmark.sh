@@ -53,7 +53,7 @@ num_nexts_per_seek=${NUM_NEXTS_PER_SEEK:-10}
 cache_size=${CACHE_SIZE:-$((17179869184))}
 compression_max_dict_bytes=${COMPRESSION_MAX_DICT_BYTES:-0}
 compression_type=${COMPRESSION_TYPE:-zstd}
-duration=${DURATION:-5400}
+duration=${DURATION:-0}
 
 num_keys=${NUM_KEYS:-8000000000}
 key_size=${KEY_SIZE:-8}
@@ -457,6 +457,7 @@ function run_fyp {
        --disable_auto_compactions=1 \
        --sync=0 \
        --seed=4981 \
+       --duration=60 \
        $params_bulkload \
        --threads=16 \
        --memtablerep=vector \
@@ -472,6 +473,7 @@ function run_fyp {
        --disable_auto_compactions=1 \
        --sync=0 \
        --report_file="report_readrandom.csv" \
+       --duration=5400 \
        $params_w \
        --threads=16 \
        2>&1 | tee -a $output_dir/benchmark_fyp_readrandom.log"
