@@ -285,7 +285,7 @@ static bool ValidateUint32Range(const char* flagname, uint64_t value) {
   return true;
 }
 
-DEFINE_int32(key_size, 16, "size of each key");
+DEFINE_int32(key_size, 8, "size of each key");
 
 DEFINE_int32(num_multi_db, 0,
              "Number of DBs used in the benchmark. 0 means single DB.");
