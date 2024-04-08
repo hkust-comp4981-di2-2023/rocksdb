@@ -53,10 +53,10 @@ num_nexts_per_seek=${NUM_NEXTS_PER_SEEK:-10}
 cache_size=${CACHE_SIZE:-$((17179869184))}
 compression_max_dict_bytes=${COMPRESSION_MAX_DICT_BYTES:-0}
 compression_type=${COMPRESSION_TYPE:-zstd}
-duration=${DURATION:-0}
+duration=${DURATION:-5400}
 
 num_keys=${NUM_KEYS:-8000000000}
-key_size=${KEY_SIZE:-20}
+key_size=${KEY_SIZE:-8}
 value_size=${VALUE_SIZE:-400}
 block_size=${BLOCK_SIZE:-8192}
 
@@ -90,10 +90,12 @@ const_params="
   --delete_obsolete_files_period_micros=$((60 * M)) \
   --max_bytes_for_level_multiplier=8 \
   \
-  --statistics=0 \
+  --statistics=1 \
   --stats_per_interval=1 \
-  --stats_interval_seconds=60 \
+  --stats_interval_seconds=30 \
   --histogram=1 \
+  \
+  --report_interval_seconds=30 \
   \
   --memtablerep=skip_list \
   --bloom_bits=10 \
@@ -176,12 +178,13 @@ function run_bulkload {
   # This runs with a vector memtable and the WAL disabled to load faster. It is still crash safe and the
   # client can discover where to restart a load after a crash. I think this is a good way to load.
   echo "Bulk loading $num_keys random keys"
-  cmd="./db_bench --benchmarks=fillrandom \
+  cmd="./db_bench --benchmarks=fillrandom,stats \
        --use_existing_db=0 \
        --disable_auto_compactions=1 \
        --sync=0 \
+       --report_file="report_fillrandom.csv" \
        $params_bulkload \
-       --threads=1 \
+       --threads=56 \
        --memtablerep=vector \
        --allow_concurrent_memtable_write=false \
        --disable_wal=1 \
@@ -191,12 +194,13 @@ function run_bulkload {
   eval $cmd
   summarize_result $output_dir/benchmark_bulkload_fillrandom.log bulkload fillrandom
   echo "Compacting..."
-  cmd="./db_bench --benchmarks=compact \
+  cmd="./db_bench --benchmarks=compact,stats \
        --use_existing_db=1 \
        --disable_auto_compactions=1 \
        --sync=0 \
+       --report_file="report_compact.csv" \
        $params_w \
-       --threads=1 \
+       --threads=56 \
        2>&1 | tee -a $output_dir/benchmark_bulkload_compact.log"
   echo $cmd | tee $output_dir/benchmark_bulkload_compact.log
   eval $cmd
