@@ -144,6 +144,7 @@ DECLARE_double(bloom_bits);
 DECLARE_bool(use_block_based_filter);
 DECLARE_bool(partition_filters);
 DECLARE_int32(index_type);
+DECLARE_double(plr_index_block_gamma);
 DECLARE_string(db);
 DECLARE_string(secondaries_base);
 DECLARE_bool(test_secondary);
@@ -378,6 +379,22 @@ struct KeyGenContext {
 };
 extern KeyGenContext key_gen_ctx;
 
+// Note(fyp): For 32-bit int only.
+// convert long to a big-endian slice key
+extern inline std::string GetStringFromIntForFYP(int32_t val) {
+  std::string little_endian_key;
+  std::string big_endian_key;
+  PutFixed32(&little_endian_key, val);
+  assert(little_endian_key.size() == sizeof(val));
+  big_endian_key.resize(sizeof(val));
+  for (size_t i = 0; i < sizeof(val); ++i) {
+    big_endian_key[i] = little_endian_key[sizeof(val) - 1 - i];
+  }
+  return big_endian_key;
+}
+
+// Note(fyp): Override by FYP stress testing modifications.
+// Note(fyp): max_key can be represented by 32-bits.
 // Generate a variable length key string from the given int64 val. The
 // order of the keys is preserved. The key could be anywhere from 8 to
 // max_key_len * 8 bytes.
@@ -389,6 +406,9 @@ extern KeyGenContext key_gen_ctx;
 // {(x-1),0}..{(x-1),(y-1)},{(x-1),(y-1),0}..{(x-1),(y-1),(z-1)} and so on.
 // Additionally, a trailer of 0-7 bytes could be appended.
 extern inline std::string Key(int64_t val) {
+  return GetStringFromIntForFYP((int32_t) val);
+  /*
+  std::string key;
   uint64_t window = key_gen_ctx.window;
   size_t levels = key_gen_ctx.weights.size();
   std::string key;
@@ -399,6 +419,7 @@ extern inline std::string Key(int64_t val) {
     uint64_t mult = static_cast<uint64_t>(val) / window;
     uint64_t pfx = mult * weight + (offset >= weight ? weight - 1 : offset);
     key.append(GetStringFromInt(pfx));
+    // Note(fyp): Disabled to ensure key length <= 8
     if (offset < weight) {
       // Use the bottom 3 bits of offset as the number of trailing 'x's in the
       // key. If the next key is going to be of the next level, then skip the
@@ -410,11 +431,21 @@ extern inline std::string Key(int64_t val) {
       }
       break;
     }
+    
     val = offset - weight;
     window -= weight;
   }
 
+  // Note(fyp): Further enforce key to have size <= 8.
+  // Note(fyp): In batched_ops_stress, they put an additional 1-byte before key,
+  // so in-place remedy is added in that class
+  if (key.size() > 8) {
+    fprintf(stdout, "Key() [%s] has size < 8, now truncated\n", key.c_str());
+    key = key.substr(0, 8);
+  }
+
   return key;
+  */
 }
 
 // Given a string key, map it to an index into the expected values buffer

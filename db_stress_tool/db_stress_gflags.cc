@@ -353,6 +353,9 @@ DEFINE_int32(
         ROCKSDB_NAMESPACE::BlockBasedTableOptions::kBinarySearch),
     "Type of block-based table index (see `enum IndexType` in table.h)");
 
+DEFINE_double(plr_index_block_gamma, 1.0,
+              "The error bound specifically for PLR Learned Index");
+
 DEFINE_string(db, "", "Use the db with the following name.");
 
 DEFINE_string(secondaries_base, "",

@@ -624,15 +624,33 @@ INSTANTIATE_TEST_CASE_P(P, IndexBlockTest,
 
 class PLRIndexBlockTest
     : public testing::Test,
-      public testing::WithParamInterface<double> {
+      public testing::WithParamInterface<std::tuple<int, double>> {
  public:
   PLRIndexBlockTest() = default;
 
-  double gamma() const { return GetParam(); }
+  int test_mode() const { return std::get<0>(GetParam()); }
+  double gamma() const { return std::get<1>(GetParam()); }
 };
 
 std::string MakeKeyLookLikeInternalKey(const std::string& key) {
-  return key + "12345678";
+  // Internal key order: asc user key -> dsc seq no.
+  static uint64_t seq_no = UINT64_MAX >> 8;
+  char buf[8];
+  EncodeFixed64(buf, ((seq_no--) << 8) + 1);
+  std::string seq_no_str(buf, 8);
+
+  return key + seq_no_str;
+}
+
+std::string uint2str(uint64_t x) {
+    std::string s = "";
+    for (int i = 7; i >= 0; --i) {
+        uint64_t mask = 0xFFULL << (8 * i);
+        unsigned char t = (mask & x) >> (8 * i);
+        // cout << mask << endl << (char) t << endl << (unsigned int) t << endl;
+        s += (char) t;
+    }
+    return s;
 }
 
 // Similar to GenerateRandomIndexEntries but for index block contents.
@@ -644,14 +662,20 @@ void GenerateRandomPLRIndexEntries(std::vector<BlockHandle> *block_handles,
                                 std::map<int, int> &reverse_index,
                                 const int len) {
   Random rnd(42);
+  assert(len > 0);
 
   // For each of `len` blocks, we need to generate a first and last key.
   // Let's generate n*4 random keys, sort them, group into consecutive pairs.
   std::set<std::string> keys;
-  while ((int)keys.size() < len * 4) {
+  while ((int)keys.size() < (len-1) * 4) {
     // PLR index only support key of length 8
     keys.insert(test::RandomKey(&rnd, 8));
   }
+
+  keys.insert(uint2str(18446744073709551612ULL));
+  keys.insert(uint2str(18446744073709551613ULL));
+  keys.insert(uint2str(18446744073709551614ULL));
+  keys.insert(uint2str(18446744073709551615ULL));
 
   uint64_t offset = 0;
   int idx = 0;
@@ -660,6 +684,63 @@ void GenerateRandomPLRIndexEntries(std::vector<BlockHandle> *block_handles,
     in_block_keys->emplace_back(MakeKeyLookLikeInternalKey(*it++));
     last_keys->emplace_back(MakeKeyLookLikeInternalKey(*it++));
     out_of_block_keys->emplace_back(MakeKeyLookLikeInternalKey(*it++));
+
+    uint64_t size = rnd.Uniform(1024 * 16);
+    BlockHandle handle(offset, size);
+    offset += size + kBlockTrailerSize;
+    block_handles->emplace_back(handle);
+    reverse_index[handle.offset()] = idx++;
+  }
+}
+
+// Similar to GenerateRandomIndexEntries but for index block contents.
+void GenerateRandomPLRIndexEntriesMode2(std::vector<BlockHandle> *block_handles,
+                                std::vector<std::string> *first_keys,
+                                std::vector<std::string> *in_block_keys,
+                                std::vector<std::string> *last_keys,
+                                std::vector<std::string> *out_of_block_keys,
+                                std::map<int, int> &reverse_index,
+                                const int len) {
+  Random rnd(42);
+  assert(len > 0);
+
+  // For each of `len` blocks, we need to generate a first and last key.
+  // Let's generate n*4 random keys, sort them, group into consecutive pairs.
+  std::set<std::string> keys;
+  const int num_keys_factor = 4;
+
+  const int no_duplicate_denominator = 3;
+  int no_duplicate_len = len / no_duplicate_denominator;
+  int duplicate_len = len - no_duplicate_len;
+  
+  while ((int)keys.size() < no_duplicate_len * num_keys_factor) {
+    // PLR index only support key of length 8
+    keys.insert(test::RandomKey(&rnd, 8));
+  }
+
+  std::vector<int> distribution(no_duplicate_len, 1);
+  for (int i = 0; i < duplicate_len; ++i) {
+    distribution[rnd.Uniform(no_duplicate_len)]++;
+  }
+
+  std::vector<std::string> final_keys;
+
+  int idx = 0;
+  for (auto it = keys.begin(); it != keys.end(); it++, idx++) {
+    for (int i = 0; i < distribution[idx/num_keys_factor]; ++i) {
+      final_keys.emplace_back(*it);
+    }
+  }
+  
+  uint64_t offset = 0;
+  idx = 0;
+  for (auto it = final_keys.begin(); it != final_keys.end();) {
+
+    first_keys->emplace_back(MakeKeyLookLikeInternalKey(*it++));
+    in_block_keys->emplace_back(MakeKeyLookLikeInternalKey(*it++));
+    last_keys->emplace_back(MakeKeyLookLikeInternalKey(*it++));
+    out_of_block_keys->emplace_back(MakeKeyLookLikeInternalKey(*it++));
+
 
     uint64_t size = rnd.Uniform(1024 * 16);
     BlockHandle handle(offset, size);
@@ -683,9 +764,50 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   PLRIndexBuilder builder(gamma());
   int num_records = 100;
 
-  GenerateRandomPLRIndexEntries(&block_handles, &first_keys, &in_block_keys,
-                                &last_keys, &out_of_block_keys, reverse_index,
-                                num_records);
+  switch(test_mode()) {
+    case 0: {
+      GenerateRandomPLRIndexEntries(&block_handles, &first_keys, &in_block_keys,
+                                    &last_keys, &out_of_block_keys, 
+                                    reverse_index, num_records);
+      break;
+    }
+
+    case 1: {
+      GenerateRandomPLRIndexEntriesMode2(&block_handles, &first_keys, 
+                                         &in_block_keys, &last_keys, 
+                                         &out_of_block_keys, reverse_index, 
+                                         num_records);
+      break;
+    }
+
+    default:
+      assert(false);
+  }
+
+  InternalKeyComparator icomp(options.comparator);
+
+  // Verify PLR index entries order correctness
+  for (int i = 0; i < num_records; ++i) {
+    ASSERT_TRUE(icomp.Compare(first_keys[i], in_block_keys[i]) < 0);
+    ASSERT_TRUE(icomp.Compare(in_block_keys[i], last_keys[i]) < 0);
+    ASSERT_TRUE(icomp.Compare(last_keys[i], out_of_block_keys[i]) < 0);
+    if (i + 1 < num_records) {
+      ASSERT_TRUE(icomp.Compare(out_of_block_keys[i], first_keys[i+1]) < 0);
+    }
+  }
+
+  /*
+  for (int i = 0; i < num_records; ++i) {
+    std::cout << "Index " << i << " - First key: " << first_keys[i] 
+              << "\t In-block key: " << in_block_keys[i] << "\t Last key: " 
+              << last_keys[i] << "\t Out-of-block key: " << out_of_block_keys[i]
+              << std::endl;
+  }
+  std::cout << "Reverse index:" << std::endl;
+  for (auto& entry: reverse_index) {
+    std::cout << entry.first << " -> " << entry.second << std::endl;
+  }
+  */
   
   // print training data
   // printf("Training with keys:\n");
@@ -694,21 +816,23 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   // }
   // printf("Ended training.\n\n");
 
-  Slice key(first_keys[0]);
-  builder.OnKeyAdded(key);
-  for (int i = 1; i < num_records; ++i) {
-    key = Slice(first_keys[i]);
-    builder.AddIndexEntry(nullptr, &key, block_handles[i-1]);
+  for (int i = 0; i < num_records; ++i) {
+    Slice first_key = Slice(first_keys[i]);
+    Slice middle_key = Slice(in_block_keys[i]);
+    Slice last_key = Slice(last_keys[i]);
+
+    builder.OnKeyAdded(first_key);
+    builder.OnKeyAdded(middle_key);
+    builder.OnKeyAdded(last_key);
+    builder.AddIndexEntry(nullptr, nullptr, block_handles[i]);
   }
-  builder.AddIndexEntry(nullptr, nullptr, block_handles[num_records-1]);
 
   // read serialized contents of the block
   IndexBuilder::IndexBlocks rawblock;
   builder.Finish(&rawblock, block_handles[num_records-1]);
   BlockContents block_contents(rawblock.index_block_contents);
 
-  PLRBlockIter* iter = new PLRBlockIter(&block_contents, num_records, 
-                                        options.comparator);
+  PLRBlockIter* iter = new PLRBlockIter(&block_contents, num_records, &icomp);
 
   // Test 1: Read block contents sequentially.
   // Note: We won't test key(), because key() is not supported.
@@ -733,7 +857,7 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   // Expected behavior: After several Next(), ultimately the iterator should
   // point to the correct index entry.
   // printf("Test 2\n");
-  iter = new PLRBlockIter(&block_contents, num_records, options.comparator);
+  iter = new PLRBlockIter(&block_contents, num_records, &icomp);
   for (int i = 0; i < num_records * 2; i++) {
     // find a random key in the lookaside array
     int expected_index = rnd.Uniform(num_records);
@@ -746,18 +870,30 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
       // printf("%s\n", iter->GetStateMessage().c_str());
       v = iter->value();
       int seek_result_index = reverse_index[v.handle.offset()];
+      // printf("Seek Key: %s\t DataBlk First Key: %s\t DataBlk Last Key: %s\n\n",
+        // query_key.ToString().c_str(), first_keys[seek_result_index].c_str(),
+        // last_keys[seek_result_index].c_str());
       
       // check if the extracted block_handle matches the one in block_handles
-      if (seek_result_index == expected_index) {
+      Slice seek_result_first_key(first_keys[seek_result_index]);
+      Slice seek_result_last_key(last_keys[seek_result_index]);
+      iter->UpdateBinarySeekRange(query_key, seek_result_first_key, 
+                                  seek_result_last_key);
+      if (iter->IsLastBinarySeek()) {
+        iter->SwitchToLinearSeekMode();
+        // Special handling for cases where multiple internal keys with the
+        // same user key but different seq_no exist.
+        while (iter->Valid() && icomp.Compare(query_key, seek_result_last_key) > 0) {
+          iter->Next();
+          if (iter->Valid()) {
+            v = iter->value();
+            seek_result_index = reverse_index[v.handle.offset()];
+            seek_result_last_key = Slice(last_keys[seek_result_index]);
+          }
+        }
         break;
-      } else {
-        Slice seek_result_first_key(first_keys[seek_result_index]);
-        Slice seek_result_last_key(last_keys[seek_result_index]);
-        iter->UpdateBinarySeekRange(ExtractUserKey(query_key), 
-                                    ExtractUserKey(seek_result_first_key), 
-                                    ExtractUserKey(seek_result_last_key));
-        iter->Next();
       }
+      iter->Next();
     }
     
     // EXPECT_EQ(separators[expected_index], iter->key().ToString());
@@ -772,7 +908,7 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   // Expected behavior: After several Next(), ultimately the iterator should
   // point to the correct index entry.
   // printf("Test 3\n");
-  iter = new PLRBlockIter(&block_contents, num_records, options.comparator);
+  iter = new PLRBlockIter(&block_contents, num_records, &icomp);
   for (int i = 0; i < num_records * 2; i++) {
     // find a random key in the lookaside array
     int expected_index = rnd.Uniform(num_records);
@@ -786,16 +922,25 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
       int seek_result_index = reverse_index[v.handle.offset()];
       
       // check if the extracted block_handle matches the one in block_handles
-      if (seek_result_index == expected_index) {
+      Slice seek_result_first_key(first_keys[seek_result_index]);
+      Slice seek_result_last_key(last_keys[seek_result_index]);
+      iter->UpdateBinarySeekRange(query_key, seek_result_first_key, 
+                                  seek_result_last_key);
+      if (iter->IsLastBinarySeek()) {
+        iter->SwitchToLinearSeekMode();
+        // Special handling for cases where multiple internal keys with the
+        // same user key but different seq_no exist.
+        while (iter->Valid() && icomp.Compare(query_key, seek_result_last_key) > 0) {
+          iter->Next();
+          if (iter->Valid()) {
+            v = iter->value();
+            seek_result_index = reverse_index[v.handle.offset()];
+            seek_result_last_key = Slice(last_keys[seek_result_index]);
+          }
+        }
         break;
-      } else {
-        Slice seek_result_first_key(first_keys[seek_result_index]);
-        Slice seek_result_last_key(last_keys[seek_result_index]);
-        iter->UpdateBinarySeekRange(ExtractUserKey(query_key), 
-                                    ExtractUserKey(seek_result_first_key), 
-                                    ExtractUserKey(seek_result_last_key));
-        iter->Next();
       }
+      iter->Next();
     }
     
     // EXPECT_EQ(separators[expected_index], iter->key().ToString());
@@ -807,10 +952,11 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
   iter = nullptr;
 
   // Test 4: Read block contents randomly, using out_of_block_key.
-  // Expected behavior: After several Next(), ultimately the iterator should
-  // find out no index entry matches
+  // Expected behavior: After Seek() and several Next(), ultimately the iterator
+  // should point to the closest data block with first_key > out_of_block_key,
+  // if such block exists (if not exists, becomes !Valid()).
   // printf("Test 4\n");
-  iter = new PLRBlockIter(&block_contents, num_records, options.comparator);
+  iter = new PLRBlockIter(&block_contents, num_records, &icomp);
   for (int i = 0; i < num_records * 2; i++) {
     // find a random key in the lookaside array
     int expected_index = rnd.Uniform(num_records);
@@ -819,7 +965,6 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
     // search in block for this key
     iter->Seek(query_key);
     IndexValue v;
-    const Comparator* cmp = options.comparator;
     while (iter->Valid()) {
       v = iter->value();
       int seek_result_index = reverse_index[v.handle.offset()];
@@ -829,22 +974,32 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
 
       // expectation: our query key should be outside 
       // [seek_result_first_key, seek_result_last_key]
-      if (cmp->Compare(seek_result_first_key, seek_result_last_key) > 0) {
-        assert(!"first_key should be <= last key, something went wrong!");
+      iter->UpdateBinarySeekRange(query_key, seek_result_first_key, 
+                                  seek_result_last_key);
+      if (iter->IsLastBinarySeek()) {
+        iter->SwitchToLinearSeekMode();
+        // Special handling for cases where multiple internal keys with the
+        // same user key but different seq_no exist.
+        while (iter->Valid() && icomp.Compare(query_key, seek_result_last_key) > 0) {
+          iter->Next();
+          if (iter->Valid()) {
+            v = iter->value();
+            seek_result_index = reverse_index[v.handle.offset()];
+            seek_result_last_key = Slice(last_keys[seek_result_index]);
+          }
+        }
+        break;
       }
-      if (cmp->Compare(query_key, seek_result_first_key) < 0
-          || cmp->Compare(seek_result_last_key, query_key) < 0) {
-        iter->UpdateBinarySeekRange(ExtractUserKey(query_key), 
-                                    ExtractUserKey(seek_result_first_key), 
-                                    ExtractUserKey(seek_result_last_key));
-        iter->Next();
-        continue;
-      }
-      break;
+      iter->Next();
     }
     
     // EXPECT_EQ(separators[expected_index], iter->key().ToString());
-    ASSERT_TRUE(!iter->Valid());
+    if (iter->Valid()) {
+      EXPECT_EQ(block_handles[expected_index+1].offset(), v.handle.offset());
+      EXPECT_EQ(block_handles[expected_index+1].size(), v.handle.size());
+    } else {
+      EXPECT_EQ(expected_index+1, num_records);
+    }
   }
   delete iter;
   iter = nullptr;
@@ -852,16 +1007,26 @@ TEST_P(PLRIndexBlockTest, PLRIndexValueEncodingTest) {
 }
 
 INSTANTIATE_TEST_CASE_P(PLR, PLRIndexBlockTest,
-                        ::testing::Values(0.03, 
-                                          0.06, 
-                                          0.3, 
-                                          0.6, 
-                                          1.0, 
-                                          1.2, 
-                                          1.5, 
-                                          2.0, 
-                                          3.0, 
-                                          4.0));
+                        ::testing::Values(std::make_tuple(0, 0.03), 
+                                          std::make_tuple(0, 0.06), 
+                                          std::make_tuple(0, 0.3), 
+                                          std::make_tuple(0, 0.6), 
+                                          std::make_tuple(0, 1.0), 
+                                          std::make_tuple(0, 1.2), 
+                                          std::make_tuple(0, 1.5), 
+                                          std::make_tuple(0, 2.0), 
+                                          std::make_tuple(0, 3.0), 
+                                          std::make_tuple(0, 4.0),
+                                          std::make_tuple(1, 0.03), 
+                                          std::make_tuple(1, 0.06), 
+                                          std::make_tuple(1, 0.3), 
+                                          std::make_tuple(1, 0.6), 
+                                          std::make_tuple(1, 1.0), 
+                                          std::make_tuple(1, 1.2), 
+                                          std::make_tuple(1, 1.5), 
+                                          std::make_tuple(1, 2.0), 
+                                          std::make_tuple(1, 3.0), 
+                                          std::make_tuple(1, 4.0)));
 
 }  // namespace ROCKSDB_NAMESPACE
 

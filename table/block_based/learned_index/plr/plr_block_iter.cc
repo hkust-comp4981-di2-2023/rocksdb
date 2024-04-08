@@ -3,6 +3,12 @@
 namespace ROCKSDB_NAMESPACE {
 
 bool PLRBlockIter::Valid() const {
+	if (current_ == invalid_block_number_) {
+		op_logs.append("Valid();");
+	}
+	else {
+		op_logs.append("InValid();");
+	}
 	return current_ != invalid_block_number_;
 }
 
@@ -15,6 +21,7 @@ bool PLRBlockIter::Valid() const {
 void PLRBlockIter::SeekToFirst() {
 	TEST_SYNC_POINT("PLRBlockIter::SeekToFirst:0");
 	assert(helper_ != nullptr);
+	op_logs = "SeekToFirst():[";
 
 	status_ = Status::OK();
 	seek_mode_ = SeekMode::kUnknown;
@@ -35,6 +42,7 @@ void PLRBlockIter::SeekToFirst() {
 	}
 
 	seek_mode_ = SeekMode::kLinearSeek;
+	op_logs += GetStateMessage() + "];";
 }
 
 // Change seek_mode_ to kLinearSeek. Update begin_block_ and end_block_ to full
@@ -46,6 +54,7 @@ void PLRBlockIter::SeekToFirst() {
 void PLRBlockIter::SeekToLast() {
 	TEST_SYNC_POINT("PLRBlockIter::SeekToLast:0");
 	assert(helper_ != nullptr);
+	op_logs = "SeekToLast():[";
 
 	status_ = Status::OK();
 	seek_mode_ = SeekMode::kUnknown;
@@ -67,6 +76,7 @@ void PLRBlockIter::SeekToLast() {
 	}
 
 	seek_mode_ = SeekMode::kLinearSeek;
+	op_logs += GetStateMessage() + "];";
 }
 
 // Take a key as input and uses helper_->PredictBlockRange() to update data
@@ -85,11 +95,16 @@ void PLRBlockIter::SeekToLast() {
 void PLRBlockIter::Seek(const Slice& target) {
 	TEST_SYNC_POINT("PLRBlockIter::Seek:0");
 	assert(helper_ != nullptr);
+	op_logs = "Seek(user_key=";
 
 	seek_mode_ = SeekMode::kUnknown;
 	is_key_set_ = false;
 	
 	Slice seek_key = ExtractUserKey(target);
+	for (size_t idx = 0; idx < seek_key.size(); ++idx) {
+		op_logs += std::to_string((unsigned int) ((unsigned char) seek_key[idx])) + ";";
+	}
+	op_logs += "):[";
 
 	assert(seek_key.size() <= 8);
 
@@ -108,6 +123,7 @@ void PLRBlockIter::Seek(const Slice& target) {
 	}
 
 	seek_mode_ = SeekMode::kBinarySeek;
+	op_logs += GetStateMessage() + "];";
 }
 
 // Work differently based on seek_mode_.
@@ -131,6 +147,7 @@ void PLRBlockIter::Seek(const Slice& target) {
 void PLRBlockIter::Next() {
 	assert(Valid());
 	assert(seek_mode_ != SeekMode::kUnknown);
+	op_logs += "Next():[";
 
 	is_key_set_ = false;
 
@@ -160,6 +177,7 @@ void PLRBlockIter::Next() {
 		current_ = invalid_block_number_;
 		return;
 	}
+	op_logs += GetStateMessage() + "];";
 }
 
 // At this moment, Prev() is only supported if seek_mode_ is kLinearSeek.
@@ -168,6 +186,7 @@ void PLRBlockIter::Next() {
 void PLRBlockIter::Prev() {
 	assert(Valid());
 	assert(seek_mode_ == SeekMode::kLinearSeek);
+	op_logs += "Prev():[";
 
 	is_key_set_ = false;
 
@@ -178,6 +197,7 @@ void PLRBlockIter::Prev() {
 	--current_;
 	
 	SetCurrentIndexValue();
+	op_logs += GetStateMessage() + "];";
 }
 
 // Return an internal key that can be parsed by ExtractUserKey().
@@ -190,6 +210,12 @@ void PLRBlockIter::Prev() {
 Slice PLRBlockIter::key() const {
 	assert(Valid());
 	if (is_key_set_) {
+		op_logs.append("key()[");
+		Slice k = key_.GetKey();
+		for (size_t idx = 0; idx < k.size(); ++idx) {
+			op_logs.append(std::to_string((unsigned int) ((unsigned char) k[idx])) + ";");
+		}
+		op_logs.append("];");
 		return key_.GetKey();
 	}
 	return Slice(key_extraction_not_supported_);
@@ -207,7 +233,9 @@ Status PLRBlockIter::status() const {
 }
 
 void PLRBlockIter::SetCurrentIndexValue() {
+	op_logs += "SetCurrentIndexValue()[";
 	if (!Valid()) {
+		op_logs += "]";
 		return;
 	}
 	
@@ -217,26 +245,26 @@ void PLRBlockIter::SetCurrentIndexValue() {
 	status_ = helper_->GetBlockHandle(current_, handle);
 
 	if (!status_.ok()) {
+		op_logs += "status_ not ok()]";
 		return;
 	}
 
 	value_.handle = handle;
-
-	// TODO(fyp): What is this??
-	// if (seek_mode_ == SeekMode::kBinarySeek) {
-	// 	// Update the begin_block_ or end_block_, based on current block value.
-	// 	// do nothing currently, unless have time to change SetBeginBlockAsCurrent()
-	// }
+	op_logs += GetStateMessage() + "];";
 }
 
-// This function should be called if the Seek key does not exist in the current_
-// data block in binary seek mode. It updates the seek range correspondingly,
-// such that the next PLRBlockIter::Next() will update current_ to a correct
-// value.
+// This function updates the seek range correspondingly, such that the 
+// next PLRBlockIter::Next() will update current_ to a correct value.
+//
+// The primary goal of this function is to update current_ until it points to
+// the block that contains the first occurrence of the user key in seek_key.
+// However, there may have optimizations that try to make current_ pointing to
+// a block that contains an internal key with same user key as seek_key and
+// a seqno closer to seek_key (on L.H.S.).
 //
 // Note: This function assumes input data_block first/last keys are the keys of
 // the current data block (as pointed by current_).
-// Note: Only accepts user keys, not internal keys.
+// Note: Only accepts internal keys.
 //
 // REQUIRES: Valid()
 // REQUIRES: binary seek mode
@@ -246,41 +274,49 @@ void PLRBlockIter::UpdateBinarySeekRange(const Slice& seek_key,
 	assert(Valid());
 	assert(seek_mode_ == SeekMode::kBinarySeek);
 
-	// Slice first_user_key = ExtractUserKey(data_block_first_key);
-	// Slice last_user_key = ExtractUserKey(data_block_last_key);
-	// Slice seek_user_key = ExtractUserKey(seek_key);
+	assert(internal_key_comparator_->Compare(data_block_first_key, 
+																					 data_block_last_key) <= 0);
 
-	assert(user_comparator_->Compare(data_block_first_key, 
-																	 data_block_last_key) <= 0);
+	op_logs += "UpdateBinarySeekRange()=>";
 	
 	// Case 1: Seek key > All keys in current data block.
-	if (user_comparator_->Compare(data_block_last_key, seek_key) < 0) {
+	if (internal_key_comparator_->Compare(data_block_last_key, seek_key) < 0) {
 		SetBeginBlockAsCurrent();
 		return;
 	}
 
 	// Case 2: Seek key < All keys in current data block.
-	if (user_comparator_->Compare(seek_key, data_block_first_key) < 0) {
+	if (internal_key_comparator_->Compare(seek_key, data_block_first_key) < 0) {
 		SetEndBlockAsCurrent();
 		return;
 	}
 
 	// Case 3: First key in data block <= Seek key <= Last key in data block.
 	// Then Seek key must lie within the current data block if it exists.
-	// However, this function is only called if the Seek key does not exist.
-	// This implies the Seek key does not exist in the SSTable.
-	//
-	// Then we can adjust the seek range such that after the next Next(),
-	// the iterator becomes !Valid().
 	begin_block_ = end_block_+1;
 	assert(IsLastBinarySeek());
+	op_logs += "IsLastBinarySeek();";
+}
+
+void PLRBlockIter::SeekBeginBlock() {
+	assert(seek_mode_ == SeekMode::kBinarySeek);
+	assert(!IsLastBinarySeek());
+	current_ = begin_block_;
+	SetCurrentIndexValue();
+}
+
+void PLRBlockIter::SeekEndBlock() {
+	assert(seek_mode_ == SeekMode::kBinarySeek);
+	assert(!IsLastBinarySeek());
+	current_ = end_block_;
+	SetCurrentIndexValue();
 }
 
 Status PLRBlockHelper::DecodePLRBlock(const Slice& data) {
 	// Extract the substring corr. to PLR Segments and Data block sizes
 	const size_t total_length = data.size();
 
-	const size_t block_handles_length = kParamSize * (num_data_blocks_ + 1);
+	const size_t block_handles_length = sizeof(uint64_t) * (num_data_blocks_ + 1);
 	assert(total_length > block_handles_length);
 
 	const size_t plr_segments_length = total_length - block_handles_length;
@@ -294,7 +330,7 @@ Status PLRBlockHelper::DecodePLRBlock(const Slice& data) {
 
 	// Initialize model_ and handle_calculator_
 	model_.reset(
-		new PLRDataRep<EncodedStrBaseType, double>(encoded_plr_segments));
+		new PLRDataRep<EncodedStrBaseType, long double>(encoded_plr_segments));
 	handle_calculator_.reset(
 		new BlockHandleCalculator(encoded_block_handles, num_data_blocks_));
 	
@@ -312,12 +348,17 @@ Status PLRBlockHelper::PredictBlockRange(const Slice& target,
 	KeyInternalRep key = stringToNumber<KeyInternalRep>(target_str);
 
 	// Get range, check for invalid range
-	auto range =  model_->GetValue(key);
+	auto range =  model_->GetValue(static_cast<EncodedStrBaseType>(key));
 	assert(range.first <= range.second);
 
+	assert(num_data_blocks_ > 0);
 	begin_block = std::max<uint64_t>(0, 
-																	std::min(num_data_blocks_ - 1, range.first));
-	end_block = std::min(num_data_blocks_ - 1, range.second);
+																	std::min(num_data_blocks_ - 1, static_cast<uint64_t>(range.first)));
+	end_block = std::max<uint64_t>(0, 
+																	std::min(num_data_blocks_ - 1, static_cast<uint64_t>(range.second)));
+	// TODO(fyp): debug only:
+	// begin_block = 0;
+	// end_block = num_data_blocks_ - 1;
 	return Status::OK();
 }
 

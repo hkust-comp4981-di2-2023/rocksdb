@@ -28,6 +28,11 @@ class PLRBlockHelper {
 		model_(nullptr),
 		handle_calculator_(nullptr),
 		num_data_blocks_(num_data_blocks) {
+		// TODO(fyp): If num_data_blocks == 0, it's possible that sstable only
+		// stores info. about deleted data(?) without any data block.
+		// In this case, we may need to make plr block iter do nothing when
+		// num_data_block is 0. But then will iiter still be invoked?
+		assert(num_data_blocks > 0);
 		DecodePLRBlock(data); 
 	}
 
@@ -52,12 +57,12 @@ class PLRBlockHelper {
 
  private:
 	typedef uint64_t KeyInternalRep;
-	typedef uint64_t EncodedStrBaseType;
+	typedef long double EncodedStrBaseType;
 	static const size_t kKeySize = sizeof(KeyInternalRep);
 	static const size_t kParamSize = sizeof(EncodedStrBaseType);
 
 	// TODO(fyp): Verify member types
-	std::unique_ptr<PLRDataRep<EncodedStrBaseType, double>> model_;
+	std::unique_ptr<PLRDataRep<EncodedStrBaseType, long double>> model_;
 	std::unique_ptr<BlockHandleCalculator> handle_calculator_;
 	const uint64_t num_data_blocks_;
 
@@ -75,7 +80,7 @@ class PLRBlockHelper {
 class PLRBlockIter : public InternalIteratorBase<IndexValue> {
  public:
 	PLRBlockIter(const BlockContents* contents, const uint64_t num_data_blocks, 
-							const Comparator* user_comparator) :
+							const InternalKeyComparator* internal_key_comparator) :
 		InternalIteratorBase<IndexValue>(),
 		seek_mode_(SeekMode::kUnknown),
 		data_(contents->data),
@@ -85,8 +90,9 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 		key_(),
 		is_key_set_(false),
 		value_(),
-		user_comparator_(user_comparator),
+		internal_key_comparator_(internal_key_comparator),
 		status_(),
+		op_logs(),
 		helper_(std::unique_ptr<PLRBlockHelper>(
 			new PLRBlockHelper(num_data_blocks, data_)))
 		{
@@ -154,7 +160,7 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 						+ "; end_block_: " + std::to_string(end_block_);
 	}
 
-	// The following public functions are used by BlockBasedTableIterator.
+	// The following public functions are used by BlockBasedTable(Iterator).
 
 	// Usage: Set key_ as current_ data block last key.
 	// TODO(fyp): Not sure if this will cause memory leak or not.
@@ -186,6 +192,14 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 		end_block_ = helper_->GetNumberOfDataBlock() - 1;
 		seek_mode_ = SeekMode::kLinearSeek;
 	}
+
+	void SeekBeginBlock();
+
+	void SeekEndBlock();
+
+	void SetStatus(Status s) { status_ = s; }
+
+	std::string GetOpLogs() { return op_logs; }
 
  private:
 	enum class SeekMode : char {
@@ -224,8 +238,10 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 	// Return true if key_ is set and active; false otherwise. 
 	bool is_key_set_;
 	IndexValue value_;
-	const Comparator* user_comparator_;
+	const InternalKeyComparator* internal_key_comparator_;
 	Status status_;
+
+	mutable std::string op_logs;
 
 	std::unique_ptr<PLRBlockHelper> helper_;
 
@@ -239,6 +255,7 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 
 	inline void SetBeginBlockAsCurrent() {
 		begin_block_ = current_ + 1;
+		op_logs += "SetBeginBlockAsCurrent();";
 	}
 
 	inline void SetEndBlockAsCurrent() {
@@ -253,6 +270,7 @@ class PLRBlockIter : public InternalIteratorBase<IndexValue> {
 		else {
 			end_block_ = current_ - 1;
 		}
+		op_logs += "SetEndBlockAsCurrent();";
 	}
 
 	void SetCurrentIndexValue();

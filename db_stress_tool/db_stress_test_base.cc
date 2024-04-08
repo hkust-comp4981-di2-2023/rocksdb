@@ -804,7 +804,8 @@ Status StressTest::TestIterate(ThreadState* thread,
   readoptionscopy.snapshot = snapshot;
 
   bool expect_total_order = false;
-  if (thread->rand.OneIn(16)) {
+  // if (thread->rand.OneIn(16)) {
+  if (thread->rand.OneIn(1)) { // TODO(fyp): for now we only test when total_order_seek=true
     // When prefix extractor is used, it's useful to cover total order seek.
     readoptionscopy.total_order_seek = true;
     expect_total_order = true;
@@ -935,6 +936,18 @@ Status StressTest::TestIterate(ThreadState* thread,
     }
     VerifyIterator(thread, cmp_cfh, readoptionscopy, iter.get(), cmp_iter.get(),
                    last_op, key, op_logs, &diverged);
+    
+    // TODO(fyp): Remove this
+    /*
+    if (diverged) {
+      fprintf(stderr, 
+              "Diverged after checkpoint 1: {iter->key()=%s} "
+              "{cmp_iter->key=()%s} {%s}\n",
+              iter->Valid() ? iter->key().ToString(true).c_str() : "Invalid()",
+              cmp_iter->Valid() ? cmp_iter->key().ToString(true).c_str() : "Invalid()",
+              op_logs.c_str());
+    }
+    */
 
     bool no_reverse =
         (FLAGS_memtablerep == "prefix_hash" && !expect_total_order);
@@ -958,6 +971,17 @@ Status StressTest::TestIterate(ThreadState* thread,
       VerifyIterator(thread, cmp_cfh, readoptionscopy, iter.get(),
                      cmp_iter.get(), last_op, key, op_logs, &diverged);
     }
+
+    /*
+    if (diverged) {
+      fprintf(stderr, 
+              "Diverged after checkpoint 2: {iter->key()=%s} "
+              "{cmp_iter->key=()%s} {%s}\n",
+              iter->Valid() ? iter->key().ToString(true).c_str() : "Invalid()",
+              cmp_iter->Valid() ? cmp_iter->key().ToString(true).c_str() : "Invalid()",
+              op_logs.c_str());
+    }
+    */
 
     if (s.ok()) {
       thread->stats.AddIterations(1);
@@ -1734,6 +1758,8 @@ void StressTest::Open() {
     block_based_options.partition_filters = FLAGS_partition_filters;
     block_based_options.index_type =
         static_cast<BlockBasedTableOptions::IndexType>(FLAGS_index_type);
+    block_based_options.plr_index_block_gamma =
+        static_cast<double>(FLAGS_plr_index_block_gamma);
     options_.table_factory.reset(
         NewBlockBasedTableFactory(block_based_options));
     options_.db_write_buffer_size = FLAGS_db_write_buffer_size;
