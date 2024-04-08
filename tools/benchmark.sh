@@ -449,6 +449,36 @@ function run_randomtransaction {
   eval $cmd
 }
 
+function run_fyp {
+  # Fill up the database with random keys first
+  echo "Loading $num_keys random keys"
+  cmd="./db_bench --benchmarks=fillrandom,stats \
+       --use_existing_db=0 \
+       --disable_auto_compactions=1 \
+       --sync=0 \
+       --seed=4981 \
+       $params_bulkload \
+       --threads=16 \
+       --memtablerep=vector \
+       --allow_concurrent_memtable_write=false \
+       --disable_wal=1 \
+       2>&1 | tee -a $output_dir/benchmark_fyp_fillrandom.log"
+  echo $cmd | tee $output_dir/benchmark_fyp_fillrandom.log
+  eval $cmd
+  summarize_result $output_dir/benchmark_fyp_fillrandom.log fyp fillrandom
+  echo "Test reading..."
+  cmd="./db_bench --benchmarks=readrandom,stats \
+       --use_existing_db=1 \
+       --disable_auto_compactions=1 \
+       --sync=0 \
+       --report_file="report_readrandom.csv" \
+       $params_w \
+       --threads=16 \
+       2>&1 | tee -a $output_dir/benchmark_fyp_readrandom.log"
+  echo $cmd | tee $output_dir/benchmark_fyp_readrandom.log
+  eval $cmd
+}
+
 function now() {
   echo `date +"%s"`
 }
@@ -470,6 +500,8 @@ for job in ${jobs[@]}; do
   start=$(now)
   if [ $job = bulkload ]; then
     run_bulkload
+  elif [ $job = fyp]; then
+    run_fyp
   elif [ $job = fillseq_disable_wal ]; then
     run_fillseq 1
   elif [ $job = fillseq_enable_wal ]; then
