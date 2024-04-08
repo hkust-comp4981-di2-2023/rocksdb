@@ -183,12 +183,12 @@ function run_bulkload {
        --disable_auto_compactions=1 \
        --sync=0 \
        --report_file="report_fillrandom.csv" \
+       --seed=1712562985 \
        $params_bulkload \
-       --threads=56 \
+       --threads=1 \
        --memtablerep=vector \
        --allow_concurrent_memtable_write=false \
        --disable_wal=1 \
-       --seed=$( date +%s ) \
        2>&1 | tee -a $output_dir/benchmark_bulkload_fillrandom.log"
   echo $cmd | tee $output_dir/benchmark_bulkload_fillrandom.log
   eval $cmd
@@ -200,7 +200,7 @@ function run_bulkload {
        --sync=0 \
        --report_file="report_compact.csv" \
        $params_w \
-       --threads=56 \
+       --threads=1 \
        2>&1 | tee -a $output_dir/benchmark_bulkload_compact.log"
   echo $cmd | tee $output_dir/benchmark_bulkload_compact.log
   eval $cmd
