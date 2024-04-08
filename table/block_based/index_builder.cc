@@ -57,6 +57,11 @@ IndexBuilder* IndexBuilder::CreateIndexBuilder(
           table_opt.format_version, use_value_delta_encoding,
           table_opt.index_shortening, /* include_first_key */ true);
     } break;
+    case BlockBasedTableOptions::kLearnedIndexWithPLR: {
+      // TODO(fyp): Call PLRIndexBuilder ctor, pass gamma, modify option and
+      // sanitization logic of gamma
+      result = new PLRIndexBuilder(table_opt.plr_index_block_gamma);
+    } break;
     default: {
       assert(!"Do not recognize the index type ");
     } break;

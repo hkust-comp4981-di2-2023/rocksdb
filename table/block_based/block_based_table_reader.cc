@@ -56,6 +56,7 @@
 #include "util/string_util.h"
 #include "util/util.h"
 #include "util/xxhash.h"
+#include "learned_index/plr/plr_block_iter.h"
 
 namespace ROCKSDB_NAMESPACE {
 
@@ -357,6 +358,120 @@ Status BlockBasedTable::IndexReaderCommon::GetOrReadIndexBlock(
   return ReadIndexBlock(table_, /*prefetch_buffer=*/nullptr, read_options,
                         cache_index_blocks(), get_context, lookup_context,
                         index_block);
+}
+
+// Encapsulates common functionality for the various index reader
+// implementations. Provides access to the index block regardless of whether
+// it is owned by the reader or stored in the cache, or whether it is pinned
+// in the cache or not.
+//
+// Difference from IndexReaderCommon: Cache BlockContents instead of Block
+class BlockBasedTable::CustomIndexReaderCommon : public BlockBasedTable::IndexReader {
+ public:
+  CustomIndexReaderCommon(const BlockBasedTable* t,
+                    CachableEntry<BlockContents>&& index_block_contents)
+      : table_(t), index_block_contents_(std::move(index_block_contents)) {
+    assert(table_ != nullptr);
+  }
+
+ protected:
+  static Status ReadIndexBlock(const BlockBasedTable* table,
+                               FilePrefetchBuffer* prefetch_buffer,
+                               const ReadOptions& read_options, bool use_cache,
+                               GetContext* get_context,
+                               BlockCacheLookupContext* lookup_context,
+                               CachableEntry<BlockContents>* index_block_contents);
+
+  const BlockBasedTable* table() const { return table_; }
+
+  const InternalKeyComparator* internal_comparator() const {
+    assert(table_ != nullptr);
+    assert(table_->get_rep() != nullptr);
+
+    return &table_->get_rep()->internal_comparator;
+  }
+
+  bool index_has_first_key() const {
+    assert(table_ != nullptr);
+    assert(table_->get_rep() != nullptr);
+    return table_->get_rep()->index_has_first_key;
+  }
+
+  bool index_key_includes_seq() const {
+    assert(table_ != nullptr);
+    assert(table_->get_rep() != nullptr);
+    return table_->get_rep()->index_key_includes_seq;
+  }
+
+  bool index_value_is_full() const {
+    assert(table_ != nullptr);
+    assert(table_->get_rep() != nullptr);
+    return table_->get_rep()->index_value_is_full;
+  }
+
+  bool cache_index_blocks() const {
+    assert(table_ != nullptr);
+    assert(table_->get_rep() != nullptr);
+    return table_->get_rep()->table_options.cache_index_and_filter_blocks;
+  }
+
+  Status GetOrReadIndexBlock(bool no_io, GetContext* get_context,
+                             BlockCacheLookupContext* lookup_context,
+                             CachableEntry<BlockContents>* index_block_contents) const;
+
+  size_t ApproximateIndexBlockMemoryUsage() const {
+    assert(!index_block_contents_.GetOwnValue() || index_block_contents_.GetValue() != nullptr);
+    return index_block_contents_.GetOwnValue()
+               ? index_block_contents_.GetValue()->ApproximateMemoryUsage()
+               : 0;
+  }
+
+ private:
+  const BlockBasedTable* table_;
+  CachableEntry<BlockContents> index_block_contents_;
+};
+
+Status BlockBasedTable::CustomIndexReaderCommon::ReadIndexBlock(
+    const BlockBasedTable* table, FilePrefetchBuffer* prefetch_buffer,
+    const ReadOptions& read_options, bool use_cache, GetContext* get_context,
+    BlockCacheLookupContext* lookup_context,
+    CachableEntry<BlockContents>* index_block_contents) {
+  PERF_TIMER_GUARD(read_index_block_nanos);
+
+  assert(table != nullptr);
+  assert(index_block_contents != nullptr);
+  assert(index_block_contents->IsEmpty());
+
+  const Rep* const rep = table->get_rep();
+  assert(rep != nullptr);
+
+  const Status s = table->RetrieveBlock(
+      prefetch_buffer, read_options, rep->footer.index_handle(),
+      UncompressionDict::GetEmptyDict(), index_block_contents, BlockType::kIndex,
+      get_context, lookup_context, /* for_compaction */ false, use_cache);
+
+  return s;
+}
+
+Status BlockBasedTable::CustomIndexReaderCommon::GetOrReadIndexBlock(
+    bool no_io, GetContext* get_context,
+    BlockCacheLookupContext* lookup_context,
+    CachableEntry<BlockContents>* index_block_contents) const {
+  assert(index_block_contents != nullptr);
+
+  if (!index_block_contents_.IsEmpty()) {
+    index_block_contents->SetUnownedValue(index_block_contents_.GetValue());
+    return Status::OK();
+  }
+
+  ReadOptions read_options;
+  if (no_io) {
+    read_options.read_tier = kBlockCacheTier;
+  }
+
+  return ReadIndexBlock(table_, /*prefetch_buffer=*/nullptr, read_options,
+                        cache_index_blocks(), get_context, lookup_context,
+                        index_block_contents);
 }
 
 // Index that allows binary search lookup in a two-level index structure.
@@ -785,6 +900,91 @@ class HashIndexReader : public BlockBasedTable::IndexReaderCommon {
       : IndexReaderCommon(t, std::move(index_block)) {}
 
   std::unique_ptr<BlockPrefixIndex> prefix_index_;
+};
+
+class PLRIndexReader: public BlockBasedTable::CustomIndexReaderCommon {
+ public:
+  // Read index from the file and create an intance for
+  // `PLRIndexReader`.
+  // On success, index_reader will be populated; otherwise it will remain
+  // unmodified.
+  static Status Create(const BlockBasedTable* table,
+                       FilePrefetchBuffer* prefetch_buffer, bool use_cache,
+                       bool prefetch, bool pin,
+                       BlockCacheLookupContext* lookup_context,
+                       std::unique_ptr<IndexReader>* index_reader) {
+    assert(table != nullptr);
+    assert(table->get_rep());
+    assert(!pin || prefetch);
+    assert(index_reader != nullptr);
+
+    CachableEntry<BlockContents> index_block_contents;
+    if (prefetch || !use_cache) {
+      const Status s =
+          ReadIndexBlock(table, prefetch_buffer, ReadOptions(), use_cache,
+                         /*get_context=*/nullptr, lookup_context, &index_block_contents);
+      if (!s.ok()) {
+        return s;
+      }
+
+      if (use_cache && !pin) {
+        index_block_contents.Reset();
+      }
+    }
+
+    index_reader->reset(
+        new PLRIndexReader(table, std::move(index_block_contents)));
+
+    return Status::OK();
+  }
+
+  InternalIteratorBase<IndexValue>* NewIterator(
+      const ReadOptions& read_options, bool /* disable_prefix_seek */,
+      IndexBlockIter* iter, GetContext* get_context,
+      BlockCacheLookupContext* lookup_context) override {
+    const bool no_io = (read_options.read_tier == kBlockCacheTier);
+    CachableEntry<BlockContents> index_block_contents;
+    const Status s =
+        GetOrReadIndexBlock(no_io, get_context, lookup_context, &index_block_contents);
+    if (!s.ok()) {
+      if (iter != nullptr) {
+        iter->Invalidate(s);
+        return iter;
+      }
+
+      return NewErrorInternalIterator<IndexValue>(s);
+    }
+
+    // Statistics* kNullStats = nullptr;
+    // We don't return pinned data from index blocks, so no need
+    // to set `block_contents_pinned`.
+    
+    BlockContents* block_content = index_block_contents.GetValue();
+
+    // TODO(fyp): 99% will leak memory, need to fix, but lets see if logic is correct first
+    auto it = new PLRBlockIter(block_content, index_key_includes_seq(), 
+                                num_data_blocks_);
+    index_block_contents.TransferTo(it);
+
+    return it;
+  }
+
+  size_t ApproximateMemoryUsage() const override {
+    size_t usage = ApproximateIndexBlockMemoryUsage();
+#ifdef ROCKSDB_MALLOC_USABLE_SIZE
+    usage += malloc_usable_size(const_cast<PLRIndexReader*>(this));
+#else
+    usage += sizeof(*this);
+#endif  // ROCKSDB_MALLOC_USABLE_SIZE
+    return usage;
+  }
+
+ private:
+  uint64_t num_data_blocks_;
+  PLRIndexReader(const BlockBasedTable* t,
+                  CachableEntry<BlockContents>&& index_block_contents)
+      : CustomIndexReaderCommon(t, std::move(index_block_contents)),
+        num_data_blocks_(t->get_rep()->table_properties->num_data_blocks) {}
 };
 
 void BlockBasedTable::UpdateCacheHitMetrics(BlockType block_type,
@@ -3355,6 +3555,9 @@ Status BlockBasedTable::Get(const ReadOptions& read_options, const Slice& key,
         rep_->internal_comparator.user_comparator()->timestamp_size();
     bool matched = false;  // if such user key mathced a key in SST
     bool done = false;
+
+    // TODO(fyp): Integration to block based table - leave for another pr
+    // TODO(fyp): Update first key and last key
     for (iiter->Seek(key); iiter->Valid() && !done; iiter->Next()) {
       IndexValue v = iiter->value();
 
@@ -3374,10 +3577,12 @@ Status BlockBasedTable::Get(const ReadOptions& read_options, const Slice& key,
         break;
       }
 
-      if (!v.first_internal_key.empty() && !skip_filters &&
+      // No internal key stored in index block for PLR, skipped
+      if (/*rep_->index_type != BlockBasedTableOptions::kLearnedIndexWithPLR &&*/ 
+          !v.first_internal_key.empty() && !skip_filters &&
           UserComparatorWrapper(rep_->internal_comparator.user_comparator())
                   .Compare(ExtractUserKey(key),
-                           ExtractUserKey(v.first_internal_key)) < 0) {
+                          ExtractUserKey(v.first_internal_key)) < 0) {
         // The requested key falls between highest key in previous block and
         // lowest key in current block.
         break;
@@ -3407,7 +3612,39 @@ Status BlockBasedTable::Get(const ReadOptions& read_options, const Slice& key,
         break;
       }
 
-      bool may_exist = biter.SeekForGet(key);
+      /*
+      TEST_SYNC_POINT_CALLBACK("BlockBasedTable::Get:BeforeSetDataIterFirst&LastKey", &biter);
+      // TODO(fyp): Check if key is in the data block, if not then goes on, for PLR only
+      bool plr_may_exist = true;
+      if (rep_->index_type == BlockBasedTableOptions::kLearnedIndexWithPLR) {
+        biter.SeekToFirst();
+        Slice first_key = biter.key();
+        if (!biter.Valid()) {
+          // The data block is empty, we should go on to the next block
+          plr_may_exist = false;
+        }
+        else {
+          // Data block not empty, can move on
+          biter.SeekToLast();
+          Slice last_key = biter.key();
+          if (rep_->internal_comparator.Compare(ExtractUserKey(key), ExtractUserKey(first_key)) < 0) {
+            plr_may_exist = false;
+            // This will change block range, use with precaution
+            // Will be changed if have time
+            iiter->SetEndBlockAsCurrent();
+          }
+          if (rep_->internal_comparator.Compare(ExtractUserKey(key), ExtractUserKey(last_key)) > 0) {
+            plr_may_exist = false;
+            // This will change block range, use with precaution
+            // Will be changed if have time
+            iiter->SetBeginBlockAsCurrent();
+          }
+        }
+      }
+      TEST_SYNC_POINT_CALLBACK("BlockBasedTable::Get:AfterSetDataIterFirst&LastKey", &biter);
+      */
+
+      bool may_exist = biter.SeekForGet(key) /*&& plr_may_exist*/;
       // If user-specified timestamp is supported, we cannot end the search
       // just because hash index lookup indicates the key+ts does not exist.
       if (!may_exist && ts_sz == 0) {
@@ -4087,6 +4324,10 @@ Status BlockBasedTable::CreateIndexReader(
                                        use_cache, prefetch, pin, lookup_context,
                                        index_reader);
       }
+    }
+    case BlockBasedTableOptions::kLearnedIndexWithPLR: {
+      return PLRIndexReader::Create(this, prefetch_buffer, use_cache, prefetch,
+                                    pin, lookup_context, index_reader);
     }
     default: {
       std::string error_message =
