@@ -500,7 +500,7 @@ for job in ${jobs[@]}; do
   start=$(now)
   if [ $job = bulkload ]; then
     run_bulkload
-  elif [ $job = fyp]; then
+  elif [ $job = fyp ]; then
     run_fyp
   elif [ $job = fillseq_disable_wal ]; then
     run_fillseq 1
