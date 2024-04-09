@@ -456,13 +456,13 @@ function run_fyp {
        --use_existing_db=0 \
        --disable_auto_compactions=1 \
        --sync=0 \
-       --seed=4981 \
        --duration=60 \
        $params_bulkload \
        --threads=16 \
        --memtablerep=vector \
        --allow_concurrent_memtable_write=false \
        --disable_wal=1 \
+       --seed=4981 \
        2>&1 | tee -a $output_dir/benchmark_fyp_fillrandom.log"
   echo $cmd | tee $output_dir/benchmark_fyp_fillrandom.log
   eval $cmd
@@ -476,9 +476,25 @@ function run_fyp {
        --duration=5400 \
        $params_w \
        --threads=16 \
+       --seed=4981 \
        2>&1 | tee -a $output_dir/benchmark_fyp_readrandom.log"
   echo $cmd | tee $output_dir/benchmark_fyp_readrandom.log
   eval $cmd
+  echo "Reading $num_keys random keys while writing"
+  out_name="benchmark_readwhilewriting.t${num_threads}.log"
+  cmd="./db_bench --benchmarks=readwhilewriting,stats \
+       --use_existing_db=1 \
+       --sync=$syncval \
+       --report_file="report_readwhilewriting.csv" \
+       --duration=5400 \
+       $params_w \
+       --threads=$num_threads \
+       --merge_operator=\"put\" \
+       --seed=4981 \
+       2>&1 | tee -a $output_dir/${out_name}"
+  echo $cmd | tee $output_dir/${out_name}
+  eval $cmd
+  summarize_result $output_dir/${out_name} readwhilewriting.t${num_threads} readwhilewriting
 }
 
 function now() {
