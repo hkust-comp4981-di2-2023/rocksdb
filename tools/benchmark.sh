@@ -482,7 +482,7 @@ function run_fyp {
   eval $cmd
   echo "Reading $num_keys random keys while writing"
   out_name="benchmark_readwhilewriting.t${num_threads}.log"
-  cmd="./db_bench --benchmarks=readwhilewriting \
+  cmd="./db_bench --benchmarks=readwhilewriting,stats \
        --use_existing_db=1 \
        --sync=$syncval \
        --report_file="report_readwhilewriting.csv" \
