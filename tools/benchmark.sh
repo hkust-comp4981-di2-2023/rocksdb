@@ -516,7 +516,7 @@ function run_fyp_uniform_abc {
        2>&1 | tee -a $output_dir/benchmark_fyp_uniform_a.log"
   echo $cmd | tee $output_dir/benchmark_fyp_uniform_a.log
   eval $cmd
-  summarize_result $output_dir/benchmark_fyp_uniform_a.log fyp fillrandom
+  summarize_result $output_dir/benchmark_fyp_uniform_a.log fyp_uniform_abc fillrandom
   echo "Test reading..."
   cmd="./db_bench --benchmarks=readrandom,stats \
        --use_existing_db=1 \
@@ -547,8 +547,9 @@ function run_fyp_uniform_abc {
        2>&1 | tee -a $output_dir/${out_name}"
   echo $cmd | tee $output_dir/${out_name}
   eval $cmd
-  summarize_result $output_dir/${out_name} fyp_uniform_c.t${num_threads} readrandomwriterandom
+  summarize_result $output_dir/${out_name} fyp_uniform_abc readrandomwriterandom
 }
+
 
 function now() {
   echo `date +"%s"`
