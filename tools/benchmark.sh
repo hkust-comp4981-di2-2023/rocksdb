@@ -628,6 +628,150 @@ function run_fyp_uniform_ae {
   summarize_result $output_dir/${out_name} fyp_uniform_ae readrandomwriterandom
 }
 
+function run_fyp_linear_abc {
+  # Fill up the database with random keys first
+  echo "Loading $num_keys random keys"
+  cmd="./db_bench --benchmarks=fillrandom,stats \
+       --use_existing_db=0 \
+       --disable_auto_compactions=1 \
+       --sync=0 \
+       --report_file="uniform_a.csv" \
+       --report_interval_seconds=30 \
+       --duration=5400 \
+       --key_dist_a=1 \
+       --key_dist_b=1 \
+       $params_bulkload \
+       --threads=16 \
+       --memtablerep=vector \
+       --allow_concurrent_memtable_write=false \
+       --disable_wal=1 \
+       --seed=4981 \
+       2>&1 | tee -a $output_dir/benchmark_fyp_linear_a.log"
+  echo $cmd | tee $output_dir/benchmark_fyp_linear_a.log
+  eval $cmd
+  summarize_result $output_dir/benchmark_fyp_linear_a.log fyp_linear_abc fillrandom
+  echo "Test reading..."
+  cmd="./db_bench --benchmarks=readrandom,stats \
+       --use_existing_db=1 \
+       --disable_auto_compactions=1 \
+       --sync=0 \
+       --report_file="uniform_b.csv" \
+       --report_interval_seconds=30 \
+       --duration=5400 \
+       --key_dist_a=1 \
+       --key_dist_b=1 \
+       $params_w \
+       --threads=16 \
+       --seed=4981 \
+       2>&1 | tee -a $output_dir/benchmark_fyp_linear_b.log"
+  echo $cmd | tee $output_dir/benchmark_fyp_linear_b.log
+  eval $cmd
+  echo "Reading $num_keys random keys while writing"
+  out_name="fyp_uniform_c.t${num_threads}.log"
+  cmd="./db_bench --benchmarks=readrandomwriterandom,stats \
+       --use_existing_db=1 \
+       --sync=$syncval \
+       --report_file="uniform_c.csv" \
+       --report_interval_seconds=30 \
+       --duration=5400 \
+       --key_dist_a=1 \
+       --key_dist_b=1 \
+       --readwritepercent=90 \
+       $params_w \
+       --threads=$num_threads \
+       --merge_operator=\"put\" \
+       --seed=4981 \
+       2>&1 | tee -a $output_dir/${out_name}"
+  echo $cmd | tee $output_dir/${out_name}
+  eval $cmd
+  summarize_result $output_dir/${out_name} fyp_uniform_abc readrandomwriterandom
+}
+
+function run_fyp_linear_ad {
+  # Fill up the database with random keys first
+  echo "Loading $num_keys random keys"
+  cmd="./db_bench --benchmarks=fillrandom,stats \
+       --use_existing_db=0 \
+       --disable_auto_compactions=1 \
+       --sync=0 \
+       --report_file="uniform_a.csv" \
+       --report_interval_seconds=30 \
+       --duration=5400 \
+       --key_dist_a=1 \
+       --key_dist_b=1 \
+       $params_bulkload \
+       --threads=16 \
+       --memtablerep=vector \
+       --allow_concurrent_memtable_write=false \
+       --disable_wal=1 \
+       --seed=4981 \
+       2>&1 | tee -a $output_dir/benchmark_fyp_linear_a.log"
+  echo $cmd | tee $output_dir/benchmark_fyp_linear_a.log
+  eval $cmd
+  summarize_result $output_dir/benchmark_fyp_linear_a.log fyp_linear_ad fillrandom
+  echo "Reading $num_keys random keys while writing"
+  out_name="fyp_linear_d.t${num_threads}.log"
+  cmd="./db_bench --benchmarks=readrandomwriterandom,stats \
+       --use_existing_db=1 \
+       --sync=$syncval \
+       --report_file="uniform_d.csv" \
+       --report_interval_seconds=30 \
+       --duration=5400 \
+       --readwritepercent=10 \
+       --key_dist_a=1 \
+       --key_dist_b=1 \
+       $params_w \
+       --threads=$num_threads \
+       --merge_operator=\"put\" \
+       --seed=4981 \
+       2>&1 | tee -a $output_dir/${out_name}"
+  echo $cmd | tee $output_dir/${out_name}
+  eval $cmd
+  summarize_result $output_dir/${out_name} fyp_linear_ad readrandomwriterandom
+}
+
+function run_fyp_linear_ae {
+  # Fill up the database with random keys first
+  echo "Loading $num_keys random keys"
+  cmd="./db_bench --benchmarks=fillrandom,stats \
+       --use_existing_db=0 \
+       --disable_auto_compactions=1 \
+       --sync=0 \
+       --report_file="uniform_a.csv" \
+       --report_interval_seconds=30 \
+       --duration=5400 \
+       --key_dist_a=1 \
+       --key_dist_b=1 \
+       $params_bulkload \
+       --threads=16 \
+       --memtablerep=vector \
+       --allow_concurrent_memtable_write=false \
+       --disable_wal=1 \
+       --seed=4981 \
+       2>&1 | tee -a $output_dir/benchmark_fyp_linear_a.log"
+  echo $cmd | tee $output_dir/benchmark_fyp_linear_a.log
+  eval $cmd
+  summarize_result $output_dir/benchmark_fyp_linear_a.log fyp_linear_ae fillrandom
+  echo "Reading $num_keys random keys while writing"
+  out_name="fyp_linear_e.t${num_threads}.log"
+  cmd="./db_bench --benchmarks=readrandomwriterandom,stats \
+       --use_existing_db=1 \
+       --sync=$syncval \
+       --report_file="uniform_e.csv" \
+       --report_interval_seconds=30 \
+       --duration=5400 \
+       --readwritepercent=50 \
+       --key_dist_a=1 \
+       --key_dist_b=1 \
+       $params_w \
+       --threads=$num_threads \
+       --merge_operator=\"put\" \
+       --seed=4981 \
+       2>&1 | tee -a $output_dir/${out_name}"
+  echo $cmd | tee $output_dir/${out_name}
+  eval $cmd
+  summarize_result $output_dir/${out_name} fyp_linear_ae readrandomwriterandom
+}
 
 function now() {
   echo `date +"%s"`
@@ -658,6 +802,18 @@ for job in ${jobs[@]}; do
     run_fyp_uniform_ad
   elif [ $job = fyp_uniform_ae ]; then
     run_fyp_uniform_ae
+  elif [ $job = fyp_linear_abc ]; then
+    run_fyp_linear_abc
+  elif [ $job = fyp_linear_ad ]; then
+    run_fyp_linear_ad
+  elif [ $job = fyp_linear_ae ]; then
+    run_fyp_linear_ae
+  elif [ $job = fyp_exponential_abc ]; then
+    run_fyp_exponential_abc
+  elif [ $job = fyp_exponential_ad ]; then
+    run_fyp_exponential_ad
+  elif [ $job = fyp_exponential_ae ]; then
+    run_fyp_exponential_ae
   elif [ $job = fillseq_disable_wal ]; then
     run_fillseq 1
   elif [ $job = fillseq_enable_wal ]; then
