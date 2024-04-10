@@ -635,7 +635,7 @@ function run_fyp_linear_abc {
        --use_existing_db=0 \
        --disable_auto_compactions=1 \
        --sync=0 \
-       --report_file="uniform_a.csv" \
+       --report_file="linear_a.csv" \
        --report_interval_seconds=30 \
        --duration=5400 \
        --key_dist_a=1 \
@@ -655,7 +655,7 @@ function run_fyp_linear_abc {
        --use_existing_db=1 \
        --disable_auto_compactions=1 \
        --sync=0 \
-       --report_file="uniform_b.csv" \
+       --report_file="linear_b.csv" \
        --report_interval_seconds=30 \
        --duration=5400 \
        --key_dist_a=1 \
@@ -671,7 +671,7 @@ function run_fyp_linear_abc {
   cmd="./db_bench --benchmarks=readrandomwriterandom,stats \
        --use_existing_db=1 \
        --sync=$syncval \
-       --report_file="uniform_c.csv" \
+       --report_file="linear_c.csv" \
        --report_interval_seconds=30 \
        --duration=5400 \
        --key_dist_a=1 \
@@ -694,7 +694,7 @@ function run_fyp_linear_ad {
        --use_existing_db=0 \
        --disable_auto_compactions=1 \
        --sync=0 \
-       --report_file="uniform_a.csv" \
+       --report_file="linear_a.csv" \
        --report_interval_seconds=30 \
        --duration=5400 \
        --key_dist_a=1 \
@@ -714,7 +714,7 @@ function run_fyp_linear_ad {
   cmd="./db_bench --benchmarks=readrandomwriterandom,stats \
        --use_existing_db=1 \
        --sync=$syncval \
-       --report_file="uniform_d.csv" \
+       --report_file="linear_d.csv" \
        --report_interval_seconds=30 \
        --duration=5400 \
        --readwritepercent=10 \
@@ -737,7 +737,7 @@ function run_fyp_linear_ae {
        --use_existing_db=0 \
        --disable_auto_compactions=1 \
        --sync=0 \
-       --report_file="uniform_a.csv" \
+       --report_file="linear_a.csv" \
        --report_interval_seconds=30 \
        --duration=5400 \
        --key_dist_a=1 \
@@ -757,7 +757,7 @@ function run_fyp_linear_ae {
   cmd="./db_bench --benchmarks=readrandomwriterandom,stats \
        --use_existing_db=1 \
        --sync=$syncval \
-       --report_file="uniform_e.csv" \
+       --report_file="linear_e.csv" \
        --report_interval_seconds=30 \
        --duration=5400 \
        --readwritepercent=50 \
@@ -780,7 +780,7 @@ function run_fyp_exponential_abc {
        --use_existing_db=0 \
        --disable_auto_compactions=1 \
        --sync=0 \
-       --report_file="uniform_a.csv" \
+       --report_file="exponential_a.csv" \
        --report_interval_seconds=30 \
        --duration=5400 \
        --key_dist_a=1 \
@@ -800,7 +800,7 @@ function run_fyp_exponential_abc {
        --use_existing_db=1 \
        --disable_auto_compactions=1 \
        --sync=0 \
-       --report_file="uniform_b.csv" \
+       --report_file="exponential_b.csv" \
        --report_interval_seconds=30 \
        --duration=5400 \
        --key_dist_a=1 \
@@ -816,7 +816,7 @@ function run_fyp_exponential_abc {
   cmd="./db_bench --benchmarks=readrandomwriterandom,stats \
        --use_existing_db=1 \
        --sync=$syncval \
-       --report_file="uniform_c.csv" \
+       --report_file="exponential_c.csv" \
        --report_interval_seconds=30 \
        --duration=5400 \
        --key_dist_a=1 \
@@ -839,7 +839,7 @@ function run_fyp_exponential_ad {
        --use_existing_db=0 \
        --disable_auto_compactions=1 \
        --sync=0 \
-       --report_file="uniform_a.csv" \
+       --report_file="exponential_a.csv" \
        --report_interval_seconds=30 \
        --duration=5400 \
        --key_dist_a=1 \
@@ -859,7 +859,7 @@ function run_fyp_exponential_ad {
   cmd="./db_bench --benchmarks=readrandomwriterandom,stats \
        --use_existing_db=1 \
        --sync=$syncval \
-       --report_file="uniform_d.csv" \
+       --report_file="exponential_d.csv" \
        --report_interval_seconds=30 \
        --duration=5400 \
        --readwritepercent=10 \
@@ -882,7 +882,7 @@ function run_fyp_exponential_ae {
        --use_existing_db=0 \
        --disable_auto_compactions=1 \
        --sync=0 \
-       --report_file="uniform_a.csv" \
+       --report_file="exponential_a.csv" \
        --report_interval_seconds=30 \
        --duration=5400 \
        --key_dist_a=1 \
@@ -902,7 +902,7 @@ function run_fyp_exponential_ae {
   cmd="./db_bench --benchmarks=readrandomwriterandom,stats \
        --use_existing_db=1 \
        --sync=$syncval \
-       --report_file="uniform_e.csv" \
+       --report_file="exponential_e.csv" \
        --report_interval_seconds=30 \
        --duration=5400 \
        --readwritepercent=50 \
