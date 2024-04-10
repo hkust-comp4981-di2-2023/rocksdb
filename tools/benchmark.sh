@@ -456,7 +456,7 @@ function run_fyp {
        --use_existing_db=0 \
        --disable_auto_compactions=1 \
        --sync=0 \
-       --duration=60 \
+       --duration=5400 \
        $params_bulkload \
        --threads=16 \
        --memtablerep=vector \
