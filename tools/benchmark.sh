@@ -506,7 +506,7 @@ function run_fyp_uniform_abc {
        --sync=0 \
        --report_file="uniform_a.csv" \
        --report_interval_seconds=30 \
-       --duration=5400 \
+       --duration=3 \
        $params_bulkload \
        --threads=16 \
        --memtablerep=vector \
@@ -524,7 +524,7 @@ function run_fyp_uniform_abc {
        --sync=0 \
        --report_file="uniform_b.csv" \
        --report_interval_seconds=30 \
-       --duration=5400 \
+       --duration=3 \
        $params_w \
        --threads=16 \
        --seed=4981 \
@@ -538,7 +538,7 @@ function run_fyp_uniform_abc {
        --sync=$syncval \
        --report_file="uniform_c.csv" \
        --report_interval_seconds=30 \
-       --duration=5400 \
+       --duration=60 \
        --readwritepercent=90 \
        $params_w \
        --threads=$num_threads \
