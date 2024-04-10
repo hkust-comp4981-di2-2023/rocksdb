@@ -559,7 +559,7 @@ function run_fyp_uniform_ad {
        --sync=0 \
        --report_file="uniform_a.csv" \
        --report_interval_seconds=30 \
-       --duration=3 \
+       --duration=5400 \
        $params_bulkload \
        --threads=16 \
        --memtablerep=vector \
@@ -577,7 +577,7 @@ function run_fyp_uniform_ad {
        --sync=$syncval \
        --report_file="uniform_d.csv" \
        --report_interval_seconds=30 \
-       --duration=60 \
+       --duration=5400 \
        --readwritepercent=10 \
        $params_w \
        --threads=$num_threads \
@@ -598,7 +598,7 @@ function run_fyp_uniform_ae {
        --sync=0 \
        --report_file="uniform_a.csv" \
        --report_interval_seconds=30 \
-       --duration=3 \
+       --duration=5400 \
        $params_bulkload \
        --threads=16 \
        --memtablerep=vector \
@@ -616,7 +616,7 @@ function run_fyp_uniform_ae {
        --sync=$syncval \
        --report_file="uniform_e.csv" \
        --report_interval_seconds=30 \
-       --duration=60 \
+       --duration=5400 \
        --readwritepercent=50 \
        $params_w \
        --threads=$num_threads \
@@ -654,9 +654,9 @@ for job in ${jobs[@]}; do
     run_fyp
   elif [ $job = fyp_uniform_abc ]; then
     run_fyp_uniform_abc
-  elif [ $job = fyp_uniform_ad]; then
+  elif [ $job = fyp_uniform_ad ]; then
     run_fyp_uniform_ad
-  elif [ $job = fyp_uniform_ae]; then
+  elif [ $job = fyp_uniform_ae ]; then
     run_fyp_uniform_ae
   elif [ $job = fillseq_disable_wal ]; then
     run_fillseq 1
