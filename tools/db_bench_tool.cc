@@ -1246,11 +1246,6 @@ DEFINE_uint64(stats_history_buffer_size,
 DEFINE_int64(multiread_stride, 0,
              "Stride length for the keys in a MultiGet batch");
 DEFINE_bool(multiread_batched, false, "Use the new MultiGet API");
-DEFINE_double(plr_index_block_gamma, 1.0,
-              "The error bound specifically for PLR Learned Index");
-
-block_based_options.plr_index_block_gamma =
-        static_cast<double>(FLAGS_plr_index_block_gamma);
 
 enum RepFactory {
   kSkipList,
