@@ -506,7 +506,7 @@ function run_fyp_uniform_abc {
        --sync=0 \
        --report_file="uniform_a.csv" \
        --report_interval_seconds=30 \
-       --duration=5400 \
+       --duration=1200 \
        $params_bulkload \
        --threads=1 \
        --memtablerep=vector \
@@ -524,7 +524,7 @@ function run_fyp_uniform_abc {
        --sync=0 \
        --report_file="uniform_b.csv" \
        --report_interval_seconds=30 \
-       --duration=5400 \
+       --duration=1200 \
        $params_w \
        --threads=1 \
        --seed=4981 \
@@ -538,7 +538,7 @@ function run_fyp_uniform_abc {
        --sync=$syncval \
        --report_file="uniform_c.csv" \
        --report_interval_seconds=30 \
-       --duration=5400 \
+       --duration=1200 \
        --readwritepercent=90 \
        $params_w \
        --threads=16 \
@@ -559,7 +559,7 @@ function run_fyp_uniform_ad {
        --sync=0 \
        --report_file="uniform_a.csv" \
        --report_interval_seconds=30 \
-       --duration=5400 \
+       --duration=1200 \
        $params_bulkload \
        --threads=1 \
        --memtablerep=vector \
@@ -577,7 +577,7 @@ function run_fyp_uniform_ad {
        --sync=$syncval \
        --report_file="uniform_d.csv" \
        --report_interval_seconds=30 \
-       --duration=5400 \
+       --duration=1200 \
        --readwritepercent=10 \
        $params_w \
        --threads=16 \
@@ -598,7 +598,7 @@ function run_fyp_uniform_ae {
        --sync=0 \
        --report_file="uniform_a.csv" \
        --report_interval_seconds=30 \
-       --duration=5400 \
+       --duration=1200 \
        $params_bulkload \
        --threads=1 \
        --memtablerep=vector \
@@ -616,7 +616,7 @@ function run_fyp_uniform_ae {
        --sync=$syncval \
        --report_file="uniform_e.csv" \
        --report_interval_seconds=30 \
-       --duration=5400 \
+       --duration=1200 \
        --readwritepercent=50 \
        $params_w \
        --threads=16 \
@@ -637,7 +637,7 @@ function run_fyp_linear_abc {
        --sync=0 \
        --report_file="linear_a.csv" \
        --report_interval_seconds=30 \
-       --duration=5400 \
+       --duration=1200 \
        --key_dist_a=1 \
        --key_dist_b=1 \
        $params_bulkload \
@@ -657,7 +657,7 @@ function run_fyp_linear_abc {
        --sync=0 \
        --report_file="linear_b.csv" \
        --report_interval_seconds=30 \
-       --duration=5400 \
+       --duration=1200 \
        --key_dist_a=1 \
        --key_dist_b=1 \
        $params_w \
@@ -673,7 +673,7 @@ function run_fyp_linear_abc {
        --sync=$syncval \
        --report_file="linear_c.csv" \
        --report_interval_seconds=30 \
-       --duration=5400 \
+       --duration=1200 \
        --key_dist_a=1 \
        --key_dist_b=1 \
        --readwritepercent=90 \
@@ -696,7 +696,7 @@ function run_fyp_linear_ad {
        --sync=0 \
        --report_file="linear_a.csv" \
        --report_interval_seconds=30 \
-       --duration=5400 \
+       --duration=1200 \
        --key_dist_a=1 \
        --key_dist_b=1 \
        $params_bulkload \
@@ -716,7 +716,7 @@ function run_fyp_linear_ad {
        --sync=$syncval \
        --report_file="linear_d.csv" \
        --report_interval_seconds=30 \
-       --duration=5400 \
+       --duration=1200 \
        --readwritepercent=10 \
        --key_dist_a=1 \
        --key_dist_b=1 \
@@ -739,7 +739,7 @@ function run_fyp_linear_ae {
        --sync=0 \
        --report_file="linear_a.csv" \
        --report_interval_seconds=30 \
-       --duration=5400 \
+       --duration=1200 \
        --key_dist_a=1 \
        --key_dist_b=1 \
        $params_bulkload \
@@ -759,7 +759,7 @@ function run_fyp_linear_ae {
        --sync=$syncval \
        --report_file="linear_e.csv" \
        --report_interval_seconds=30 \
-       --duration=5400 \
+       --duration=1200 \
        --readwritepercent=50 \
        --key_dist_a=1 \
        --key_dist_b=1 \
@@ -782,7 +782,7 @@ function run_fyp_exponential_abc {
        --sync=0 \
        --report_file="exponential_a.csv" \
        --report_interval_seconds=30 \
-       --duration=5400 \
+       --duration=1200 \
        --key_dist_a=1 \
        --key_dist_b=2.718 \
        $params_bulkload \
@@ -802,7 +802,7 @@ function run_fyp_exponential_abc {
        --sync=0 \
        --report_file="exponential_b.csv" \
        --report_interval_seconds=30 \
-       --duration=5400 \
+       --duration=1200 \
        --key_dist_a=1 \
        --key_dist_b=2.718 \
        $params_w \
@@ -818,7 +818,7 @@ function run_fyp_exponential_abc {
        --sync=$syncval \
        --report_file="exponential_c.csv" \
        --report_interval_seconds=30 \
-       --duration=5400 \
+       --duration=1200 \
        --key_dist_a=1 \
        --key_dist_b=2.718 \
        --readwritepercent=90 \
@@ -841,7 +841,7 @@ function run_fyp_exponential_ad {
        --sync=0 \
        --report_file="exponential_a.csv" \
        --report_interval_seconds=30 \
-       --duration=5400 \
+       --duration=1200 \
        --key_dist_a=1 \
        --key_dist_b=2.718 \
        $params_bulkload \
@@ -861,7 +861,7 @@ function run_fyp_exponential_ad {
        --sync=$syncval \
        --report_file="exponential_d.csv" \
        --report_interval_seconds=30 \
-       --duration=5400 \
+       --duration=1200 \
        --readwritepercent=10 \
        --key_dist_a=1 \
        --key_dist_b=2.718 \
@@ -884,7 +884,7 @@ function run_fyp_exponential_ae {
        --sync=0 \
        --report_file="exponential_a.csv" \
        --report_interval_seconds=30 \
-       --duration=5400 \
+       --duration=1200 \
        --key_dist_a=1 \
        --key_dist_b=2.718 \
        $params_bulkload \
@@ -904,7 +904,7 @@ function run_fyp_exponential_ae {
        --sync=$syncval \
        --report_file="exponential_e.csv" \
        --report_interval_seconds=30 \
-       --duration=5400 \
+       --duration=1200 \
        --readwritepercent=50 \
        --key_dist_a=1 \
        --key_dist_b=2.718 \
