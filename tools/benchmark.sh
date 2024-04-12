@@ -33,7 +33,7 @@ if [ -z $WAL_DIR ]; then
   exit 0
 fi
 
-output_dir=${OUTPUT_DIR:-/tmp/}
+output_dir=${OUTPUT_DIR:-/tmp}
 if [ ! -d $output_dir ]; then
   mkdir -p $output_dir
 fi
@@ -637,7 +637,7 @@ function run_fyp_linear_abc {
        --sync=0 \
        --report_file="linear_a.csv" \
        --report_interval_seconds=30 \
-       --duration=1200 \
+       --duration=120 \
        --key_dist_a=1 \
        --key_dist_b=1 \
        $params_bulkload \
@@ -657,7 +657,7 @@ function run_fyp_linear_abc {
        --sync=0 \
        --report_file="linear_b.csv" \
        --report_interval_seconds=30 \
-       --duration=1200 \
+       --duration=120 \
        --key_dist_a=1 \
        --key_dist_b=1 \
        $params_w \
@@ -673,7 +673,7 @@ function run_fyp_linear_abc {
        --sync=$syncval \
        --report_file="linear_c.csv" \
        --report_interval_seconds=30 \
-       --duration=1200 \
+       --duration=120 \
        --key_dist_a=1 \
        --key_dist_b=1 \
        --readwritepercent=90 \
