@@ -786,7 +786,7 @@ function run_fyp_exponential_abc {
        --key_dist_a=1 \
        --key_dist_b=2.718 \
        $params_bulkload \
-       --threads=16 \
+       --threads=1 \
        --memtablerep=vector \
        --allow_concurrent_memtable_write=false \
        --disable_wal=1 \
@@ -806,7 +806,7 @@ function run_fyp_exponential_abc {
        --key_dist_a=1 \
        --key_dist_b=2.718 \
        $params_w \
-       --threads=16 \
+       --threads=1 \
        --seed=4981 \
        2>&1 | tee -a $output_dir/benchmark_fyp_exponential_b.log"
   echo $cmd | tee $output_dir/benchmark_fyp_exponential_b.log
@@ -815,7 +815,7 @@ function run_fyp_exponential_abc {
   out_name="fyp_exponential_c.t${num_threads}.log"
   cmd="./db_bench --benchmarks=readrandomwriterandom,stats \
        --use_existing_db=1 \
-       --sync=$syncval \
+       --sync=0 \
        --report_file="exponential_c.csv" \
        --report_interval_seconds=30 \
        --duration=1200 \
@@ -823,7 +823,7 @@ function run_fyp_exponential_abc {
        --key_dist_b=2.718 \
        --readwritepercent=90 \
        $params_w \
-       --threads=16 \
+       --threads=1 \
        --merge_operator=\"put\" \
        --seed=4981 \
        2>&1 | tee -a $output_dir/${out_name}"
