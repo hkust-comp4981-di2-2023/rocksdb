@@ -49,6 +49,7 @@
 #include "rocksdb/slice.h"
 #include "rocksdb/slice_transform.h"
 #include "rocksdb/stats_history.h"
+#include "rocksdb/table.h"
 #include "rocksdb/utilities/object_registry.h"
 #include "rocksdb/utilities/optimistic_transaction_db.h"
 #include "rocksdb/utilities/options_util.h"
@@ -3770,6 +3771,9 @@ class Benchmark {
         block_based_options.cache_index_and_filter_blocks_with_high_priority =
             true;
       }
+      // fyp (todo): change index to PLR
+      block_based_options.index_type = BlockBasedTableOptions::kLearnedIndexWithPLR;
+      std::cout <<"Index using: "<< (unsigned int)((unsigned char) block_based_options.index_type )<< std::endl;
       block_based_options.block_cache = cache_;
       block_based_options.block_cache_compressed = compressed_cache_;
       block_based_options.block_size = FLAGS_block_size;
