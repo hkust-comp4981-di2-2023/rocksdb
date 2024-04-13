@@ -134,7 +134,7 @@ struct BlockBasedTableOptions {
     kLearnedIndexWithPLR = 0x04,
   };
 
-  IndexType index_type = kBinarySearch;
+  IndexType index_type = kLearnedIndexWithPLR;
 
   // The index type that will be used for the data block.
   enum DataBlockIndexType : char {
