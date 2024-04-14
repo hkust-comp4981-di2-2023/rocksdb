@@ -917,11 +917,11 @@ for job in ${jobs[@]}; do
     run_fyp_linear_ae
   elif [ $job = fyp_exponential_ab ]; then
     run_fyp_exponential_ab
-  elif [ $job = fyp_expoential_c ]; then
+  elif [ $job = fyp_exponential_c ]; then
     run_fyp_exponential_c
-  elif [ $job = fyp_exponential_ad ]; then
+  elif [ $job = fyp_exponential_d ]; then
     run_fyp_exponential_d
-  elif [ $job = fyp_exponential_ae ]; then
+  elif [ $job = fyp_exponential_e ]; then
     run_fyp_exponential_e
   elif [ $job = fillseq_disable_wal ]; then
     run_fillseq 1
