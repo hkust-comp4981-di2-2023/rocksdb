@@ -40,7 +40,7 @@ fi
 
 # all multithreaded tests run with sync=1 unless
 # $DB_BENCH_NO_SYNC is defined
-syncval="1"
+syncval="0"
 if [ ! -z $DB_BENCH_NO_SYNC ]; then
   echo "Turning sync off for all multithreaded tests"
   syncval="0";
