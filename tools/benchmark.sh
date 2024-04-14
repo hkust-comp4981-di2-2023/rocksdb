@@ -917,7 +917,7 @@ for job in ${jobs[@]}; do
     run_fyp_linear_ae
   elif [ $job = fyp_exponential_ab ]; then
     run_fyp_exponential_ab
-  elif [ $job = fyp_expoential_c ]; then
+  elif [ $job = fyp_exponential_c ]; then
     run_fyp_exponential_c
   elif [ $job = fyp_exponential_d ]; then
     run_fyp_exponential_d
