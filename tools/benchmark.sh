@@ -773,7 +773,7 @@ function run_fyp_linear_ae {
   summarize_result $output_dir/${out_name} fyp_linear_ae readrandomwriterandom
 }
 
-function run_fyp_exponential_abc {
+function run_fyp_exponential_ab {
   # Fill up the database with random keys first
   echo "Loading $num_keys random keys"
   cmd="./db_bench --benchmarks=fillrandom,stats \
@@ -794,7 +794,7 @@ function run_fyp_exponential_abc {
        2>&1 | tee -a $output_dir/benchmark_fyp_exponential_a.log"
   echo $cmd | tee $output_dir/benchmark_fyp_exponential_a.log
   eval $cmd
-  summarize_result $output_dir/benchmark_fyp_exponential_a.log fyp_exponential_abc fillrandom
+  summarize_result $output_dir/benchmark_fyp_exponential_a.log fyp_exponential_ab fillrandom
   echo "Test reading..."
   cmd="./db_bench --benchmarks=readrandom,stats \
        --use_existing_db=1 \
@@ -811,8 +811,12 @@ function run_fyp_exponential_abc {
        2>&1 | tee -a $output_dir/benchmark_fyp_exponential_b.log"
   echo $cmd | tee $output_dir/benchmark_fyp_exponential_b.log
   eval $cmd
-  echo "Reading $num_keys random keys while writing"
-  out_name="fyp_exponential_c.t${num_threads}.log"
+  summarize_result $output_dir/benchmark_fyp_exponential_b.log fyp_exponential_ab readrandom
+}
+
+function run_fyp_exponential_c {
+  echo "Reading random keys while writing randomly, Read:90%, Write:90%"
+  out_name="fyp_exponential_c.log"
   cmd="./db_bench --benchmarks=readrandomwriterandom,stats \
        --use_existing_db=1 \
        --sync=0 \
@@ -832,30 +836,9 @@ function run_fyp_exponential_abc {
   summarize_result $output_dir/${out_name} fyp_exponential_abc readrandomwriterandom
 }
 
-function run_fyp_exponential_ad {
-  # Fill up the database with random keys first
-  echo "Loading $num_keys random keys"
-  cmd="./db_bench --benchmarks=fillrandom,stats \
-       --use_existing_db=0 \
-       --disable_auto_compactions=1 \
-       --sync=0 \
-       --report_file="exponential_a.csv" \
-       --report_interval_seconds=30 \
-       --duration=1200 \
-       --key_dist_a=1 \
-       --key_dist_b=2.718 \
-       $params_bulkload \
-       --threads=16 \
-       --memtablerep=vector \
-       --allow_concurrent_memtable_write=false \
-       --disable_wal=1 \
-       --seed=4981 \
-       2>&1 | tee -a $output_dir/benchmark_fyp_exponential_a.log"
-  echo $cmd | tee $output_dir/benchmark_fyp_exponential_a.log
-  eval $cmd
-  summarize_result $output_dir/benchmark_fyp_exponential_a.log fyp_exponential_ad fillrandom
-  echo "Reading $num_keys random keys while writing"
-  out_name="fyp_exponential_d.t${num_threads}.log"
+function run_fyp_exponential_d {
+  echo "Reading random keys while writing randomly, Read:10%, Write:90%"
+  out_name="fyp_exponential_d.log"
   cmd="./db_bench --benchmarks=readrandomwriterandom,stats \
        --use_existing_db=1 \
        --sync=$syncval \
@@ -872,33 +855,12 @@ function run_fyp_exponential_ad {
        2>&1 | tee -a $output_dir/${out_name}"
   echo $cmd | tee $output_dir/${out_name}
   eval $cmd
-  summarize_result $output_dir/${out_name} fyp_exponential_ad readrandomwriterandom
+  summarize_result $output_dir/${out_name} fyp_exponential_d readrandomwriterandom
 }
 
 function run_fyp_exponential_ae {
-  # Fill up the database with random keys first
-  echo "Loading $num_keys random keys"
-  cmd="./db_bench --benchmarks=fillrandom,stats \
-       --use_existing_db=0 \
-       --disable_auto_compactions=1 \
-       --sync=0 \
-       --report_file="exponential_a.csv" \
-       --report_interval_seconds=30 \
-       --duration=10 \
-       --key_dist_a=1 \
-       --key_dist_b=2.718 \
-       $params_bulkload \
-       --threads=16 \
-       --memtablerep=vector \
-       --allow_concurrent_memtable_write=false \
-       --disable_wal=1 \
-       --seed=4981 \
-       2>&1 | tee -a $output_dir/benchmark_fyp_exponential_a.log"
-  echo $cmd | tee $output_dir/benchmark_fyp_exponential_a.log
-  eval $cmd
-  summarize_result $output_dir/benchmark_fyp_exponential_a.log fyp_exponential_ae fillrandom
-  echo "Reading $num_keys random keys while writing"
-  out_name="fyp_exponential_e.t${num_threads}.log"
+  echo "Reading random keys while writing randomly, Read:50%, Write:50%"
+  out_name="fyp_exponential_e.log"
   cmd="./db_bench --benchmarks=readrandomwriterandom,stats \
        --use_existing_db=1 \
        --sync=$syncval \
@@ -915,7 +877,7 @@ function run_fyp_exponential_ae {
        2>&1 | tee -a $output_dir/${out_name}"
   echo $cmd | tee $output_dir/${out_name}
   eval $cmd
-  summarize_result $output_dir/${out_name} fyp_exponential_ae readrandomwriterandom
+  summarize_result $output_dir/${out_name} fyp_exponential_e readrandomwriterandom
 }
 
 function now() {
@@ -953,12 +915,14 @@ for job in ${jobs[@]}; do
     run_fyp_linear_ad
   elif [ $job = fyp_linear_ae ]; then
     run_fyp_linear_ae
-  elif [ $job = fyp_exponential_abc ]; then
-    run_fyp_exponential_abc
+  elif [ $job = fyp_exponential_ab ]; then
+    run_fyp_exponential_ab
+  elif [ $job = fyp_expoential_c ]; then
+    run_fyp_exponential_c
   elif [ $job = fyp_exponential_ad ]; then
-    run_fyp_exponential_ad
+    run_fyp_exponential_d
   elif [ $job = fyp_exponential_ae ]; then
-    run_fyp_exponential_ae
+    run_fyp_exponential_e
   elif [ $job = fillseq_disable_wal ]; then
     run_fillseq 1
   elif [ $job = fillseq_enable_wal ]; then
