@@ -185,7 +185,7 @@ function run_bulkload {
        --report_file="report_fillrandom.csv" \
        --seed=1712562985 \
        $params_bulkload \
-       --threads=1 \
+       --threads=16 \
        --memtablerep=vector \
        --allow_concurrent_memtable_write=false \
        --disable_wal=1 \
@@ -200,7 +200,7 @@ function run_bulkload {
        --sync=0 \
        --report_file="report_compact.csv" \
        $params_w \
-       --threads=1 \
+       --threads=16 \
        2>&1 | tee -a $output_dir/benchmark_bulkload_compact.log"
   echo $cmd | tee $output_dir/benchmark_bulkload_compact.log
   eval $cmd
@@ -323,7 +323,7 @@ function run_fillseq {
        --sync=0 \
        $params_fillseq \
        --min_level_to_compress=0 \
-       --threads=1 \
+       --threads=16 \
        --memtablerep=vector \
        --allow_concurrent_memtable_write=false \
        --disable_wal=$1 \
@@ -359,7 +359,7 @@ function run_filluniquerandom {
        --use_existing_db=0 \
        --sync=0 \
        $params_w \
-       --threads=1 \
+       --threads=16 \
        --seed=$( date +%s ) \
        2>&1 | tee -a $output_dir/benchmark_filluniquerandom.log"
   echo $cmd | tee $output_dir/benchmark_filluniquerandom.log
@@ -458,7 +458,7 @@ function run_fyp {
        --sync=0 \
        --duration=5400 \
        $params_bulkload \
-       --threads=1 \
+       --threads=16 \
        --memtablerep=vector \
        --allow_concurrent_memtable_write=false \
        --disable_wal=1 \
@@ -475,7 +475,7 @@ function run_fyp {
        --report_file="report_readrandom.csv" \
        --duration=5400 \
        $params_w \
-       --threads=1 \
+       --threads=16 \
        --seed=4981 \
        2>&1 | tee -a $output_dir/benchmark_fyp_readrandom.log"
   echo $cmd | tee $output_dir/benchmark_fyp_readrandom.log
@@ -508,7 +508,7 @@ function run_fyp_uniform_abc {
        --report_interval_seconds=30 \
        --duration=1200 \
        $params_bulkload \
-       --threads=1 \
+       --threads=16 \
        --memtablerep=vector \
        --allow_concurrent_memtable_write=false \
        --disable_wal=1 \
@@ -526,7 +526,7 @@ function run_fyp_uniform_abc {
        --report_interval_seconds=30 \
        --duration=1200 \
        $params_w \
-       --threads=1 \
+       --threads=16 \
        --seed=4981 \
        2>&1 | tee -a $output_dir/benchmark_fyp_uniform_b.log"
   echo $cmd | tee $output_dir/benchmark_fyp_uniform_b.log
@@ -541,7 +541,7 @@ function run_fyp_uniform_abc {
        --duration=1200 \
        --readwritepercent=90 \
        $params_w \
-       --threads=1 \
+       --threads=16 \
        --merge_operator=\"put\" \
        --seed=4981 \
        2>&1 | tee -a $output_dir/${out_name}"
@@ -561,7 +561,7 @@ function run_fyp_uniform_ad {
        --report_interval_seconds=30 \
        --duration=1200 \
        $params_bulkload \
-       --threads=1 \
+       --threads=16 \
        --memtablerep=vector \
        --allow_concurrent_memtable_write=false \
        --disable_wal=1 \
@@ -580,7 +580,7 @@ function run_fyp_uniform_ad {
        --duration=1200 \
        --readwritepercent=10 \
        $params_w \
-       --threads=1 \
+       --threads=16 \
        --merge_operator=\"put\" \
        --seed=4981 \
        2>&1 | tee -a $output_dir/${out_name}"
@@ -600,7 +600,7 @@ function run_fyp_uniform_ae {
        --report_interval_seconds=30 \
        --duration=1200 \
        $params_bulkload \
-       --threads=1 \
+       --threads=16 \
        --memtablerep=vector \
        --allow_concurrent_memtable_write=false \
        --disable_wal=1 \
@@ -619,7 +619,7 @@ function run_fyp_uniform_ae {
        --duration=1200 \
        --readwritepercent=50 \
        $params_w \
-       --threads=1 \
+       --threads=16 \
        --merge_operator=\"put\" \
        --seed=4981 \
        2>&1 | tee -a $output_dir/${out_name}"
@@ -641,7 +641,7 @@ function run_fyp_linear_abc {
        --key_dist_a=1 \
        --key_dist_b=1 \
        $params_bulkload \
-       --threads=1 \
+       --threads=16 \
        --memtablerep=vector \
        --allow_concurrent_memtable_write=false \
        --disable_wal=1 \
@@ -661,7 +661,7 @@ function run_fyp_linear_abc {
        --key_dist_a=1 \
        --key_dist_b=1 \
        $params_w \
-       --threads=1 \
+       --threads=16 \
        --seed=4981 \
        2>&1 | tee -a $output_dir/benchmark_fyp_linear_b.log"
   echo $cmd | tee $output_dir/benchmark_fyp_linear_b.log
@@ -678,7 +678,7 @@ function run_fyp_linear_abc {
        --key_dist_b=1 \
        --readwritepercent=90 \
        $params_w \
-       --threads=1 \
+       --threads=16 \
        --merge_operator=\"put\" \
        --seed=4981 \
        2>&1 | tee -a $output_dir/${out_name}"
@@ -700,7 +700,7 @@ function run_fyp_linear_ad {
        --key_dist_a=1 \
        --key_dist_b=1 \
        $params_bulkload \
-       --threads=1 \
+       --threads=16 \
        --memtablerep=vector \
        --allow_concurrent_memtable_write=false \
        --disable_wal=1 \
@@ -721,7 +721,7 @@ function run_fyp_linear_ad {
        --key_dist_a=1 \
        --key_dist_b=1 \
        $params_w \
-       --threads=1 \
+       --threads=16 \
        --merge_operator=\"put\" \
        --seed=4981 \
        2>&1 | tee -a $output_dir/${out_name}"
@@ -743,7 +743,7 @@ function run_fyp_linear_ae {
        --key_dist_a=1 \
        --key_dist_b=1 \
        $params_bulkload \
-       --threads=1 \
+       --threads=16 \
        --memtablerep=vector \
        --allow_concurrent_memtable_write=false \
        --disable_wal=1 \
@@ -764,7 +764,7 @@ function run_fyp_linear_ae {
        --key_dist_a=1 \
        --key_dist_b=1 \
        $params_w \
-       --threads=1 \
+       --threads=16 \
        --merge_operator=\"put\" \
        --seed=4981 \
        2>&1 | tee -a $output_dir/${out_name}"
@@ -786,7 +786,7 @@ function run_fyp_exponential_abc {
        --key_dist_a=1 \
        --key_dist_b=2.718 \
        $params_bulkload \
-       --threads=1 \
+       --threads=16 \
        --memtablerep=vector \
        --allow_concurrent_memtable_write=false \
        --disable_wal=1 \
@@ -806,7 +806,7 @@ function run_fyp_exponential_abc {
        --key_dist_a=1 \
        --key_dist_b=2.718 \
        $params_w \
-       --threads=1 \
+       --threads=16 \
        --seed=4981 \
        2>&1 | tee -a $output_dir/benchmark_fyp_exponential_b.log"
   echo $cmd | tee $output_dir/benchmark_fyp_exponential_b.log
@@ -823,7 +823,7 @@ function run_fyp_exponential_abc {
        --key_dist_b=2.718 \
        --readwritepercent=90 \
        $params_w \
-       --threads=1 \
+       --threads=16 \
        --merge_operator=\"put\" \
        --seed=4981 \
        2>&1 | tee -a $output_dir/${out_name}"
@@ -845,7 +845,7 @@ function run_fyp_exponential_ad {
        --key_dist_a=1 \
        --key_dist_b=2.718 \
        $params_bulkload \
-       --threads=1 \
+       --threads=16 \
        --memtablerep=vector \
        --allow_concurrent_memtable_write=false \
        --disable_wal=1 \
@@ -866,7 +866,7 @@ function run_fyp_exponential_ad {
        --key_dist_a=1 \
        --key_dist_b=2.718 \
        $params_w \
-       --threads=1 \
+       --threads=16 \
        --merge_operator=\"put\" \
        --seed=4981 \
        2>&1 | tee -a $output_dir/${out_name}"
@@ -888,7 +888,7 @@ function run_fyp_exponential_ae {
        --key_dist_a=1 \
        --key_dist_b=2.718 \
        $params_bulkload \
-       --threads=1 \
+       --threads=16 \
        --memtablerep=vector \
        --allow_concurrent_memtable_write=false \
        --disable_wal=1 \
@@ -909,7 +909,7 @@ function run_fyp_exponential_ae {
        --key_dist_a=1 \
        --key_dist_b=2.718 \
        $params_w \
-       --threads=1 \
+       --threads=16 \
        --merge_operator=\"put\" \
        --seed=4981 \
        2>&1 | tee -a $output_dir/${out_name}"
