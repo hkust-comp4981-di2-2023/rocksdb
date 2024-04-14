@@ -833,7 +833,7 @@ function run_fyp_exponential_c {
        2>&1 | tee -a $output_dir/${out_name}"
   echo $cmd | tee $output_dir/${out_name}
   eval $cmd
-  summarize_result $output_dir/${out_name} fyp_exponential_abc readrandomwriterandom
+  summarize_result $output_dir/${out_name} fyp_exponential_c readrandomwriterandom
 }
 
 function run_fyp_exponential_d {
@@ -858,7 +858,7 @@ function run_fyp_exponential_d {
   summarize_result $output_dir/${out_name} fyp_exponential_d readrandomwriterandom
 }
 
-function run_fyp_exponential_ae {
+function run_fyp_exponential_e {
   echo "Reading random keys while writing randomly, Read:50%, Write:50%"
   out_name="fyp_exponential_e.log"
   cmd="./db_bench --benchmarks=readrandomwriterandom,stats \
