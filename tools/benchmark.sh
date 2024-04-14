@@ -818,7 +818,7 @@ function run_fyp_exponential_c {
   echo "Reading random keys while writing randomly, Read:90%, Write:90%"
   out_name="fyp_exponential_c.log"
   cmd="./db_bench --benchmarks=readrandomwriterandom,stats \
-       --use_existing_db=1 \
+       --use_existing_db=0 \
        --sync=0 \
        --report_file="exponential_c.csv" \
        --report_interval_seconds=30 \
@@ -840,7 +840,7 @@ function run_fyp_exponential_d {
   echo "Reading random keys while writing randomly, Read:10%, Write:90%"
   out_name="fyp_exponential_d.log"
   cmd="./db_bench --benchmarks=readrandomwriterandom,stats \
-       --use_existing_db=1 \
+       --use_existing_db=0 \
        --sync=$syncval \
        --report_file="exponential_d.csv" \
        --report_interval_seconds=30 \
@@ -862,7 +862,7 @@ function run_fyp_exponential_ae {
   echo "Reading random keys while writing randomly, Read:50%, Write:50%"
   out_name="fyp_exponential_e.log"
   cmd="./db_bench --benchmarks=readrandomwriterandom,stats \
-       --use_existing_db=1 \
+       --use_existing_db=0 \
        --sync=$syncval \
        --report_file="exponential_e.csv" \
        --report_interval_seconds=30 \
