@@ -40,7 +40,7 @@ fi
 
 # all multithreaded tests run with sync=1 unless
 # $DB_BENCH_NO_SYNC is defined
-syncval="0"
+syncval="1"
 if [ ! -z $DB_BENCH_NO_SYNC ]; then
   echo "Turning sync off for all multithreaded tests"
   syncval="0";
@@ -884,7 +884,7 @@ function run_fyp_exponential_ae {
        --sync=0 \
        --report_file="exponential_a.csv" \
        --report_interval_seconds=30 \
-       --duration=1200 \
+       --duration=1 \
        --key_dist_a=1 \
        --key_dist_b=2.718 \
        $params_bulkload \
