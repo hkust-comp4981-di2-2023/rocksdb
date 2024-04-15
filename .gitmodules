@@ -1,4 +1,4 @@
 [submodule "table/block_based/learned_index/plr/external/plr"]
 	path = table/block_based/learned_index/plr/external/plr
 	url = https://github.com/hkust-comp4981-di2-2023/plr-cpp.git
-	branch = fyp-specialized
+	branch = fyp-hot-optimizer
