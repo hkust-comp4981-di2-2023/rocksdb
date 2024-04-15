@@ -1166,6 +1166,8 @@ for job in ${jobs[@]}; do
     run_fyp_exponential_d
   elif [ $job = fyp_exponential_e ]; then
     run_fyp_exponential_e
+  elif [ $job = fyp_exponential_e_1k_block ]; then
+    run_fyp_exponential_e_1k_block
   elif [ $job = fillseq_disable_wal ]; then
     run_fillseq 1
   elif [ $job = fillseq_enable_wal ]; then
