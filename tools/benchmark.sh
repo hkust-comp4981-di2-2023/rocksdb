@@ -1104,7 +1104,30 @@ function run_fyp_exponential_e_1k_block {
        2>&1 | tee -a $output_dir/${out_name}"
   echo $cmd | tee $output_dir/${out_name}
   eval $cmd
-  summarize_result $output_dir/${out_name} fyp_exponential_e_2k_block readrandomwriterandom
+  summarize_result $output_dir/${out_name} fyp_exponential_e_1k_block readrandomwriterandom
+}
+
+function run_fyp_exponential_e_9k_block {
+  echo "Reading random keys while writing randomly, Read:50%, Write:50%"
+  out_name="fyp_exponential_e.log"
+  cmd="./db_bench --benchmarks=readrandomwriterandom,stats \
+       --use_existing_db=0 \
+       --sync=$syncval \
+       --block_size=8192 \
+       --report_file="exponential_e.csv" \
+       --report_interval_seconds=30 \
+       --duration=1200 \
+       --readwritepercent=50 \
+       --key_dist_a=1 \
+       --key_dist_b=2.718 \
+       $params_w \
+       --threads=16 \
+       --merge_operator=\"put\" \
+       --seed=4981 \
+       2>&1 | tee -a $output_dir/${out_name}"
+  echo $cmd | tee $output_dir/${out_name}
+  eval $cmd
+  summarize_result $output_dir/${out_name} fyp_exponential_e_1k_block readrandomwriterandom
 }
 
 function fyp_exponential_new {
@@ -1230,6 +1253,8 @@ for job in ${jobs[@]}; do
     run_fyp_exponential_e
   elif [ $job = fyp_exponential_e_1k_block ]; then
     run_fyp_exponential_e_1k_block
+  elif [ $job = fyp_exponential_e_8k_block ]; then
+    run_fyp_exponential_e_8k_block
   elif [ $job = fyp_exponential_new ]; then
     run_fyp_exponential_new
   elif [ $job = fillseq_disable_wal ]; then
