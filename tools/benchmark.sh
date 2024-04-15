@@ -1126,7 +1126,6 @@ function fyp_exponential_new {
   echo $cmd | tee $log_file_name
   eval $cmd
   # The constant "fillseq" which we pass to db_bench is the benchmark name.
-  summarize_result $log_file_name $test_name fillseq
 
   echo "Reading $num_keys random keys"
   out_name="benchmark_readrandom.log"
@@ -1139,7 +1138,6 @@ function fyp_exponential_new {
        2>&1 | tee -a $output_dir/${out_name}"
   echo $cmd | tee $output_dir/${out_name}
   eval $cmd
-  summarize_result $output_dir/${out_name} readrandom readrandom
 
   echo "Reading $num_keys random keys while writing"
   out_name="benchmark_readwhilewriting.log"
@@ -1154,7 +1152,6 @@ function fyp_exponential_new {
        2>&1 | tee -a $output_dir/${out_name}"
   echo $cmd | tee $output_dir/${out_name}
   eval $cmd
-  summarize_result $output_dir/${out_name} readwhilewriting readwhilewriting
 
   echo "Do $num_keys random $operation"
   out_name="benchmark_overwrite.log"
@@ -1170,7 +1167,6 @@ function fyp_exponential_new {
        2>&1 | tee -a $output_dir/${out_name}"
   echo $cmd | tee $output_dir/${out_name}
   eval $cmd
-  summarize_result $output_dir/${out_name} overwrite ovewrite
 }
 
 function now() {
