@@ -3921,6 +3921,26 @@ Status BlockBasedTable::Get(const ReadOptions& read_options, const Slice& key,
         // from the top level for-loop.
         done = true;
       } else {
+        if (!plr_iter_first_seek) {
+          // Note(fyp): Explicit branch cutting in case SeekForGet() failed.
+          // TODO(fyp): Verify correctness.
+          if (biter.Valid() && 
+              rep_->internal_comparator.Compare(key, biter.key()) < 0) {
+            // biter.Seek() points to key < entry
+            done = true;
+          }
+          else {
+            // either !Valid() or key >= entry
+            biter.SeekToLast();
+            if (rep_->internal_comparator.Compare(key, biter.key()) < 0) {
+              // key < last entry
+              done = true;
+            }
+            // key >= last entry
+            biter.Seek(key);
+          }
+        }
+        
         // Call the *saver function on each entry/block until it returns false
         for (; biter.Valid(); biter.Next()) {
           ParsedInternalKey parsed_key;
