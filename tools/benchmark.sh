@@ -1107,7 +1107,7 @@ function run_fyp_exponential_e_1k_block {
   summarize_result $output_dir/${out_name} fyp_exponential_e_1k_block readrandomwriterandom
 }
 
-function run_fyp_exponential_e_9k_block {
+function run_fyp_exponential_e_8k_block {
   echo "Reading random keys while writing randomly, Read:50%, Write:50%"
   out_name="fyp_exponential_e.log"
   cmd="./db_bench --benchmarks=readrandomwriterandom,stats \
@@ -1127,12 +1127,11 @@ function run_fyp_exponential_e_9k_block {
        2>&1 | tee -a $output_dir/${out_name}"
   echo $cmd | tee $output_dir/${out_name}
   eval $cmd
-  summarize_result $output_dir/${out_name} fyp_exponential_e_1k_block readrandomwriterandom
+  summarize_result $output_dir/${out_name} fyp_exponential_e_8k_block readrandomwriterandom
 }
 
-function fyp_exponential_new {
-  og_file_name=$output_dir/benchmark_fillseq.wal_disabled.v${value_size}.log
-    test_name=fillseq.wal_disabled.v${value_size}
+function run_fyp_exponential_new {
+  log_file_name="fillseq_exp_new.log"
   echo "Loading $num_keys keys sequentially"
   cmd="./db_bench --benchmarks=fillseq \
        --use_existing_db=0 \
