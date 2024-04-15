@@ -1084,6 +1084,112 @@ function run_fyp_exponential_e {
   summarize_result $output_dir/${out_name} fyp_exponential_e readrandomwriterandom
 }
 
+function run_fyp_exponential_e_1k_block {
+  echo "Reading random keys while writing randomly, Read:50%, Write:50%"
+  out_name="fyp_exponential_e.log"
+  cmd="./db_bench --benchmarks=readrandomwriterandom,stats \
+       --use_existing_db=0 \
+       --sync=$syncval \
+       --block_size=1024 \
+       --report_file="exponential_e.csv" \
+       --report_interval_seconds=30 \
+       --duration=1200 \
+       --readwritepercent=50 \
+       --key_dist_a=1 \
+       --key_dist_b=2.718 \
+       $params_w \
+       --threads=16 \
+       --merge_operator=\"put\" \
+       --seed=4981 \
+       2>&1 | tee -a $output_dir/${out_name}"
+  echo $cmd | tee $output_dir/${out_name}
+  eval $cmd
+  summarize_result $output_dir/${out_name} fyp_exponential_e_1k_block readrandomwriterandom
+}
+
+function run_fyp_exponential_e_8k_block {
+  echo "Reading random keys while writing randomly, Read:50%, Write:50%"
+  out_name="fyp_exponential_e.log"
+  cmd="./db_bench --benchmarks=readrandomwriterandom,stats \
+       --use_existing_db=0 \
+       --sync=$syncval \
+       --block_size=8192 \
+       --report_file="exponential_e.csv" \
+       --report_interval_seconds=30 \
+       --duration=1200 \
+       --readwritepercent=50 \
+       --key_dist_a=1 \
+       --key_dist_b=2.718 \
+       $params_w \
+       --threads=16 \
+       --merge_operator=\"put\" \
+       --seed=4981 \
+       2>&1 | tee -a $output_dir/${out_name}"
+  echo $cmd | tee $output_dir/${out_name}
+  eval $cmd
+  summarize_result $output_dir/${out_name} fyp_exponential_e_8k_block readrandomwriterandom
+}
+
+function run_fyp_exponential_new {
+  log_file_name="fillseq_exp_new.log"
+  echo "Loading $num_keys keys sequentially"
+  cmd="./db_bench --benchmarks=fillseq \
+       --use_existing_db=0 \
+       --sync=0 \
+       --duration=1200 \
+       $params_fillseq \
+       --min_level_to_compress=0 \
+       --threads=16 \
+       --memtablerep=vector \
+       --allow_concurrent_memtable_write=false \
+       --seed=4981 \
+       2>&1 | tee -a $output_dir/${log_file_name}"
+  echo $cmd | tee $output_dir/${$log_file_name}
+  eval $cmd
+  # The constant "fillseq" which we pass to db_bench is the benchmark name.
+
+  echo "Reading $num_keys random keys"
+  out_name="benchmark_readrandom.log"
+  cmd="./db_bench --benchmarks=readrandom \
+       --use_existing_db=1 \
+       --duration=1200 \
+       $params_w \
+       --threads=16 \
+       --seed=4981 \
+       2>&1 | tee -a $output_dir/${out_name}"
+  echo $cmd | tee $output_dir/${out_name}
+  eval $cmd
+
+  echo "Reading $num_keys random keys while writing"
+  out_name="benchmark_readwhilewriting.log"
+  cmd="./db_bench --benchmarks=readwhilewriting \
+       --use_existing_db=1 \
+       --sync=$syncval \
+       --duration=1200 \
+       $params_w \
+       --threads=16 \
+       --merge_operator=\"put\" \
+       --seed=4981 \
+       2>&1 | tee -a $output_dir/${out_name}"
+  echo $cmd | tee $output_dir/${out_name}
+  eval $cmd
+
+  echo "Do $num_keys random $operation"
+  out_name="benchmark_overwrite.log"
+  cmd="./db_bench --benchmarks=$operation \
+       --use_existing_db=1 \
+       --sync=0 \
+       --writes=125000000 \
+       --subcompactions=4 \
+       $params_w \
+       --threads=16 \
+       --merge_operator=\"put\" \
+       --seed=4981 \
+       2>&1 | tee -a $output_dir/${out_name}"
+  echo $cmd | tee $output_dir/${out_name}
+  eval $cmd
+}
+
 function now() {
   echo `date +"%s"`
 }
@@ -1143,6 +1249,12 @@ for job in ${jobs[@]}; do
     run_fyp_exponential_d
   elif [ $job = fyp_exponential_e ]; then
     run_fyp_exponential_e
+  elif [ $job = fyp_exponential_e_1k_block ]; then
+    run_fyp_exponential_e_1k_block
+  elif [ $job = fyp_exponential_e_8k_block ]; then
+    run_fyp_exponential_e_8k_block
+  elif [ $job = fyp_exponential_new ]; then
+    run_fyp_exponential_new
   elif [ $job = fillseq_disable_wal ]; then
     run_fillseq 1
   elif [ $job = fillseq_enable_wal ]; then
