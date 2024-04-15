@@ -1107,6 +1107,72 @@ function run_fyp_exponential_e_1k_block {
   summarize_result $output_dir/${out_name} fyp_exponential_e_2k_block readrandomwriterandom
 }
 
+function fyp_exponential_new {
+  og_file_name=$output_dir/benchmark_fillseq.wal_disabled.v${value_size}.log
+    test_name=fillseq.wal_disabled.v${value_size}
+  echo "Loading $num_keys keys sequentially"
+  cmd="./db_bench --benchmarks=fillseq \
+       --use_existing_db=0 \
+       --sync=0 \
+       --duration=1200 \
+       $params_fillseq \
+       --min_level_to_compress=0 \
+       --threads=16 \
+       --memtablerep=vector \
+       --allow_concurrent_memtable_write=false \
+       --disable_wal=$1 \
+       --seed=4981 \
+       2>&1 | tee -a $log_file_name"
+  echo $cmd | tee $log_file_name
+  eval $cmd
+  # The constant "fillseq" which we pass to db_bench is the benchmark name.
+  summarize_result $log_file_name $test_name fillseq
+
+  echo "Reading $num_keys random keys"
+  out_name="benchmark_readrandom.log"
+  cmd="./db_bench --benchmarks=readrandom \
+       --use_existing_db=1 \
+       --duration=1200 \
+       $params_w \
+       --threads=16 \
+       --seed=4981 \
+       2>&1 | tee -a $output_dir/${out_name}"
+  echo $cmd | tee $output_dir/${out_name}
+  eval $cmd
+  summarize_result $output_dir/${out_name} readrandom readrandom
+
+  echo "Reading $num_keys random keys while writing"
+  out_name="benchmark_readwhilewriting.log"
+  cmd="./db_bench --benchmarks=readwhilewriting \
+       --use_existing_db=1 \
+       --sync=$syncval \
+       --duration=1200 \
+       $params_w \
+       --threads=16 \
+       --merge_operator=\"put\" \
+       --seed=4981 \
+       2>&1 | tee -a $output_dir/${out_name}"
+  echo $cmd | tee $output_dir/${out_name}
+  eval $cmd
+  summarize_result $output_dir/${out_name} readwhilewriting readwhilewriting
+
+  echo "Do $num_keys random $operation"
+  out_name="benchmark_overwrite.log"
+  cmd="./db_bench --benchmarks=$operation \
+       --use_existing_db=1 \
+       --sync=0 \
+       --writes=125000000 \
+       --subcompactions=4 \
+       $params_w \
+       --threads=16 \
+       --merge_operator=\"put\" \
+       --seed=4981 \
+       2>&1 | tee -a $output_dir/${out_name}"
+  echo $cmd | tee $output_dir/${out_name}
+  eval $cmd
+  summarize_result $output_dir/${out_name} overwrite ovewrite
+}
+
 function now() {
   echo `date +"%s"`
 }
@@ -1168,6 +1234,8 @@ for job in ${jobs[@]}; do
     run_fyp_exponential_e
   elif [ $job = fyp_exponential_e_1k_block ]; then
     run_fyp_exponential_e_1k_block
+  elif [ $job = fyp_exponential_new ]; then
+    run_fyp_exponential_new
   elif [ $job = fillseq_disable_wal ]; then
     run_fillseq 1
   elif [ $job = fillseq_enable_wal ]; then
