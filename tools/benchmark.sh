@@ -1022,6 +1022,14 @@ for job in ${jobs[@]}; do
     run_fyp_linear_ad
   elif [ $job = fyp_linear_ae ]; then
     run_fyp_linear_ae
+  elif [ $job = fyp_linear_ab ]; then
+    run_fyp_linear_ab
+  elif [ $job = fyp_linear_c ]; then
+    run_fyp_linear_c
+  elif [ $job = fyp_linear_d ]; then
+    run_fyp_linear_d
+  elif [ $job = fyp_linear_e ]; then
+    run_fyp_linear_e
   elif [ $job = fyp_exponential_ab ]; then
     run_fyp_exponential_ab
   elif [ $job = fyp_exponential_c ]; then
