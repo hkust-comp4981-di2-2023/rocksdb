@@ -1142,10 +1142,9 @@ function run_fyp_exponential_new {
        --threads=16 \
        --memtablerep=vector \
        --allow_concurrent_memtable_write=false \
-       --disable_wal=$1 \
        --seed=4981 \
-       2>&1 | tee -a $log_file_name"
-  echo $cmd | tee $log_file_name
+       2>&1 | tee -a $output_dir/${log_file_name}"
+  echo $cmd | tee $output_dir/${$log_file_name}
   eval $cmd
   # The constant "fillseq" which we pass to db_bench is the benchmark name.
 
