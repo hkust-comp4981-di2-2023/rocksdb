@@ -1084,7 +1084,7 @@ function run_fyp_exponential_e {
   summarize_result $output_dir/${out_name} fyp_exponential_e readrandomwriterandom
 }
 
-function run_fyp_exponential_e_2k_block {
+function run_fyp_exponential_e_1k_block {
   echo "Reading random keys while writing randomly, Read:50%, Write:50%"
   out_name="fyp_exponential_e.log"
   cmd="./db_bench --benchmarks=readrandomwriterandom,stats \
