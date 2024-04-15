@@ -773,6 +773,113 @@ function run_fyp_linear_ae {
   summarize_result $output_dir/${out_name} fyp_linear_ae readrandomwriterandom
 }
 
+function run_fyp_linear_ab {
+  # Fill up the database with random keys first
+  echo "Loading $num_keys random keys"
+  cmd="./db_bench --benchmarks=fillrandom,stats \
+       --use_existing_db=0 \
+       --disable_auto_compactions=1 \
+       --sync=0 \
+       --report_file="linear_a.csv" \
+       --report_interval_seconds=30 \
+       --duration=1200 \
+       --key_dist_a=1 \
+       --key_dist_b=2.718 \
+       $params_bulkload \
+       --threads=16 \
+       --memtablerep=vector \
+       --allow_concurrent_memtable_write=false \
+       --disable_wal=1 \
+       --seed=4981 \
+       2>&1 | tee -a $output_dir/benchmark_fyp_linear_a.log"
+  echo $cmd | tee $output_dir/benchmark_fyp_linear_a.log
+  eval $cmd
+  summarize_result $output_dir/benchmark_fyp_linear_a.log fyp_linear_ab fillrandom
+  echo "Test reading..."
+  cmd="./db_bench --benchmarks=readrandom,stats \
+       --use_existing_db=1 \
+       --disable_auto_compactions=1 \
+       --sync=0 \
+       --report_file="linear_b.csv" \
+       --report_interval_seconds=30 \
+       --duration=1200 \
+       --key_dist_a=1 \
+       --key_dist_b=2.718 \
+       $params_w \
+       --threads=16 \
+       --seed=4981 \
+       2>&1 | tee -a $output_dir/benchmark_fyp_linear_b.log"
+  echo $cmd | tee $output_dir/benchmark_fyp_linear_b.log
+  eval $cmd
+  summarize_result $output_dir/benchmark_fyp_linear_b.log fyp_linear_ab readrandom
+}
+
+function run_fyp_linear_c {
+  echo "Reading random keys while writing randomly, Read:90%, Write:90%"
+  out_name="fyp_linear_c.log"
+  cmd="./db_bench --benchmarks=readrandomwriterandom,stats \
+       --use_existing_db=0 \
+       --sync=0 \
+       --report_file="linear_c.csv" \
+       --report_interval_seconds=30 \
+       --duration=1200 \
+       --key_dist_a=1 \
+       --key_dist_b=2.718 \
+       --readwritepercent=90 \
+       $params_w \
+       --threads=16 \
+       --merge_operator=\"put\" \
+       --seed=4981 \
+       2>&1 | tee -a $output_dir/${out_name}"
+  echo $cmd | tee $output_dir/${out_name}
+  eval $cmd
+  summarize_result $output_dir/${out_name} fyp_linear_c readrandomwriterandom
+}
+
+function run_fyp_linear_d {
+  echo "Reading random keys while writing randomly, Read:10%, Write:90%"
+  out_name="fyp_linear_d.log"
+  cmd="./db_bench --benchmarks=readrandomwriterandom,stats \
+       --use_existing_db=0 \
+       --sync=$syncval \
+       --report_file="linear_d.csv" \
+       --report_interval_seconds=30 \
+       --duration=1200 \
+       --readwritepercent=10 \
+       --key_dist_a=1 \
+       --key_dist_b=2.718 \
+       $params_w \
+       --threads=16 \
+       --merge_operator=\"put\" \
+       --seed=4981 \
+       2>&1 | tee -a $output_dir/${out_name}"
+  echo $cmd | tee $output_dir/${out_name}
+  eval $cmd
+  summarize_result $output_dir/${out_name} fyp_linear_d readrandomwriterandom
+}
+
+function run_fyp_linear_e {
+  echo "Reading random keys while writing randomly, Read:50%, Write:50%"
+  out_name="fyp_linear_e.log"
+  cmd="./db_bench --benchmarks=readrandomwriterandom,stats \
+       --use_existing_db=0 \
+       --sync=$syncval \
+       --report_file="linear_e.csv" \
+       --report_interval_seconds=30 \
+       --duration=1200 \
+       --readwritepercent=50 \
+       --key_dist_a=1 \
+       --key_dist_b=2.718 \
+       $params_w \
+       --threads=16 \
+       --merge_operator=\"put\" \
+       --seed=4981 \
+       2>&1 | tee -a $output_dir/${out_name}"
+  echo $cmd | tee $output_dir/${out_name}
+  eval $cmd
+  summarize_result $output_dir/${out_name} fyp_linear_e readrandomwriterandom
+}
+
 function run_fyp_exponential_ab {
   # Fill up the database with random keys first
   echo "Loading $num_keys random keys"
