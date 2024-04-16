@@ -1092,6 +1092,7 @@ function run_fyp_exponential_fillseq_readrandom {
        --report_file="exponential_a.csv" \
        --report_interval_seconds=30 \
        --num=900000000 \
+       --duration=1200 \
        --key_dist_a=1 \
        --key_dist_b=2.718 \
        --statistics=1 \
@@ -1131,6 +1132,7 @@ function run_fyp_exponential_overwrite {
        --report_file="exponential_a.csv" \
        --report_interval_seconds=30 \
        --num=900000000 \
+       --duration=1200 \
        --key_dist_a=1 \
        --key_dist_b=2.718 \
        --statistics=1 \
