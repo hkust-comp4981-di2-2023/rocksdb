@@ -1081,41 +1081,36 @@ function run_fyp_exponential_e {
   summarize_result $output_dir/${out_name} fyp_exponential_e readrandomwriterandom
 }
 
-function run_fyp_exponential_d_readwhilewriting {
-  echo "Reading $num_keys random keys while writing"
-  out_name="benchmark_readwhilewriting.log"
-  # readwhilewriting = 1 writer + n reader
-  # readrandomwriterandom = n readrandom + writerandom
-  cmd="./db_bench --benchmarks=readwhilewriting,stats \
+function run_fyp_exponential_overwrite {
+  echo "Loading $num_keys random keys"
+  cmd="./db_bench --benchmarks=fillrandom,stats \
+       --use_existing_db=0 \
+       --sync=0 \
+       --report_file="exponential_a.csv" \
+       --report_interval_seconds=30 \
+       --duration=1200 \
+       --key_dist_a=1 \
+       --key_dist_b=2.718 \
+       $params_bulkload \
+       --threads=16 \
+       --memtablerep=vector \
+       --allow_concurrent_memtable_write=false \
+       --disable_wal=1 \
+       --seed=4981 \
+       2>&1 | tee -a $output_dir/benchmark_fyp_exponential_a.log"
+  echo $cmd | tee $output_dir/benchmark_fyp_exponential_a.log
+  eval $cmd
+
+  echo "Do $num_keys random overwrite"
+  out_name="benchmark_overwrite.log"
+  cmd="./db_bench --benchmarks=overwrite \
        --use_existing_db=1 \
        --sync=$syncval \
-       --statistics=1 \
-       --key_dist_a=1 \
-       --key_dist_b=2.718 \
-       --readwritepercent=10 \
-       $params_w \
-       --threads=16 \
-       --merge_operator=\"put\" \
-       --seed=4981 \
-       2>&1 | tee -a $output_dir/${out_name}"
-  echo $cmd | tee $output_dir/${out_name}
-  eval $cmd
-}
-
-function run_fyp_exponential_d_directio {
-  echo "Reading random keys while writing randomly, Read:10%, Write:90%"
-  out_name="fyp_exponential_d.log"
-  cmd="./db_bench --benchmarks=readrandomwriterandom,stats \
-       --statistics=1 \
-       --use_existing_db=0 \
-       --sync=$syncval \
-       --report_file="exponential_d.csv" \
+       --report_file="exponential_overwrite.csv" \
        --report_interval_seconds=30 \
        --duration=1200 \
-       --readwritepercent=10 \
        --key_dist_a=1 \
        --key_dist_b=2.718 \
-       --use_direct_io_for_flush_and_compaction=1
        $params_w \
        --threads=16 \
        --merge_operator=\"put\" \
@@ -1123,31 +1118,7 @@ function run_fyp_exponential_d_directio {
        2>&1 | tee -a $output_dir/${out_name}"
   echo $cmd | tee $output_dir/${out_name}
   eval $cmd
-  summarize_result $output_dir/${out_name} fyp_exponential_d readrandomwriterandom
-}
 
-function run_fyp_exponential_d_directread {
-  echo "Reading random keys while writing randomly, Read:10%, Write:90%"
-  out_name="fyp_exponential_d.log"
-  cmd="./db_bench --benchmarks=readrandomwriterandom,stats \
-       --statistics=1 \
-       --use_existing_db=0 \
-       --sync=$syncval \
-       --report_file="exponential_d.csv" \
-       --report_interval_seconds=30 \
-       --duration=1200 \
-       --readwritepercent=10 \
-       --key_dist_a=1 \
-       --key_dist_b=2.718 \
-       --use_direct_reads=1
-       $params_w \
-       --threads=16 \
-       --merge_operator=\"put\" \
-       --seed=4981 \
-       2>&1 | tee -a $output_dir/${out_name}"
-  echo $cmd | tee $output_dir/${out_name}
-  eval $cmd
-  summarize_result $output_dir/${out_name} fyp_exponential_d readrandomwriterandom
 }
 
 function now() {
