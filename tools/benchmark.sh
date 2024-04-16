@@ -1172,7 +1172,7 @@ function run_fyp_exponential_readwhilewriting {
        --use_existing_db=1 \
        --sync=$syncval \
        --readwritepercent=10 \
-       --statistic=1 \
+       --statistics=1 \
        --report_file="exponential_readwhilewriting.csv" \
        --report_interval_seconds=30 \
        --duration=1200 \
