@@ -1224,11 +1224,11 @@ for job in ${jobs[@]}; do
     run_fyp_exponential_d
   elif [ $job = fyp_exponential_e ]; then
     run_fyp_exponential_e
-  elif [ $job = run_fyp_exponential_d_readwhilewriting ]; then
+  elif [ $job = fyp_exponential_d_readwhilewriting ]; then
     run_fyp_exponential_d_readwhilewriting
-  elif [ $job = run_fyp_exponential_d_directio ]; then
+  elif [ $job = fyp_exponential_d_directio ]; then
     run_fyp_exponential_d_directio
-  elif [ $job = run_fyp_exponential_d_directread ]; then
+  elif [ $job = fyp_exponential_d_directread ]; then
     run_fyp_exponential_d_directread
   elif [ $job = fyp_exponential_e_1k_block ]; then
     run_fyp_exponential_e_1k_block
