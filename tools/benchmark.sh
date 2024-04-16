@@ -1170,7 +1170,7 @@ function run_fyp_exponential_readwhilewriting {
   echo "Reading $num_keys random keys while writing"
   out_name="benchmark_readwhilewriting.log"
   cmd="./db_bench --benchmarks=readwhilewriting,stats \
-       --use_existing_db=1 \
+       --use_existing_db=0 \
        --sync=$syncval \
        --readwritepercent=10 \
        --statistics=1 \
