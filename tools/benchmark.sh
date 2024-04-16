@@ -1094,6 +1094,7 @@ function run_fyp_exponential_overwrite {
        --num=900000000 \
        --key_dist_a=1 \
        --key_dist_b=2.718 \
+       --statistics=1 \
        $params_bulkload \
        --threads=16 \
        --memtablerep=vector \
@@ -1114,6 +1115,7 @@ function run_fyp_exponential_overwrite {
        --duration=1200 \
        --key_dist_a=1 \
        --key_dist_b=2.718 \
+       --statistics=1 \
        $params_w \
        --threads=16 \
        --merge_operator=\"put\" \
