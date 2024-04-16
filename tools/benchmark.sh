@@ -1081,6 +1081,47 @@ function run_fyp_exponential_e {
   summarize_result $output_dir/${out_name} fyp_exponential_e readrandomwriterandom
 }
 
+function run_fyp_exponential_fillseq_readrandom {
+  echo "Loading $num_keys random keys"
+  cmd="./db_bench --benchmarks=fillseq,stats \
+       --use_existing_db=0 \
+       --sync=0 \
+       --report_file="exponential_a.csv" \
+       --report_interval_seconds=30 \
+       --num=900000000 \
+       --statistics=1 \
+       --key_dist_a=1 \
+       --key_dist_b=2.718 \
+       $params_bulkload \
+       --threads=16 \
+       --memtablerep=vector \
+       --allow_concurrent_memtable_write=false \
+       --disable_wal=1 \
+       --seed=4981 \
+       2>&1 | tee -a $output_dir/benchmark_fyp_exponential_a.log"
+  echo $cmd | tee $output_dir/benchmark_fyp_exponential_a.log
+  eval $cmd
+
+  echo "Loading $num_keys random keys"
+  cmd="./db_bench --benchmarks=fillrandom,stats \
+       --use_existing_db=0 \
+       --sync=0 \
+       --report_file="exponential_a.csv" \
+       --report_interval_seconds=30 \
+       --duration=1200 \
+       --key_dist_a=1 \
+       --key_dist_b=2.718 \
+       $params_bulkload \
+       --threads=16 \
+       --memtablerep=vector \
+       --allow_concurrent_memtable_write=false \
+       --disable_wal=1 \
+       --seed=4981 \
+       2>&1 | tee -a $output_dir/benchmark_fyp_exponential_a.log"
+  echo $cmd | tee $output_dir/benchmark_fyp_exponential_a.log
+  eval $cmd
+}
+
 function run_fyp_exponential_overwrite {
   echo "Loading $num_keys random keys"
   cmd="./db_bench --benchmarks=fillseq,stats \
@@ -1181,6 +1222,8 @@ for job in ${jobs[@]}; do
     run_fyp_exponential_d
   elif [ $job = fyp_exponential_e ]; then
     run_fyp_exponential_e
+  elif [ $job = fyp_exponential_fillseq_readrandom ]; then
+    run_fyp_exponential_fillseq_readrandom
   elif [ $job = fyp_exponential_overwrite ]; then
     run_fyp_exponential_overwrite
   elif [ $job = fyp_exponential_d_readwhilewriting ]; then
