@@ -633,7 +633,6 @@ function run_fyp_uniform_ab {
   echo "Loading $num_keys random keys"
   cmd="./db_bench --benchmarks=fillrandom,stats \
        --use_existing_db=0 \
-       --disable_auto_compactions=1 \
        --sync=0 \
        --report_file="uniform_a.csv" \
        --report_interval_seconds=30 \
@@ -651,7 +650,6 @@ function run_fyp_uniform_ab {
   echo "Test reading..."
   cmd="./db_bench --benchmarks=readrandom,stats \
        --use_existing_db=1 \
-       --disable_auto_compactions=1 \
        --sync=0 \
        --report_file="uniform_b.csv" \
        --report_interval_seconds=30 \
@@ -675,7 +673,6 @@ function run_fyp_uniform_c {
        --report_interval_seconds=30 \
        --duration=1200 \
        --readwritepercent=90 \
-       --disable_auto_compactions=1
        $params_w \
        --threads=16 \
        --merge_operator=\"put\" \
@@ -696,7 +693,6 @@ function run_fyp_uniform_d {
        --report_interval_seconds=30 \
        --duration=1200 \
        --readwritepercent=10 \
-       --disable_auto_compactions=1
        $params_w \
        --threads=16 \
        --merge_operator=\"put\" \
@@ -717,7 +713,6 @@ function run_fyp_uniform_e {
        --report_interval_seconds=30 \
        --duration=1200 \
        --readwritepercent=50 \
-       --disable_auto_compactions=1
        $params_w \
        --threads=16 \
        --merge_operator=\"put\" \
@@ -881,7 +876,6 @@ function run_fyp_linear_ab {
   echo "Loading $num_keys random keys"
   cmd="./db_bench --benchmarks=fillrandom,stats \
        --use_existing_db=0 \
-       --disable_auto_compactions=1 \
        --sync=0 \
        --report_file="linear_a.csv" \
        --report_interval_seconds=30 \
@@ -901,7 +895,6 @@ function run_fyp_linear_ab {
   echo "Test reading..."
   cmd="./db_bench --benchmarks=readrandom,stats \
        --use_existing_db=1 \
-       --disable_auto_compactions=1 \
        --sync=0 \
        --report_file="linear_b.csv" \
        --report_interval_seconds=30 \
@@ -929,7 +922,6 @@ function run_fyp_linear_c {
        --key_dist_a=1 \
        --key_dist_b=1 \
        --readwritepercent=90 \
-       --disable_auto_compactions=1
        $params_w \
        --threads=16 \
        --merge_operator=\"put\" \
@@ -952,7 +944,6 @@ function run_fyp_linear_d {
        --readwritepercent=10 \
        --key_dist_a=1 \
        --key_dist_b=1 \
-       --disable_auto_compactions=1
        $params_w \
        --threads=16 \
        --merge_operator=\"put\" \
@@ -975,7 +966,6 @@ function run_fyp_linear_e {
        --readwritepercent=50 \
        --key_dist_a=1 \
        --key_dist_b=1 \
-       --disable_auto_compactions=1
        $params_w \
        --threads=16 \
        --merge_operator=\"put\" \
@@ -991,7 +981,6 @@ function run_fyp_exponential_ab {
   echo "Loading $num_keys random keys"
   cmd="./db_bench --benchmarks=fillrandom,stats \
        --use_existing_db=0 \
-       --disable_auto_compactions=1 \
        --sync=0 \
        --report_file="exponential_a.csv" \
        --report_interval_seconds=30 \
@@ -1011,7 +1000,6 @@ function run_fyp_exponential_ab {
   echo "Test reading..."
   cmd="./db_bench --benchmarks=readrandom,stats \
        --use_existing_db=1 \
-       --disable_auto_compactions=1 \
        --sync=0 \
        --report_file="exponential_b.csv" \
        --report_interval_seconds=30 \
@@ -1039,7 +1027,6 @@ function run_fyp_exponential_c {
        --key_dist_a=1 \
        --key_dist_b=2.718 \
        --readwritepercent=90 \
-       --disable_auto_compactions=1
        $params_w \
        --threads=16 \
        --merge_operator=\"put\" \
@@ -1062,7 +1049,6 @@ function run_fyp_exponential_d {
        --readwritepercent=10 \
        --key_dist_a=1 \
        --key_dist_b=2.718 \
-       --disable_auto_compactions=1
        $params_w \
        --threads=16 \
        --merge_operator=\"put\" \
@@ -1085,7 +1071,6 @@ function run_fyp_exponential_e {
        --readwritepercent=50 \
        --key_dist_a=1 \
        --key_dist_b=2.718 \
-       --disable_auto_compactions=1
        $params_w \
        --threads=16 \
        --merge_operator=\"put\" \
