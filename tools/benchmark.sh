@@ -1086,12 +1086,12 @@ function run_fyp_exponential_e {
 
 function run_fyp_exponential_overwrite {
   echo "Loading $num_keys random keys"
-  cmd="./db_bench --benchmarks=fillrandom,stats \
+  cmd="./db_bench --benchmarks=fillseq,stats \
        --use_existing_db=0 \
        --sync=0 \
        --report_file="exponential_a.csv" \
        --report_interval_seconds=30 \
-       --duration=1200 \
+       --num=900000000
        --key_dist_a=1 \
        --key_dist_b=2.718 \
        $params_bulkload \
@@ -1104,7 +1104,7 @@ function run_fyp_exponential_overwrite {
   echo $cmd | tee $output_dir/benchmark_fyp_exponential_a.log
   eval $cmd
 
-  echo "Do $num_keys random overwrite"
+  echo "Do $num_keys random overwrite,stats"
   out_name="benchmark_overwrite.log"
   cmd="./db_bench --benchmarks=overwrite \
        --use_existing_db=1 \
