@@ -1087,6 +1087,8 @@ function run_fyp_exponential_e {
 function run_fyp_exponential_d_readwhilewriting {
   echo "Reading $num_keys random keys while writing"
   out_name="benchmark_readwhilewriting.log"
+  # readwhilewriting = 1 writer + n reader
+  # readrandomwriterandom = n readrandom + writerandom
   cmd="./db_bench --benchmarks=readwhilewriting,stats \
        --use_existing_db=1 \
        --sync=$syncval \
@@ -1101,7 +1103,6 @@ function run_fyp_exponential_d_readwhilewriting {
   eval $cmd
 }
 
-function run_fyp_exponential_d_directio {
   echo "Reading random keys while writing randomly, Read:10%, Write:90%"
   out_name="fyp_exponential_d.log"
   cmd="./db_bench --benchmarks=readrandomwriterandom,stats \
@@ -1206,6 +1207,12 @@ for job in ${jobs[@]}; do
     run_fyp_exponential_d
   elif [ $job = fyp_exponential_e ]; then
     run_fyp_exponential_e
+  elif [ $job = run_fyp_exponential_d_readwhilewriting ]; then
+    run_fyp_exponential_d_readwhilewriting
+  elif [ $job = run_fyp_exponential_d_directio ]; then
+    run_fyp_exponential_d_directio
+  elif [ $job = run_fyp_exponential_d_directread ]; then
+    run_fyp_exponential_d_directread
   elif [ $job = fyp_exponential_e_1k_block ]; then
     run_fyp_exponential_e_1k_block
   elif [ $job = fyp_exponential_e_8k_block ]; then
