@@ -1118,7 +1118,6 @@ function run_fyp_exponential_overwrite {
        2>&1 | tee -a $output_dir/${out_name}"
   echo $cmd | tee $output_dir/${out_name}
   eval $cmd
-
 }
 
 function now() {
@@ -1180,6 +1179,8 @@ for job in ${jobs[@]}; do
     run_fyp_exponential_d
   elif [ $job = fyp_exponential_e ]; then
     run_fyp_exponential_e
+  elif [ $job = run_fyp_exponential_overwrite ]; then
+    run_fyp_exponential_overwrite
   elif [ $job = fyp_exponential_d_readwhilewriting ]; then
     run_fyp_exponential_d_readwhilewriting
   elif [ $job = fyp_exponential_d_directio ]; then
