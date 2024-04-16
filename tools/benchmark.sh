@@ -1166,6 +1166,28 @@ function run_fyp_exponential_overwrite {
   eval $cmd
 }
 
+function run_fyp_exponential_readwhilewriting {
+  echo "Reading $num_keys random keys while writing"
+  out_name="benchmark_readwhilewriting.log"
+  cmd="./db_bench --benchmarks=readwhilewriting,stats \
+       --use_existing_db=1 \
+       --sync=$syncval \
+       --readwritepercent=10 \
+       --statistic=1 \
+       --report_file="exponential_readwhilewriting.csv" \
+       --report_interval_seconds=30 \
+       --duration=1200 \
+       --key_dist_a=1 \
+       --key_dist_b=2.718 \
+       $params_w \
+       --threads=16 \
+       --merge_operator=\"put\" \
+       --seed=$( date +%s ) \
+       2>&1 | tee -a $output_dir/${out_name}"
+  echo $cmd | tee $output_dir/${out_name}
+  eval $cmd
+}
+
 function now() {
   echo `date +"%s"`
 }
@@ -1225,6 +1247,8 @@ for job in ${jobs[@]}; do
     run_fyp_exponential_d
   elif [ $job = fyp_exponential_e ]; then
     run_fyp_exponential_e
+  elif [ $job = fyp_exponential_readwhilewriting ]; then
+    run_fyp_exponential_readwhilewriting
   elif [ $job = fyp_exponential_fillseq_readrandom ]; then
     run_fyp_exponential_fillseq_readrandom
   elif [ $job = fyp_exponential_overwrite ]; then
