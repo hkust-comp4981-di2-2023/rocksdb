@@ -1091,6 +1091,7 @@ function run_fyp_exponential_d_readwhilewriting {
        --use_existing_db=1 \
        --sync=$syncval \
        --statistics=1
+       --readwritepercent=10 \
        $params_w \
        --threads=16 \
        --merge_operator=\"put\" \
