@@ -675,6 +675,7 @@ function run_fyp_uniform_c {
        --report_interval_seconds=30 \
        --duration=1200 \
        --readwritepercent=90 \
+       --disable_auto_compactions=1
        $params_w \
        --threads=16 \
        --merge_operator=\"put\" \
@@ -695,6 +696,7 @@ function run_fyp_uniform_d {
        --report_interval_seconds=30 \
        --duration=1200 \
        --readwritepercent=10 \
+       --disable_auto_compactions=1
        $params_w \
        --threads=16 \
        --merge_operator=\"put\" \
@@ -715,6 +717,7 @@ function run_fyp_uniform_e {
        --report_interval_seconds=30 \
        --duration=1200 \
        --readwritepercent=50 \
+       --disable_auto_compactions=1
        $params_w \
        --threads=16 \
        --merge_operator=\"put\" \
@@ -774,6 +777,7 @@ function run_fyp_linear_abc {
        --key_dist_a=1 \
        --key_dist_b=1 \
        --readwritepercent=90 \
+       --disable_auto_compactions=1
        $params_w \
        --threads=16 \
        --merge_operator=\"put\" \
@@ -817,6 +821,7 @@ function run_fyp_linear_ad {
        --readwritepercent=10 \
        --key_dist_a=1 \
        --key_dist_b=1 \
+       --disable_auto_compactions=1
        $params_w \
        --threads=16 \
        --merge_operator=\"put\" \
@@ -860,6 +865,7 @@ function run_fyp_linear_ae {
        --readwritepercent=50 \
        --key_dist_a=1 \
        --key_dist_b=1 \
+       --disable_auto_compactions=1
        $params_w \
        --threads=16 \
        --merge_operator=\"put\" \
@@ -923,6 +929,7 @@ function run_fyp_linear_c {
        --key_dist_a=1 \
        --key_dist_b=1 \
        --readwritepercent=90 \
+       --disable_auto_compactions=1
        $params_w \
        --threads=16 \
        --merge_operator=\"put\" \
@@ -945,6 +952,7 @@ function run_fyp_linear_d {
        --readwritepercent=10 \
        --key_dist_a=1 \
        --key_dist_b=1 \
+       --disable_auto_compactions=1
        $params_w \
        --threads=16 \
        --merge_operator=\"put\" \
@@ -967,6 +975,7 @@ function run_fyp_linear_e {
        --readwritepercent=50 \
        --key_dist_a=1 \
        --key_dist_b=1 \
+       --disable_auto_compactions=1
        $params_w \
        --threads=16 \
        --merge_operator=\"put\" \
@@ -1030,6 +1039,7 @@ function run_fyp_exponential_c {
        --key_dist_a=1 \
        --key_dist_b=2.718 \
        --readwritepercent=90 \
+       --disable_auto_compactions=1
        $params_w \
        --threads=16 \
        --merge_operator=\"put\" \
@@ -1052,6 +1062,7 @@ function run_fyp_exponential_d {
        --readwritepercent=10 \
        --key_dist_a=1 \
        --key_dist_b=2.718 \
+       --disable_auto_compactions=1
        $params_w \
        --threads=16 \
        --merge_operator=\"put\" \
@@ -1074,6 +1085,7 @@ function run_fyp_exponential_e {
        --readwritepercent=50 \
        --key_dist_a=1 \
        --key_dist_b=2.718 \
+       --disable_auto_compactions=1
        $params_w \
        --threads=16 \
        --merge_operator=\"put\" \
