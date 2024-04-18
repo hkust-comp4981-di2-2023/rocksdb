@@ -2082,7 +2082,7 @@ class Stats {
       // elapsed times.
       double elapsed = (finish_ - start_) * 1e-6;
       char rate[100];
-      snprintf(rate, sizeof(rate), "%6.1f MB/s",
+      snprintf(rate, sizeof(rate), "%6.5f MB/s",
                (bytes_ / 1048576.0) / elapsed);
       extra = rate;
     }
