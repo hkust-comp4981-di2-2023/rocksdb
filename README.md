@@ -1,4 +1,4 @@
-## HKUST COMP 4981 Final Year Project (2023-24): Learned Indexes for Commercial Database
+## HKUST COMP 4981 Final Year Project (2023-24): Learned Indexes for Commercial Databases
 
 This repository contains source code of RocksDB and the implementation of our learned index, Sherry.
 
