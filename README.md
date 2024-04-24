@@ -1,3 +1,33 @@
+## HKUST COMP 4981 Final Year Project (2023-24): Learned Index for Commercial Database
+
+This repository contains source code of RocksDB and the implementation of our learned index, Sherry.
+
+### Basic Usage
+Regarding the basic operations of RocksDB, please refer to [this wikipedia](https://github.com/facebook/rocksdb/wiki/Basic-Operations). Several important operations are: `Put()`, `Get()`, `Delete()`, and `Flush()`.
+
+Specifically, to enable Sherry as the underlying index block, pass the following option when creating/opening a database:
+
+```
+// Specify options to enable Sherry.
+rocksdb::Options options;
+BlockBasedTableOptions table_options;
+
+table_options.index_type = BlockBasedTableOptions::kLearnedIndexWithPLR;
+options.table_factory.reset(NewBlockBasedTableFactory(table_options));
+
+// Open a database with custom options.
+rocksdb::DB* db;
+rocksdb::Status status = rocksdb::DB::Open(options, "/tmp/testdb", &db);
+assert(status.ok());
+```
+
+### Important Branches
+There are several branches related to our work:
+- `fyp-6.8.fb-dev`: The development branch of our project, not used for benchmarking.
+- `fyp-6.8.fb-dev-debug`: Used for benchmarking Sherry in terms of time and space performance.
+- `6.8.fb`: Used for benchmarking the original implementation of RocksDB index block in terms of space performance.
+- `6.8.fb-benchmark`: Used for benchmarking the original implementation of RocksDB index block in terms of time performance.
+
 ## RocksDB: A Persistent Key-Value Store for Flash and RAM Storage
 
 [![Linux/Mac Build Status](https://travis-ci.org/facebook/rocksdb.svg?branch=master)](https://travis-ci.org/facebook/rocksdb)
