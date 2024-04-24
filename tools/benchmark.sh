@@ -633,7 +633,6 @@ function run_fyp_uniform_ab {
   echo "Loading $num_keys random keys"
   cmd="./db_bench --benchmarks=fillrandom,stats \
        --use_existing_db=0 \
-       --disable_auto_compactions=1 \
        --sync=0 \
        --report_file="uniform_a.csv" \
        --report_interval_seconds=30 \
@@ -651,7 +650,6 @@ function run_fyp_uniform_ab {
   echo "Test reading..."
   cmd="./db_bench --benchmarks=readrandom,stats \
        --use_existing_db=1 \
-       --disable_auto_compactions=1 \
        --sync=0 \
        --report_file="uniform_b.csv" \
        --report_interval_seconds=30 \
@@ -774,6 +772,7 @@ function run_fyp_linear_abc {
        --key_dist_a=1 \
        --key_dist_b=1 \
        --readwritepercent=90 \
+       --disable_auto_compactions=1
        $params_w \
        --threads=16 \
        --merge_operator=\"put\" \
@@ -817,6 +816,7 @@ function run_fyp_linear_ad {
        --readwritepercent=10 \
        --key_dist_a=1 \
        --key_dist_b=1 \
+       --disable_auto_compactions=1
        $params_w \
        --threads=16 \
        --merge_operator=\"put\" \
@@ -860,6 +860,7 @@ function run_fyp_linear_ae {
        --readwritepercent=50 \
        --key_dist_a=1 \
        --key_dist_b=1 \
+       --disable_auto_compactions=1
        $params_w \
        --threads=16 \
        --merge_operator=\"put\" \
@@ -875,7 +876,6 @@ function run_fyp_linear_ab {
   echo "Loading $num_keys random keys"
   cmd="./db_bench --benchmarks=fillrandom,stats \
        --use_existing_db=0 \
-       --disable_auto_compactions=1 \
        --sync=0 \
        --report_file="linear_a.csv" \
        --report_interval_seconds=30 \
@@ -895,7 +895,6 @@ function run_fyp_linear_ab {
   echo "Test reading..."
   cmd="./db_bench --benchmarks=readrandom,stats \
        --use_existing_db=1 \
-       --disable_auto_compactions=1 \
        --sync=0 \
        --report_file="linear_b.csv" \
        --report_interval_seconds=30 \
@@ -982,7 +981,6 @@ function run_fyp_exponential_ab {
   echo "Loading $num_keys random keys"
   cmd="./db_bench --benchmarks=fillrandom,stats \
        --use_existing_db=0 \
-       --disable_auto_compactions=1 \
        --sync=0 \
        --report_file="exponential_a.csv" \
        --report_interval_seconds=30 \
@@ -1002,7 +1000,6 @@ function run_fyp_exponential_ab {
   echo "Test reading..."
   cmd="./db_bench --benchmarks=readrandom,stats \
        --use_existing_db=1 \
-       --disable_auto_compactions=1 \
        --sync=0 \
        --report_file="exponential_b.csv" \
        --report_interval_seconds=30 \
@@ -1084,107 +1081,107 @@ function run_fyp_exponential_e {
   summarize_result $output_dir/${out_name} fyp_exponential_e readrandomwriterandom
 }
 
-function run_fyp_exponential_e_1k_block {
-  echo "Reading random keys while writing randomly, Read:50%, Write:50%"
-  out_name="fyp_exponential_e.log"
-  cmd="./db_bench --benchmarks=readrandomwriterandom,stats \
-       --use_existing_db=0 \
-       --sync=$syncval \
-       --block_size=1024 \
-       --report_file="exponential_e.csv" \
-       --report_interval_seconds=30 \
-       --duration=1200 \
-       --readwritepercent=50 \
-       --key_dist_a=1 \
-       --key_dist_b=2.718 \
-       $params_w \
-       --threads=16 \
-       --merge_operator=\"put\" \
-       --seed=4981 \
-       2>&1 | tee -a $output_dir/${out_name}"
-  echo $cmd | tee $output_dir/${out_name}
-  eval $cmd
-  summarize_result $output_dir/${out_name} fyp_exponential_e_1k_block readrandomwriterandom
-}
-
-function run_fyp_exponential_e_8k_block {
-  echo "Reading random keys while writing randomly, Read:50%, Write:50%"
-  out_name="fyp_exponential_e.log"
-  cmd="./db_bench --benchmarks=readrandomwriterandom,stats \
-       --use_existing_db=0 \
-       --sync=$syncval \
-       --block_size=8192 \
-       --report_file="exponential_e.csv" \
-       --report_interval_seconds=30 \
-       --duration=1200 \
-       --readwritepercent=50 \
-       --key_dist_a=1 \
-       --key_dist_b=2.718 \
-       $params_w \
-       --threads=16 \
-       --merge_operator=\"put\" \
-       --seed=4981 \
-       2>&1 | tee -a $output_dir/${out_name}"
-  echo $cmd | tee $output_dir/${out_name}
-  eval $cmd
-  summarize_result $output_dir/${out_name} fyp_exponential_e_8k_block readrandomwriterandom
-}
-
-function run_fyp_exponential_new {
-  log_file_name="fillseq_exp_new.log"
-  echo "Loading $num_keys keys sequentially"
-  cmd="./db_bench --benchmarks=fillseq \
+function run_fyp_exponential_fillseq_readrandom {
+  echo "Loading $num_keys random keys"
+  cmd="./db_bench --benchmarks=fillseq,stats \
        --use_existing_db=0 \
        --sync=0 \
+       --report_file="exponential_a.csv" \
+       --report_interval_seconds=30 \
+       --num=900000000 \
        --duration=1200 \
-       $params_fillseq \
-       --min_level_to_compress=0 \
+       --statistics=1 \
+       --key_dist_a=1 \
+       --key_dist_b=2.718 \
+       $params_bulkload \
        --threads=16 \
        --memtablerep=vector \
        --allow_concurrent_memtable_write=false \
+       --disable_wal=1 \
        --seed=4981 \
-       2>&1 | tee -a $output_dir/${log_file_name}"
-  echo $cmd | tee $output_dir/${log_file_name}
+       2>&1 | tee -a $output_dir/benchmark_fyp_exponential_a.log"
+  echo $cmd | tee $output_dir/benchmark_fyp_exponential_a.log
   eval $cmd
-  # The constant "fillseq" which we pass to db_bench is the benchmark name.
 
-  echo "Reading $num_keys random keys"
-  out_name="benchmark_readrandom.log"
-  cmd="./db_bench --benchmarks=readrandom \
-       --use_existing_db=1 \
+  echo "Loading $num_keys random keys"
+  cmd="./db_bench --benchmarks=fillrandom,stats \
+       --use_existing_db=0 \
+       --sync=0 \
+       --report_file="exponential_a.csv" \
+       --report_interval_seconds=30 \
        --duration=1200 \
+       --key_dist_a=1 \
+       --key_dist_b=2.718 \
+       $params_bulkload \
+       --threads=16 \
+       --memtablerep=vector \
+       --allow_concurrent_memtable_write=false \
+       --disable_wal=1 \
+       --seed=4981 \
+       2>&1 | tee -a $output_dir/benchmark_fyp_exponential_a.log"
+  echo $cmd | tee $output_dir/benchmark_fyp_exponential_a.log
+  eval $cmd
+}
+
+function run_fyp_exponential_overwrite {
+  echo "Loading $num_keys random keys"
+  cmd="./db_bench --benchmarks=fillseq,stats \
+       --use_existing_db=0 \
+       --sync=0 \
+       --report_file="exponential_a.csv" \
+       --report_interval_seconds=30 \
+       --num=900000000 \
+       --duration=1200 \
+       --statistics=1 \
+       --key_dist_a=1 \
+       --key_dist_b=2.718 \
+       $params_bulkload \
+       --threads=16 \
+       --memtablerep=vector \
+       --allow_concurrent_memtable_write=false \
+       --disable_wal=1 \
+       --seed=4981 \
+       2>&1 | tee -a $output_dir/benchmark_fyp_exponential_a.log"
+  echo $cmd | tee $output_dir/benchmark_fyp_exponential_a.log
+  eval $cmd
+
+  echo "Do $num_keys random overwrite"
+  out_name="benchmark_overwrite.log"
+  cmd="./db_bench --benchmarks=overwrite,stats \
+       --use_existing_db=1 \
+       --statistics=1 \
+       --sync=$syncval \
+       --report_file="exponential_overwrite.csv" \
+       --report_interval_seconds=30 \
+       --duration=1200 \
+       --key_dist_a=1 \
+       --key_dist_b=2.718 \
        $params_w \
        --threads=16 \
+       --merge_operator=\"put\" \
        --seed=4981 \
        2>&1 | tee -a $output_dir/${out_name}"
   echo $cmd | tee $output_dir/${out_name}
   eval $cmd
+}
 
+function run_fyp_exponential_readwhilewriting {
   echo "Reading $num_keys random keys while writing"
   out_name="benchmark_readwhilewriting.log"
-  cmd="./db_bench --benchmarks=readwhilewriting \
-       --use_existing_db=1 \
+  cmd="./db_bench --benchmarks=readwhilewriting,stats \
+       --use_existing_db=0 \
        --sync=$syncval \
+       --readwritepercent=10 \
+       --statistics=1 \
+       --report_file="exponential_readwhilewriting.csv" \
+       --report_interval_seconds=30 \
        --duration=1200 \
+       --key_dist_a=1 \
+       --key_dist_b=2.718 \
        $params_w \
        --threads=16 \
        --merge_operator=\"put\" \
-       --seed=4981 \
-       2>&1 | tee -a $output_dir/${out_name}"
-  echo $cmd | tee $output_dir/${out_name}
-  eval $cmd
-
-  echo "Do $num_keys random $operation"
-  out_name="benchmark_overwrite.log"
-  cmd="./db_bench --benchmarks=$operation \
-       --use_existing_db=1 \
-       --sync=0 \
-       --writes=125000000 \
-       --subcompactions=4 \
-       $params_w \
-       --threads=16 \
-       --merge_operator=\"put\" \
-       --seed=4981 \
+       --seed=$( date +%s ) \
        2>&1 | tee -a $output_dir/${out_name}"
   echo $cmd | tee $output_dir/${out_name}
   eval $cmd
@@ -1249,6 +1246,18 @@ for job in ${jobs[@]}; do
     run_fyp_exponential_d
   elif [ $job = fyp_exponential_e ]; then
     run_fyp_exponential_e
+  elif [ $job = fyp_exponential_readwhilewriting ]; then
+    run_fyp_exponential_readwhilewriting
+  elif [ $job = fyp_exponential_fillseq_readrandom ]; then
+    run_fyp_exponential_fillseq_readrandom
+  elif [ $job = fyp_exponential_overwrite ]; then
+    run_fyp_exponential_overwrite
+  elif [ $job = fyp_exponential_d_readwhilewriting ]; then
+    run_fyp_exponential_d_readwhilewriting
+  elif [ $job = fyp_exponential_d_directio ]; then
+    run_fyp_exponential_d_directio
+  elif [ $job = fyp_exponential_d_directread ]; then
+    run_fyp_exponential_d_directread
   elif [ $job = fyp_exponential_e_1k_block ]; then
     run_fyp_exponential_e_1k_block
   elif [ $job = fyp_exponential_e_8k_block ]; then
