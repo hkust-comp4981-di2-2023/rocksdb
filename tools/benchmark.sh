@@ -186,7 +186,7 @@ function run_bulkload {
        --seed=4981 \
        --duration=1200 \
        --report_interval_seconds=30 \
-       --cache_size=1 \
+       --cache_size=131072 \
        $params_bulkload \
        --threads=16 \
        --memtablerep=vector \
