@@ -50,7 +50,7 @@ num_threads=${NUM_THREADS:-64}
 mb_written_per_sec=${MB_WRITE_PER_SEC:-0}
 # Only for tests that do range scans
 num_nexts_per_seek=${NUM_NEXTS_PER_SEEK:-10}
-cache_size=${CACHE_SIZE:-$((17179869184))}
+cache_size=${CACHE_SIZE:-$(0)}
 compression_max_dict_bytes=${COMPRESSION_MAX_DICT_BYTES:-0}
 compression_type=${COMPRESSION_TYPE:-zstd}
 duration=${DURATION:-0}
@@ -183,7 +183,9 @@ function run_bulkload {
        --disable_auto_compactions=1 \
        --sync=0 \
        --report_file="report_fillrandom.csv" \
-       --seed=1712562985 \
+       --report_interval_seconds=30 \
+       --seed=4981 \
+       --duration=1200 \
        $params_bulkload \
        --threads=16 \
        --memtablerep=vector \
