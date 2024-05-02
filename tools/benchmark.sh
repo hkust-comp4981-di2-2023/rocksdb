@@ -175,6 +175,7 @@ function summarize_result {
 }
 
 function run_bulkload {
+  # 17179869184 
   # This runs with a vector memtable and the WAL disabled to load faster. It is still crash safe and the
   # client can discover where to restart a load after a crash. I think this is a good way to load.
   echo "Bulk loading $num_keys random keys"
@@ -376,8 +377,11 @@ function run_readrandom {
   cmd="./db_bench --benchmarks=readrandom \
        --use_existing_db=1 \
        $params_w \
-       --threads=$num_threads \
-       --seed=$( date +%s ) \
+       --threads=16 \
+       --seed=4981 \
+       --duration=1200 \
+       --report_interval_seconds=30 \
+       --cache_size=131072 \
        2>&1 | tee -a $output_dir/${out_name}"
   echo $cmd | tee $output_dir/${out_name}
   eval $cmd
