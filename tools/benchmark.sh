@@ -375,8 +375,11 @@ function run_readrandom {
   cmd="./db_bench --benchmarks=readrandom \
        --use_existing_db=1 \
        $params_w \
-       --threads=$num_threads \
-       --seed=$( date +%s ) \
+       --threads=16 \
+       --seed=4981 \
+       --duration=1200 \
+       --report_interval_seconds=30 \
+       --cache_size=131072 \
        2>&1 | tee -a $output_dir/${out_name}"
   echo $cmd | tee $output_dir/${out_name}
   eval $cmd
